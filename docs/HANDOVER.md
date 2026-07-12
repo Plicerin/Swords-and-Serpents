@@ -7,7 +7,8 @@
 > JS/TS port, the outstanding bugs, and the exact investigative steps needed before
 > writing any more game code.  Read `docs/PORT_RUNBOOK.md` for the full architecture
 > reference.  **Project root:** `C:\Users\vrock\Documents\Swords and Serpents`
-> (Windows, PowerShell, NOT a git repo — deletions are permanent).
+> (Windows, PowerShell). A git repo since 2026-07-12 (initial commit
+> e9ddd29) - commit before risky changes.
 
 ---
 
