@@ -1,0 +1,97 @@
+## Note:  All cues are moved back by 22 units to account for the fact
+##        that they're processed when the world is decoded off the
+##        right-hand side of the screen.
+
+## The data segments below are named after the checkpoint they END at.
+
+## Checkpoint K, Champion Course
+## Blocks 000 - 089
+0   LABEL '@@ckpt_0k'
+
+10  CUE '1_bould'              # one boulder
+12  CUE '1_bould'              # one boulder
+15  CUE '1_bould'              # one boulder
+20  CUE '2_bould'              # two boulders
+28  CUE '1_bould'              # one boulder
+31  CUE '1_bould'              # one boulder
+34  CUE '2_boulc'              # one boulder
+37  CUE '1_bould'              # one boulder
+44  CUE '2_boulc'              # one boulder
+49  CUE '1_bould'              # one boulder
+56  CUE '2_bould'              # two boulders
+65  CUE '2_bould'              # two boulders
+72  CUE '1_bould'              # one boulder
+74  CUE '2_bould'              # two boulders
+80  LEVEL 'K'
+
+## Checkpoint L, Champion Course
+## Blocks 090 - 179
+81  LABEL '@@ckpt_0l'
+82  CAUTION 1
+
+90  CUE '2_pin2_e'             # two pink ships
+114 CUE '2_pin2_b'             # two pink ships
+134 CUE '3_blu2_d'             # one blue ships
+173 LEVEL 'L'
+
+## Checkpoint M, Champion Course
+## Blocks 180 - 269
+174 LABEL '@@ckpt_0m'
+
+175 CAUTION 2
+176 EXIT 'pin2_e'             ### exit pink
+179 EXIT 'blu2_d'             ### exit blue
+183 EXIT 'pin2_b'             ### exit pink
+195 CUE '1_mine_a'
+201 CUE '2_mine_d'
+206 CUE '1_mine_c'
+211 CUE '2_mine_a'
+217 CUE '1_mine_c'
+222 CUE '2_mine_e'
+229 CUE '2_mine_b'
+235 CUE '1_mine_c'
+240 CUE '2_mine_f'
+246 CUE '2_mine_a'
+252 CUE '1_mine_a'
+257 CUE '1_mine_b'
+263 CUE '1_mine_b'
+267 LEVEL 'M'
+
+## Checkpoint N, Champion Course
+## Blocks 270 - 359
+268 LABEL '@@ckpt_0n'
+
+271 CUE '2_mine_f'
+278 CUE '1_mine_c'
+284 CUE '2_mine_a'
+291 CUE '2_mine_b'
+297 CUE '2_mine_c'
+303 CUE '1_mine_a'
+309 CUE '2_mine_c'
+314 CUE '1_mine_b'
+320 CUE '2_mine_a'
+326 CUE '1_mine_b'
+332 CUE '2_mine_c'
+338 CUE '2_mine_c'
+344 CUE '1_mine_a'
+349 CUE '1_mine_b'
+354 CUE '1_mine_a'
+360 LEVEL 'N'
+
+## Checkpoint O, Champion Course
+## Blocks 360 - 449
+361 LABEL '@@ckpt_0o'
+
+366 CRAT2
+370 CUE '2_whit_a'             # two white ships
+386 CUE '2_whit_d'             # two white ships
+403 ROCK3
+410 CUE '2_pink_d'             # two pink ships
+425 CUE '2_pink_c'             # two pink ships
+422 ROCK2
+435 EXIT 'whit_a'             ### exit white
+444 EXIT 'pink_d'             ### exit pink
+448 EXIT 'pink_c'             ### exit pink
+450 EXIT 'whit_d'             ### exit white
+
+453 LEVEL 'o'                 ### END OF LEVEL - letter must be lower case

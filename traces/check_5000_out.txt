@@ -1,0 +1,1 @@
+/usr/bin/bash: line 1: jzintv-20200712-win32-sdl2binjzintv.exe: command not found

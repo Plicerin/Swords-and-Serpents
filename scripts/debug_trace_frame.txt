@@ -1,0 +1,54 @@
+# ============================================================
+# Swords & Serpents — Single Frame Trace Script for jzIntv
+# ============================================================
+# Usage:
+#   jzintv -d --script=scripts/debug_trace_frame.txt -e exec.bin -g grom.bin "Swords and Serpents.bin"
+#
+# This script captures a complete frame of execution by breaking
+# at the main game loop ($5072) and its key subroutines:
+#
+# Key Frame Flow (per iteration of $5072 loop):
+#   $5072 L_5072   → Main game loop dispatch
+#     $5086 L_5086 → Game state handler
+#     $50BD L_50BD → Input handler (reads controllers)
+#     $50E2 L_50E2 → Game logic / AI
+#     $5143 L_5143 → Sprite handler (calls $5400 screen render)
+#       $5400 L_5400 → Screen scroll/render (updates BackTab)
+#     EXEC.4F1     → EXEC sound driver
+#     EXEC.AAD     → EXEC display handler
+#   → B L_5072 (loop)
+#
+# Output files (per stage):
+#   trace_frame_NN_*.bin  — where NN = stage number
+# ============================================================
+
+# Stage 0: Capture state at main game loop entry (start of frame)
+b $5072
+r
+m $0200 $02EF trace_frame_00_backtab.bin
+m $3800 $39FF trace_frame_00_gram.bin
+m $0325 $035F trace_frame_00_stic.bin
+m $5BB5 $5BC0 trace_frame_00_stic_a.bin
+
+# Stage 1: After sprite handler entry ($5143 — handles BackTab + GRAM)
+b $5143
+r
+m $0200 $02EF trace_frame_01_backtab.bin
+m $0325 $032F trace_frame_01_mob_attrs.bin
+
+# Stage 2: After screen render ($5400 — copies sprite data, scrolls)
+b $5400
+r
+m $0200 $02EF trace_frame_02_backtab.bin
+m $3800 $39FF trace_frame_02_gram.bin
+
+# Stage 3: After full frame complete (back at $5072, next iteration)
+# Dump the final state for this frame
+r
+m $0200 $02EF trace_frame_03_backtab_final.bin
+m $0325 $035F trace_frame_03_stic.bin
+m $0100 $01EF trace_frame_03_scratch.bin
+m $015D $0183 trace_frame_03_hud.bin
+
+# Done
+q

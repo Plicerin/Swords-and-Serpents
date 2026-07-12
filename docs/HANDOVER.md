@@ -1,0 +1,663 @@
+# Swords and Serpents — JS Port Handover
+
+> **For the next executing agent.** Memory-extraction techniques (debugger
+> commands, capture recipes, parsing, pitfalls) are in
+> **`docs/JZINTV_MEMORY_RUNBOOK.md`** — read it before writing any capture
+> script. This document records the current state of the
+> JS/TS port, the outstanding bugs, and the exact investigative steps needed before
+> writing any more game code.  Read `docs/PORT_RUNBOOK.md` for the full architecture
+> reference.  **Project root:** `C:\Users\vrock\Documents\Swords and Serpents`
+> (Windows, PowerShell, NOT a git repo — deletions are permanent).
+
+---
+
+## ✅ BUG #1 — vertical-movement side-to-side wiggle (CLOSED — owner confirmed fixed 2026-07-12)
+
+**Symptom:** the player sprite appears to wiggle side-to-side while moving up
+or down. Not present moving left/right or on any diagonal. Reported
+repeatedly on 2026-07-06 and still present after three fixes.
+
+**Fixed along the way (each verified to change what it targeted, none
+resolved the symptom):**
+1. F3 walk-alt "flash" (2-of-16 duty) → replaced with the captured 50/50
+   ~5-frame F4/F3 cadence.
+2. F3 x-flip "rock" → removed; flips constant (N: F3 plain, S: F3 y-flip).
+3. Fractional camera resampling → camera + all sprite draws quantized to
+   integer world pixels. Post-fix measurement: wall-edge bands stable at
+   identical x for 17 consecutive frames of vertical scroll; player bbox
+   constant (304-335) every frame.
+
+**Measurements say canvas is stable** — sprite edges and background columns
+do not move horizontally per-frame after fix 3. The perceived wiggle
+therefore likely lives in something measurements haven't covered yet.
+
+**Prime suspects for the next session (in order):**
+1. **The F4↔F3 alternation itself** — the helm SILHUETTE changes shape every
+   5 frames (edge pixels pulse ±1-2 world px even though centroids match to
+   0.05px). A/B test: add a `?noanim=1` URL flag rendering static F4 on
+   vertical movement and have the owner compare. If wiggle disappears, the
+   player (script $5B28) does not use the knights' ($5B5E) walk cycle and
+   vertical should be static — remove the cycle for the player only.
+2. **Compositor resampling** — Windows display scaling (e.g. 125%) or
+   browser zoom resamples the 640×480 canvas at non-integer DPR; combined
+   with vertical motion this can shimmer. Test: set canvas CSS size to
+   integer multiple / use `image-rendering: pixelated` on the scaled canvas
+   (already set?) and devicePixelRatio-aware sizing.
+3. **The vertical sword column** — drawn at body x+3 while the original
+   x-flips the sword MOB for N (column x=4 when flipped, $10 → $08 mirror).
+   Check whether the sword column should sit at x=3 (S) vs x=4 (N) and
+   whether any per-frame flip state alternates it.
+
+**RESOLUTION (2026-07-06).** Whole-frame differencing (diff consecutive rAF
+frames, aggregate by screen column) proved that during vertical movement the
+ONLY changing pixels in the player's screen band besides scrolling
+background tiles were the player's own columns 308-335 — i.e. the F4↔F3
+walk alternation itself. All positional causes were measured out (sprite
+bbox constant, background columns stable, canvas layout rect constant at
+DPR 1.25). Since the F4/F3 cycle is captured from KNIGHTS (script $5B5E)
+and the player's own animation (script $5B28) is unverifiable in the
+emulator (no input injection), and the owner reports the real game's player
+does not wiggle: **the player now renders a static frame in all directions
+by default**; knights keep their captured walk cycle. A/B flag: load with
+`?anim=1` to re-enable the knight-style animation on the player.
+Verified: 20 sampled frames of downward walking → exactly 1 distinct sprite
+pixel profile (zero changes).
+
+**Verification protocol for future rendering bugs:** whole-frame consecutive
+diffs (column-aggregated) catch what filtered measurements miss; also check
+canvas getBoundingClientRect stability and devicePixelRatio. Owner
+confirmation required to close — instrument measurements alone missed this
+symptom three times.
+
+---
+
+## ✅ 2026-07-04 — GAMEPLAY COMPLETE (toroidal levels, ROM-verified scrolling)
+
+The port is now a complete, winnable game with the ROM's real scrolling model.
+
+**ROM finding — each level scrolls INFINITELY (torus), verified in
+`asm/disasm_new.asm`:** the background renderer `L_5EE2` masks the camera
+column `ANDI #$001F` (mod 32) and, when the 20-wide window crosses column 31
+mid-row, rewinds the source row and continues from column 0 (`L_5F0C` →
+`CLRR R1`). The vertical scroll filler `L_5EAE` advances the row counter
+`INCR R0; ANDI #$003F` (mod 64), and the camera position is kept masked
+`ANDI #$007F` (`G_0175`, low 5 bits = X column, upper bits = coarse Y). So a
+level is a 32×64 **torus**: walk off any edge and re-enter the opposite side;
+the Prince stays screen-centred (manual p.6). An earlier "stacked mazes with
+seam gates" world (archive/_relocated/endless.ts.retired) was replaced by
+`src/world/torus.ts` (`LevelWorld`, `wrap`, `wrapDelta`) on 2026-07-04.
+
+**Architecture (2026-07-05):** the **4 real fortress levels**
+(`assets/world_level{0..3}.json`, 128×64 tiles = 1024×512 px each), each a
+`LevelWorld` pre-rendered to an offscreen canvas and blitted in up to 4 wrap
+pieces under a never-clamped Prince-centred camera. Positions wrap mod
+(1024, 512) px; chase/contact/pickup distances use shortest-torus-path
+deltas. Fixed 60 Hz timestep. The Serpent's tiles are stripped from the
+level-3 grid at load (`extractSerpentLair`) and the boss entity spawns at the
+exact ROM position (neck card 27 → row 23 col 67); the Crown sits behind it
+inside the ziggurat chamber. Player start = the ROM's boot camera position
+(tile ~12,32). Old 32×64 single-page mazes (`assets/level{N}_maze.json`) are
+obsolete for gameplay but kept for reference.
+
+**ROM finding #2 — enemies do NOT collide with walls.** Only the two player
+slots run the movement wall test: `L_63F5` ($63F5) selects `G_01AB`/`G_01AC`
+by player index (R3=0/1) before calling `L_6054`; the other `L_6054` callers
+($5983, $61BD, $65FE) are object/tile-effect checks. Enemy MOBs are driven by
+animation-script velocities with no BACKTAB lookup — phantom knights fly
+straight through walls (owner-confirmed vs the real game, 2026-07-04).
+
+**ROM finding #4 — THE REAL WORLD STRUCTURE (2026-07-05, definitive).**
+(a) A level is **128×64 tiles = four 32-column pages**: `L_5E80` advances the
+camera page (`G_0175 + $20, ANDI #$0060`; bits 5-6 = page). Every capture
+before this date covered page 0 only. (b) There are **exactly 4 levels** —
+the level structs live at `$65DC + 8·N` for N=0..3; at `$65FC` the data
+becomes CPU code (our old "levels 4-13" were garbage reads). (c) Levels are
+assembled from **8 map sections** (pre-doubled nibble indexes into the
+pointer table at `$65CE`; struct word = base + band·2 + (page>>1), >>4 if
+page odd). Section nibble $C ($6F9E) is referenced ONLY by level 3 band 1
+page 2 — it is the ziggurat/lair. (d) **CAPTURE-SCRIPT BUG (fixed):** all
+old captures NOP'd `$55C0-55C2` but not the `G_02F4 = $65DC` store at
+`$55C7-55C8`, so every "level N" render actually used level 0's maze with
+level N's objects — this is why all 14 old mazes looked identical and the
+ziggurat never appeared. Fixed captures: `assets/world_level{0..3}.json`
+(128×64 each; see traces/realworlds_scan.log).
+
+**ROM finding #3 — the real enemy roster (2026-07-04/05, GROUND-TRUTHED).**
+The Sinister Serpent's authentic form was decoded pixel-exact from a REAL
+level-4 gameplay screenshot (CRPG Addict review; saved analysis pipeline:
+downscale 4×→160×96, quantize to the jzIntv palette, brute-force the 8-px
+camera offset — (2,1) — then match every tile against GRAM/GROM; the dragon
+region matched at Hamming distance 0). It is a **6×3-tile dragon facing left** drawn as background tiles, now ALSO
+captured directly from the ROM's own renderer (level 3 page 2, rows 22-24 —
+`traces/rooms/lair_probe_out.txt`, words 1EC5..1F0D):
+`. . 24 25 26 . / 27 28 29 29 29 30 / . . 31 32 33 .` — all green (fg 5) on
+olive, EXCEPT the three repeated card-29 body segments on RED (word $0CED) =
+the fiery belly; card 30 is the tail tip. The neck (27, 28) extends left toward its fire
+breath, which it breathes down the approach corridor (per the CRPG Addict
+description of level 4's ziggurat lair; note the real game has NO final
+battle — the dev ran out of ROM). See `sprites/dragon_comparison.png`
+(real-vs-port, pixel-identical) and `SERPENT_LAYOUT` in main.ts. Earlier
+guesses (3×2 grid, the 7×2 jigsaw in `sprites/serpent_assembled.png`, the
+small green MOB at `$5C9E`) are all WRONG as the boss; the $5C9E MOB is a
+different creature (kept as SERPENT_SPRITES reference data). **Phantom
+Knights (CORRECTED 2026-07-06, live-captured):** a knight enemy = the
+PLAYER'S OWN 5-frame figure rendered in **BLACK (fg 0)** plus a separate
+axis-aligned 8-px **sword MOB** ($FF row horizontal / $10 column vertical).
+Captured from live gameplay (traces/capture_attack_anim_out.txt): enemy MOB
+A-registers = GRAM cards 52/56 fg 0, and those cards' runtime bytes are
+byte-identical to player_sprites frames 4 and 0; companion MOBs hold the
+sword bitmaps. GRAM is static across 60 straight frames — no walk-cycle
+animation. The earlier "$5C1C/$5C2C knight walk frames" were WRONG data
+(removed); the June note "knights use the player sprite" was right. Red
+Sorcerers `$6677/$6687`; knights are FASTER than the player (manual p.8,
+KNIGHT_SPEED 0.28 vs 0.25).
+Manual p.8 also settles speed: knights "move FASTER than the Wizard or the
+Warrior Prince" → KNIGHT_SPEED 0.28 vs player 0.25; you must turn and strike,
+not flee. NOTE for future fidelity work: the manual says the Fortress has
+**4 levels** (scoring caps at "Fourth Level") — our 14 extracted mazes beyond
+level 3 may be reading past the real level table; the 14-level descent is a
+designed mode, not ROM truth.
+
+**ROM finding #5 — FACING SOLVED (2026-07-06, REVISED same day; closes the
+old BUG-2).** First analysis (sign-binned) wrongly concluded "no diagonal
+poses" — owner caught it (SW didn't face SW). Angle-binned re-analysis of a
+700-frame live capture (scripts/capture_facing_long.txt, ±15° sectors) plus
+visual identification of the frames settles it:
+  E:  F0 unflipped (STATIC — a 455-sample pure-west chase shows E/W have NO
+  W:  F0 xflip+yflip            walk alternates)
+  N:  F4 X-FLIPPED                     S: F4 Y-FLIPPED
+  Vertical WALK CYCLE (captured sequence `4y 4y 3xy 3xy 4y 4y 3y ...`):
+  F4/F3 alternate in ~5-frame 50/50 phases while moving; idle shows static
+  F4. F3's flips are CONSTANT per direction — N: F3 unflipped, S: F3 y-flip
+  (the DOMINANT captured variants; the minority x-flipped samples flicker
+  sample-to-sample = aliasing, not a steady rock). Two owner-caught wrong
+  renderings of this cycle: a 2-of-16 F3 "flash" (reads as jitter) and an
+  x-flip "rock" on F3 (reads as left-right wiggle).
+  NE: F1 unflipped (captured)          SE: F1 yflip (captured)
+  NW: F1 xflip ┐ derived via the game's own mirror convention (same
+  SW: F1 xyflip┘ transform the game uses for W); F1 is visually the 3/4
+NE-facing helm. F2 is unused in-dungeon (never displayed in any capture).
+Direction sectors are ±22.5°: shallow angles snap to cardinals. Sword MOB
+offsets: E (+8,0), W (−8,0), N (0,−8), S (0,+8); DIAGONALS use a dedicated
+45° blade bitmap (rows $06 $0C $30 $60 $C0 — NE-pointing, y-flip for SE,
+mirror convention for NW/SW) at offset (±8, ∓2) from the body — captured
+during F1 frames in the same trace. Knights move axis-locked
+(zero true-45° samples in 700 frames), so knight captures alone cannot show
+diagonals — the F1 diagonal evidence comes from the edge-of-sector samples.
+NOTE: script-pointer pokes ($033D=5B28/$033F=5B5E + G_0179/G_017A/G_017F per
+frame) make the anim scripts free-run through all 5 frames without movement —
+NOT a valid facing oracle (traces/capture_player_diag_out.txt).
+`facingFrame()` in main.ts implements exactly this map; `g.facing(dx,dy,alt)`
+on the test bridge exposes it for verification.
+
+**Gameplay loop (all verified in-browser via the `window.__game` test bridge):**
+- Phantom knights (2–8/level) — the player's knight figure in BLACK with a
+  black sword MOB — fly through walls straight at the player via the shortest
+  torus path; slain by walking INTO them while facing (manual-correct contact
+  combat). Activation radius is kept tight since cover doesn't exist. The
+  player's sword is likewise a white axis-aligned sword MOB (drawSword).
+- Red Sorcerers (ROM sprites `$6677/$6687`, red) teleport near the player
+  (onto floor, so they stay reachable/killable), materialize, and fire 4-way
+  axis-snapped fireballs (ROM frames `$5C4E`). Fireballs also ignore walls
+  (MOBs), range-limited to ~one screen.
+- Items: keys / potions (auto-heal when injured) / scrolls per level.
+- Levels connect by a **stairway** (levels 0–2): barred until a key (one per
+  level) unlocks it, then **F** descends (manual's stairs button). You arrive
+  at the same coordinates on the next level, snapped to floor. Death respawns
+  at the current level's entry.
+- Level 3 (the 4th): the Sinister Serpent (6×3 GRAM-card dragon at its real
+  map position in the ziggurat, 6 HP, breathes fire down the approach
+  corridor). The Crown of Kings cannot be taken while it lives. Slay it,
+  claim the Crown → win. 9 reincarnations → game over.
+- Deterministic population (seeded mulberry32) — same dungeon every run.
+
+**Rendering rule — INTEGER-PIXEL CAMERA (2026-07-06, owner-reported
+"wiggle").** The camera and every sprite draw position quantize to integer
+world pixels (Math.floor) before scaling. With fractional camera coords
+(player moves 0.25 px/frame), the background blit sampled a fractional
+source rect and nearest-neighbour resampling redistributed tile rows every
+frame — wall stipple dots visibly danced sideways during vertical scroll,
+reading as the (screen-fixed) player wiggling side to side. Horizontal
+movement masked it. Real STIC hardware has no sub-pixel positions — integer
+quantization is both the fix and the authentic behavior. Diagnosis method:
+per-frame wall-edge band tracking on the canvas (stable at (192,416) for
+17 straight frames after the fix vs ±4px flicker before).
+
+**Bugs fixed this session:** fireballs spawned inside walls (double +4
+y-offset) and died instantly; diagonal fireballs useless in 1-tile corridors
+(now 4-way); dragon unreachable for strikes behind wall pockets (sword-reach
+strike pad, claw-back only at close range); rAF-rate-dependent game speed
+(fixed timestep); `dist/` build shipped no data assets (build script now
+copies `assets/`).
+
+**Test bridge** (`window.__game`): `getState teleport setLevel giveKey stairs
+entry probe rowMap nearestEnemy nearestItem sorcerers serpent crown hold info` — used for
+all headless verification (movement, wall collision, wrap crossing both axes,
+wrap-seam rendering, cross-seam chase, strike/injury/death/respawn, stairs
+lock/unlock/descend, all-14-level entry sweep, fireball hit, dragon fight,
+crown gating, win). Keep it.
+
+**Deliberately NOT ROM-exact:** enemy/item placement, keys-and-stairs
+progression, Serpent HP/fire rate, the 14-level depth (manual says 4).
+ROM-exact combat/RNG/HUD (P2/P3 in the runbook) remain open if the goal ever
+returns to 1:1. Audio (P4) and title/menu (P5) are still unimplemented. The
+ROM's own stair placement/level-connection data has not been extracted — the
+stairway locations here are generated.
+
+---
+
+## ⚠️ 2026-06-13 LATE UPDATE — read this before the older sections below
+
+The architecture is **SCROLLING (Prince-centred viewport)**, now **implemented**. Earlier
+sections in this doc that say "fixed-room confirmed airtight" are **WRONG** — that conclusion
+came from emulator pokes that bypassed the camera logic. The manual settles it ("The Prince
+appears at the center of the screen throughout the quest"; `manual_map18.png` shows level 1 is
+a large maze), and the ROM `L_5EE2` windows a 20-wide view out of a 32-wide map (camera
+`G_0175`/`G_0176`). The real level-0 data is the **32×64 maze** in `level0_backtab.json` (was
+wrongly dismissed as "title/debug"; copied to `assets/level0_maze.json`). It is now rendered
+as a Prince-centred scrolling viewport: `src/world/maze.ts` + `renderGridToCanvas` (stic.ts) +
+a rewritten `src/main.ts` (state.x/y are now WORLD pixels; camera clamps at maze edges).
+Controls (keyboard, manual-sourced) and contact-based combat (9 lives) are also implemented.
+Open: full mazes for levels 1–13 (need ROM level-data extraction), the per-direction facing
+sprites, stairs between levels.
+
+## Current State
+
+The Vite/TypeScript scaffold is running at `http://localhost:4040/` (`npm run dev`).
+The renderer (`src/platform/stic.ts`) correctly draws the 20×12 dungeon rooms.
+A warrior sprite is displayed.  Arrow keys / WASD are wired to movement.
+
+**Nothing else is correct.**  The four bugs listed below must be resolved before
+any further feature work.
+
+---
+
+## ⚠️ Oracle session 2026-06-12 — findings & a retraction (READ THIS FIRST)
+
+An attempt to run the BUG-1 architecture decider in jzintv uncovered that **the
+gameplay oracle does not actually work**, which changes the priority order.
+
+**What happened**
+- `scripts/oracle_arch.txt` / `oracle_arch2.txt` boot via the same bypass as
+  `scripts/debug_capture_gameplay.txt` (force PC past the 1-player menu gate).
+- The dungeon **renders once** (BACKTAB fills with real tiles, warrior MOB-0 at
+  screen centre 88,56) — this is why *static room capture has always worked*.
+- But ~34 frames in, **the CPU executes opcode `0x0000` (HLT)**: the PC has
+  derailed into zeroed memory. `traces/oracle_arch*_out.txt` show `HALT!` and
+  `Cycles:` frozen at ~507421 while the instruction count barely advances.
+- Therefore every `r 8000000` *after* the halt ran **zero game instructions**.
+
+**Retraction.** Mid-session I briefly concluded "the warrior MOB is pinned at
+screen-centre (88) and does not follow `$0325`, so the game scrolls." **That was
+wrong** — it was frozen RAM read from a *halted* CPU. Poking `$0325` changed RAM
+(debugger pokes work on a dead machine) but no code ran to act on it, so the MOB
+"not moving" proved nothing. **BUG-1 remains UNANSWERED.**
+
+**Root cause of the dead oracle.** The boot-bypass (`G 7 56C9` to skip the menu)
+leaves some pointer/vector uninitialised; after a few frames the game jumps
+through it into `$0000` and HLTs. The bypass is fine for a one-shot render, useless
+for sustained gameplay.
+
+**Corrected jzintv debugger reference** (the runbook's Section 0.7 was wrong):
+- `G <reg> <val>` = **change a register** (e.g. `G 7 56C9` *sets PC*), NOT "run to PC".
+- `P addr val` = poke RAM, no side effects.  `E addr val` = write **with** peripheral side effects.
+- `W addr` = watch writes · `@ addr` = watch reads · `H` = toggle history · `#` = halt-on-display-blank.
+- Verified command table: `vendor/jzintv-src/debug/debug.c:1093-1115`.
+
+**This means there has never been a working gameplay harness** — which explains why
+every dynamic value (speed, facing, collision) has been guessed.
+
+### ✅ RESOLVED later the same session — stable harness + architecture answer
+
+**1. The harness is fixed.** `scripts/boot_stable.txt` (and `boot_stable2.txt`) boot to
+**stable gameplay — 0 HALTs over thousands of frames** (verified to cycle 69M+, PC in
+valid game code). Root cause of the old crash: the game-start code `L_56DB` lives
+*inside* the menu routine that starts at `$5684` with `PSHR R5` and ends at `$56F8`
+with `PULR R7`. The bypass force-jumped past the `PSHR R5`, so `$56F8`'s `PULR R7`
+popped stack garbage and derailed to `$0000` (opcode `0x0000` = HLT) ~34 frames later.
+**Fix:** let `L_56DB` run (it does the real init), break at `$56F8`, then redirect
+`PC=$5072` (main loop) with the stack reset (`G 6 02F7`). Recipe is in `boot_stable.txt`
+— **use it as the base for ALL future gameplay oracles.**
+
+**2. Architecture (BUG-1): strong evidence it is FIXED-ROOM (moving sprite), NOT
+scrolling.** On the *live* machine (`scripts/decide_live.txt`, 0 HALTs), poking player
+X `$0325` 88→32 made the game copy 32 into the warrior MOB's **screen** register and
+render the knight at screen-X=32, while the **BACKTAB did not change** (0 tiles). A
+pinned-sprite/scrolling engine would never draw the knight off-centre — it would ignore
+`$0325`. So the render path honours a *variable* sprite position over a *static*
+background = fixed-room. **This is the model the current JS code already uses.**
+
+**Reconciling the owner's "knight stays centred, rooms scroll" report:** that was almost
+certainly the *symptom* of two real bugs, not a scrolling engine — `MOVE_SPEED=0.5`
+(≈2 canvas px/frame) made the knight look stationary, and hard-cut room transitions at
+the screen edges made the world appear to "move" when you crossed a boundary. All prior
+project evidence (single-screen room PNGs, linear-dungeon docs, hard-cut transitions)
+agrees with fixed-room.
+
+**Final airtight confirmation still worth doing:** an *input-driven* run (hold one disc
+direction, watch whether `$0325` moves away from 88 [fixed] or stays pinned [scroll]).
+That same run also yields `MOVE_SPEED` (BUG-4), the facing→frame map (BUG-2), and
+collision stops (BUG-3). It needs the decoded-direction RAM variable, which is the next
+thing to find now that the machine actually runs.
+
+**Artifacts:** `scripts/oracle_arch.txt`, `oracle_arch2.txt`, `oracle_watch.txt`
+(early/invalid — halted), `diag_halt.txt` (found the crash via `dump.hst` history),
+`boot_stable.txt` + `boot_stable2.txt` (✅ the working harness), `decide_live.txt`
+(✅ live decider). Outputs in `traces/*_out.txt`.
+
+### 🔜 NEXT: input injection (gates BUG-2/3/4 measurement) — intel gathered
+
+The airtight architecture confirmation + speed/facing/collision measurements all need
+to drive **real disc input** in the stable harness. Progress so far:
+
+- **Controller-port injection is IMPOSSIBLE via the debugger.** `p`/`e` on `$01FE`/`$01FF`
+  do not change what the game reads — jzintv recomputes pad state from host input each
+  read (verified: read stays `00FF`). See `scripts/inject_test.txt`.
+- **The disc is read ONLY by the EXEC**, routine at `$14F1` (reads `$01FE`=right/player-1,
+  `$01FF`=left at PCs `$14F4/$14F8/$1525/$152C`). Found via read-watchpoint
+  (`scripts/find_input.txt`).
+- **The EXEC decodes & stores player-1 controller state at base `$0120`** (`$011F` =
+  player-2), via sub-routine `.EXEC.52F` (`$152F`): inverts the raw read (`XORI #$00FF`),
+  stores raw at `R1+4 = $0124`, table-decodes the disc (table near `$1543`). Disassembly
+  in `exec_dis.asm` (regenerate: `dis1600 -a -H -B -f exec.bin exec_dis.asm` with
+  `exec.cfg` mapping `$0000-$0FFF → $1000`).
+- **Poking `$0120`/`$0121` with `0x04/0x08/0x40` each frame did NOT move the player**
+  (`scripts/drive_test.txt`). So either the movement reads a different sub-offset of the
+  `$0120` block, or the decoded-direction encoding differs.
+
+**Dead-ends ruled out (so the next pass doesn't repeat them):**
+- A READ-watch on `$011F-$0124` over live frames showed **the game never reads the EXEC
+  decode block** — only the EXEC's own debounce reads it (PCs `$1536/$154E/$15AC`); idle
+  value `0x40`. (`scripts/find_consumer.txt`.) Caveat: capture was with *idle* input, so an
+  "input-present" path may simply not have run — not fully excluded.
+- `G_0102` (EXEC sets `0x80`=idle / `0xA0`=active) is **not** the movement gate — the game
+  uses it at `$51CC` for video-blank / attract timing only.
+- `.EXEC.AAD` (`$1AAD`, 2nd EXEC call/frame) does not read `$0120` either.
+
+**Conclusion:** the input→movement handoff is deeper than a single RAM variable; pinning it
+is a dedicated EXEC/game-loop RE task (follow `.EXEC.AAD`, or capture a full-frame `h`
+history with input forced present and trace what perturbs the player's `$033D`/velocity).
+
+**RECOMMENDED PIVOT (faster path to actually fixing BUG-2/3/4):** the three values don't
+*require* live input — they live in the ROM movement code and can be extracted STATICALLY,
+then spot-checked with the harness via position-pokes:
+- **BUG-4 speed:** velocity routine at `$5731` uses `G_017F` (=`0x32`=50) → `L_6046` (trig
+  decomposition). Port `L_6046`'s math for exact px/frame per direction.
+- **BUG-2 facing:** find the disc-direction → warrior GRAM-card (sprite-frame) selection in
+  the ROM; map to `player_sprites.json` indices.
+- **BUG-3 collision:** port `L_6054` (coord→BACKTAB, already matched) + the actual wall/
+  object predicate and sample footprint the movement code uses.
+
+Artifacts: `scripts/find_input.txt`, `inject_test.txt`, `drive_test.txt`,
+`find_consumer.txt`; `exec_dis.asm`.
+
+### 🔬 Movement-code static RE (2026-06-13) — findings
+
+Pivoted to extracting BUG-2/3/4 values straight from the ROM movement code. Key results:
+
+- **The ROM movement system is an 8-direction, trig-based, animation-script engine** — far
+  more complex than the JS port's 4-direction integer model:
+  - Disc direction + magnitude `G_017F` (=`0x32`=50) → `L_6046` → EXEC sin/cos (`.EXEC.629`)
+    → an (X,Y) velocity **vector**, accumulated in fixed-point (`L_5323`/`L_5546`, a
+    `<<G_0116` scaler). There is **no single px/frame constant** — speed is vector math.
+  - Each MOB runs an **animation script** via a pointer in `$033D[i]`; the player's
+    facing/movement state machine is `$56F9-$57Cx`, keyed on direction-sign flags
+    `G_0179` (X) / `G_017A` (Y), dispatching to `L_57DA`/`L_5894`/`L_5885`.
+
+- **BUG-2 facing — DEEPER THAN MAPPING; still unresolved. (Corrects an earlier overstatement
+  that the sprites were simply "wrong" — frame 0 IS correct.)**
+  - **Verified live:** the warrior's displayed sprite is GRAM **card 48** (`$3980`), and in
+    the idle dungeon state it equals `18 3C 7E 73 F9 99 89 89 89 89 99 F9 73 7E 3C 18` =
+    **exactly `player_sprites.json` frame 0**. So the extraction base (`$5BCE`) is right.
+  - **The displayed sprite does NOT change** when the warrior is driven in any of the 4
+    directions (`scripts/facing_capture.txt`), nor when the direction-sign flags `G_0179`/
+    `G_017A` are poked (`scripts/facing_g0179.txt`), nor when the descriptor `$033D` is poked
+    (`scripts/decode_facing2.txt`). Three independent methods → card 48 stays frame 0.
+  - ⇒ In-dungeon facing rotation is gated behind the **real disc-input animation path** that
+    none of these pokes trigger — OR the in-dungeon warrior **doesn't rotate at all** and the
+    5 frames are used elsewhere (e.g. the character-select screen). Cannot distinguish without
+    driving real disc input (the deep blocker) or fully decoding the `$56F9`/`$033D` animation
+    interpreter. **Recommendation: stop re-guessing the frame map** (3 attempts failed for this
+    reason); either show frame 0 only (matches every movement test) or defer until real input
+    is solved and the actual per-direction sprites can be captured from card 48.
+
+- **BUG-4 speed:** vector/trig (above). To match the ROM, port `L_6046`'s decomposition +
+  the `L_5323` accumulator; a scalar `MOVE_SPEED` can only ever approximate it.
+
+- **BUG-3 collision:** `L_6054` (coord→BACKTAB) already matches; still need to port the
+  exact wall/object predicate + sample footprint the movement code applies.
+
+- **BUG-1 architecture — now AIRTIGHT (fixed-room).** `scripts/vel_drive.txt`: injecting
+  X-velocity `G_0108` each frame-top moved player X `$0325` 88→86 — i.e. the position
+  variable **walks off centre** during movement (it is not pinned). Combined with the earlier
+  finding that the MOB renders at `$0325`'s value, the warrior moves across a static
+  background. Fixed-room confirmed; the JS model is correct.
+
+- **NEW TOOL — velocity injection drives movement.** Poking `G_0108` (X) / `G_010C` (Y,
+  signed 16-bit) at every frame-top makes the player move (position integrator applies it
+  before the next recompute). This is a working movement-drive that does NOT need the EXEC
+  disc-input path — usable for collision tests and rough speed work. Caveat: it injects an
+  *arbitrary* velocity, so it confirms architecture and lets you exercise movement, but the
+  *natural* ROM speed still requires the disc→`G_017F`→`L_6046` value (real input path).
+
+**Bottom line:** the JS port's simplified 4-dir model is architecturally divergent from the
+ROM's 8-way trig+script engine. Making movement ROM-exact is a real sub-project. BUG-1 is
+resolved (fixed-room). Facing (BUG-2) is blocked behind the real disc-input path and may not
+even rotate in-dungeon — stop re-guessing it. Velocity injection is available for BUG-3
+collision work. Artifacts reproducible from `Swords and Serpents.bin` + the `scripts/*.txt`.
+
+---
+
+## Bug List (owner-verified, in priority order)
+
+### BUG-1 — Wrong game architecture: knight should be centred, rooms should scroll
+
+**Observed:** The knight sprite moves across a fixed background.  
+**Required:** The knight remains at the centre of the screen; the dungeon background
+scrolls around it in all four directions as the player moves.  This is the
+authoritative behaviour reported by the owner watching the real game.
+
+**Why this matters:** Every other bug (facing direction, collision, speed) cannot be
+properly evaluated until this is correct, because they all assume the wrong model.
+
+**Status (2026-06-12): LIKELY FIXED-ROOM (moving sprite) — the current JS model is
+probably correct.** After fixing the harness, a live decider (`scripts/decide_live.txt`)
+showed the engine renders the warrior at a *variable* screen position driven by `$0325`
+with a static BACKTAB — the opposite of a scrolling/pinned engine. The owner's
+"scrolling" report is best explained as a symptom of `MOVE_SPEED≈0` + hard-cut
+transitions. Final confirmation = an input-driven run (next step). See the ✅ RESOLVED
+section above for the full evidence.
+
+**Open question — MUST be resolved with a jzintv oracle before any code changes:**
+
+Run the reference debug script (`scripts/debug_capture_gameplay.txt`), inject
+directional input for several frames, and compare two addresses each frame:
+
+| Address | Meaning |
+|---------|---------|
+| `$0000` | STIC shadow MOB-X register for MOB 0 (the warrior) |
+| `$0325` | G_0325 — currently believed to be the warrior's STIC X |
+
+If `$0000` stays at `0x58` (=88, screen centre) while `$0325` changes as the player
+moves → the architecture is **scrolling viewport** (player centred, BACKTAB updates
+each frame).  
+If `$0000` tracks `$0325` and changes frame-to-frame → the architecture is **moving
+MOB** (our current, apparently wrong, model).
+
+The L_5EE2 routine writes all 240 BACKTAB tiles; confirm whether it is called
+every frame (scrolling) or only on room transitions (fixed-room).  Look for the call
+sites of L_5EE2 in the main loop at `$5072`.
+
+Also confirm: if the architecture is scrolling, what is the "dungeon position"
+register that L_5EE2 reads to decide which tiles to write?  Candidate: a separate
+scroll-offset RAM word, likely near `$0325`.
+
+---
+
+### BUG-2 — Knight does not face the direction of travel
+
+**Observed:** The sprite does not rotate to face the direction the player is moving.
+
+**Background:** Five warrior frames are extracted from ROM `$5BCE` and stored in
+`assets/player_sprites.json`.  The frame assignment in `src/main.ts` (around
+line 193) has been changed multiple times without success.
+
+**Required oracle work:**  
+1. In a jzintv session, poke the disc direction register (locate via watch-diff on
+   `$0100–$01EF` while pushing different disc directions).  
+2. At each direction, dump the STIC A register (`m 0010 8`) and record which card
+   number (bits 8–3 of the STIC A word) the ROM places in the warrior MOB slot.  
+3. Map disc-direction → GRAM card number → frame index in `player_sprites.json`.
+
+Do **not** guess at the mapping.  Until this oracle is run the frame assignment must
+remain unchanged.
+
+---
+
+### BUG-3 — Wall collision is broken
+
+**Observed:** The knight passes through walls or is stopped in open corridors.
+
+**Root cause (likely):** `canMoveTo` in `src/engine/collision.ts` uses `bg === 11`
+(olive floor) as the walkability predicate.  This is correct for floor tiles but has
+not been validated against wall tiles, object tiles, and boundary tiles across all
+six captured rooms.  The collision footprint is also a single tile point-sample;
+the ROM may test a bounding box or multiple sample points.
+
+**Required oracle work:**  
+Run the jzintv input-driver (Section 3 of PORT_RUNBOOK.md), walk the knight into
+walls from several angles, and dump `$0325`/`$032D` (player position) each frame.
+If the ROM never lets `$0325` reach a wall tile's pixel boundary → confirm the
+collision predicate and footprint by reading L_5323 and L_6054 carefully in
+`asm/disasm_new.asm`.
+
+---
+
+### BUG-4 — Movement speed is wrong
+
+**Observed:** Speed has been toggled between 0.5, 1.0, 1.5, 2.0 px/frame.  At 1.5
+the owner reports it is "unrealistically fast."  The ROM value (G_017F = 0x32 = 50,
+÷16 ≈ 3.1 STIC px/frame) was considered but not empirically verified.
+
+**Required oracle work:**  
+Using the jzintv input-driver, hold one disc direction for exactly N frames and
+measure the change in `$0325` (player position).  `delta / N` = pixels per frame.
+This is the authoritative speed.  Do **not** adjust `MOVE_SPEED` further without
+this measurement.
+
+Current value in `src/engine/movement.ts`: `MOVE_SPEED = 0.5` (placeholder, reset
+from 1.5).  Do not change until the oracle is run.
+
+---
+
+## Controls — keyboard mapping (manual-sourced, implemented 2026-06-13)
+
+Per the game manual ("HAND CONTROLLERS", `manual_pages/embedded_p02_00.jpeg`), the
+Right Knight / Warrior Prince (the 1-player character) maps to the keyboard as:
+
+| Manual control | Key | Status in JS |
+|---|---|---|
+| Disc — Move Prince (move + face) | Arrows / WASD | ✅ implemented |
+| "Warrior Prince backs up" (move opposite facing, no turn) | **B** | ✅ implemented (`movement.ts` `backUp`) |
+| "Pick up/store Treasures; open" | **Space** | wired to input, logic = P2 |
+| "Stairs; use Lantern of Life" | **F** | ✅ stairs now button-gated (`main.ts`) |
+| "Read Scroll" | **R** | wired to input, logic = P5 |
+| "Call up Status Screen" | **Tab** | wired to input, logic = P5 |
+| "Enter" / game-select (1/2/2-Magic) | **Enter**, **1/2/3** | wired to input, menu = P5 |
+
+**Combat has NO button** — the manual states the Warrior "must strike them with his
+sword" by **moving INTO** the enemy. Contact-based combat; build it that way in P3.
+The 2-player Wizard's spell keypad (FREEZE/FIRE BALL/HEAL/…) is on the left overlay
+(`embedded_p02_00.jpeg`) — defer to the 2-player pass.
+
+The HUD now shows a live `Buttons:` line so the mapping is testable on screen.
+
+---
+
+## Combat (P3 first cut — manual-sourced, implemented 2026-06-13)
+
+`src/engine/combat.ts` (+ wiring in `main.ts`, combat fields in `state.ts`). Rules from
+the manual ("Evil Adversaries" p7, "Injuries, Cures & Reincarnations" p10):
+- **Contact-based, no attack button** — the Prince strikes by *moving into* a foe.
+  `resolveContact()`: if the Prince is moving + facing the foe → he strikes (foe dies);
+  otherwise the foe injures him.
+- **9 reincarnations**, each injury = **half a life**: white → **gray** (injured + stunned,
+  can't move) → a further hit **kills** (flashing red **X**, lose a reincarnation, respawn at
+  the entry point after a pause). Implemented in `injurePlayer()` / `tickPlayerCombat()`.
+- A **Phantom Knight** spawns each room and chases the Prince (`updateEnemy()` chase AI,
+  wall-respecting). HUD shows reincarnations / health / foe count.
+
+**Placeholders to replace (NOT ROM-extracted):** enemy/player speeds, stun & respawn
+lengths, the contact distance, and `PHANTOM_KNIGHT_SPRITE` (an inline placeholder — the
+real monster sprites are GRAM cards ~0x23–0x33; extract like the warrior). Monster stat
+tables + the exact damage/RNG model are still P2/P3 ROM-extraction work. Cures (Lantern of
+Life + Enter) and the Wizard are not implemented yet.
+
+⚠️ Combat positions are in the current fixed-room model; **if the architecture turns out to
+be Prince-centred scrolling (see memory — the manual says it is), enemy/world positions
+become camera-relative.** The combat *logic* (contact, HP, strike-first) is camera-agnostic.
+
+---
+
+## What Has Been Confirmed (do not re-derive)
+
+| Fact | Source |
+|------|--------|
+| START_X = 0x58 = 88 (from ROM $5A40) | ROM analysis, session context |
+| START_Y = 0x38 = 56 (from ROM $5A40–$5A41, SDBD) | ROM analysis, session context |
+| HDLY ($0030) and VDLY ($0031) are set to 0 every VBlank at L_53A8 | `asm/disasm_new.asm` line 820–821 |
+| `pixelToBacktabIndex` formula matches ROM L_6054 exactly | Verified |
+| Room 0 tile (10,6) is walkable (bg=11); all 4 neighbours are also walkable | Python check |
+| North boundary (Y<16) at col 10 is a wall tile (bg=0, not walkable) | Python check |
+| Warrior sprite has 5 frames at ROM $5BCE; frame 4 is front-facing (symmetric) | Verified |
+| `assets/player_sprites.json` bytes match ROM exactly | Verified |
+
+---
+
+## Files to Change (and what NOT to change)
+
+| File | Status |
+|------|--------|
+| `src/engine/movement.ts` — `MOVE_SPEED` | Reset to 0.5 until BUG-4 oracle is done |
+| `src/main.ts` — frame assignment | Do NOT change until BUG-2 oracle is done |
+| `src/engine/collision.ts` — `canMoveTo` | Do NOT change until BUG-1 architecture is confirmed |
+| `src/platform/stic.ts` — renderer | Correct, do not touch |
+| `assets/player_sprites.json` | Correct, do not touch |
+| `assets/rooms.json` | May be wrong if architecture is scrolling — verify after BUG-1 oracle |
+
+---
+
+## Recommended First Step — fix the oracle (Phase 0), then everything else follows
+
+**You cannot measure anything until the game runs stably under jzintv.** The current
+bypass HLTs after ~34 frames. Two routes to a stable gameplay harness:
+
+**Route A — diagnose & patch the bad vector (most direct).**
+1. Reproduce the halt: run `scripts/oracle_arch2.txt`; confirm `HALT!` in the output.
+2. Enable history before it dies: in the script, after reaching gameplay, add `H`
+   (toggle history), run a few frames, let it HLT; then the recent-PC trace shows the
+   instruction that jumped to `$0000`. (`H` dumps to `dump.hst` via the `d` command —
+   see `debug.c:142-145`.)
+3. Work back: the jump target came from an uninitialised RAM pointer the bypass
+   skipped. Initialise it with a `P`/`E` poke in the boot script, or NOP the derailing
+   call, until the main loop survives indefinitely (instr count keeps climbing, no HLT).
+
+**Route B — don't bypass the menu; select 1-player legitimately.**
+The menu waits for a controller press. Drive it with a *real* input event instead of
+forcing PC. jzintv has no `--demo` playback, and `P`-poking `$01FE/$01FF` is overwritten
+by the pad emulation each frame — so try `E <port> <val>` (write **with** side effects)
+on the PSG controller port, or set the PSG port-direction to output first. If the menu
+advances to the dungeon and the game keeps running, the harness is healthy and properly
+initialised (no skipped state).
+
+**Once the harness is healthy, the original decider plan applies** (it was sound — only
+the dead machine invalidated it). Hold one disc direction for N frames and dump
+`$0000` (MOB-0 X shadow) and `$0325` (player X) each frame:
+- `$0000` low byte stays 88 while the world (`$0200` BACKTAB) shifts → **scrolling** (BUG-1).
+- `$0000` follows `$0325` and BACKTAB is static → **fixed-room** (current model).
+- `(Δ$0325)/N` → authoritative `MOVE_SPEED` (BUG-4).
+- Per-direction dump of the warrior MOB's STIC card → direction→frame table (BUG-2).
+
+The disc-direction RAM variable still has to be found (watch-diff `$0100–$01EF` across a
+held direction) — but that watch-diff is only meaningful **once the machine runs**, which
+is why Phase 0 comes first.

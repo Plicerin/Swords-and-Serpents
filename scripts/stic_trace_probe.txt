@@ -1,0 +1,17 @@
+; STIC-trace probe: capture all writes to STIC MOB registers
+; The ^ command toggles STIC write display — this shows every MOB X/Y write
+; and reveals which MOB index the player uses and the actual X/Y coordinate format.
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+b 5072
+r 8000000
+p 018C 0001
+g 7 56C9
+n 5072
+^
+r 8000000
+^
+q

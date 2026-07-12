@@ -1,0 +1,183 @@
+; movement_speed_probe.txt
+; Measures exact player movement per frame by injecting disc direction into $0167.
+;
+; How it works:
+;   $0167 = EXEC disc shadow register (bits 6:0 = direction 0-8, bit 7 = new-data flag).
+;   L_5F43 ($5F43) reads from $0165-$0167 and returns R0 = $0167 & $7F (the disc direction).
+;   Breaking at $5F43 and poking $0167 before each frame gives clean single-frame deltas.
+;
+; Direction encoding (EXEC standard): 0=none 1=N 2=NE 3=E 4=SE 5=S 6=SW 7=W 8=NW
+;
+; After running, grep the output for "SNAP:" lines and compute:
+;   MOVE_SPEED_Y = |Y_with_N - Y_idle| = pixels moved north per frame
+;   MOVE_SPEED_X = |X_with_E - X_idle| = pixels moved east per frame
+
+; === boot bypass (standard template) ===
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+b 5072
+r 8000000
+p 018C 0001
+g 7 56C9
+n 5072
+
+; === stabilize: 5 idle frames ===
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+
+; === verify game state ===
+m 033D 1
+m 0179 1
+m 017F 1
+
+; === break at L_5F43 (disc direction read) ===
+b 5F43
+
+; === baseline: 3 idle frames (direction=0) ===
+p 0179 0000
+p 0167 0000
+n 5F43
+m 0325 1
+m 032D 1
+p 0167 0000
+n 5F43
+m 0325 1
+m 032D 1
+p 0167 0000
+n 5F43
+m 0325 1
+m 032D 1
+
+; === north (direction=1): 8 frames ===
+p 0167 0001
+n 5F43
+m 0325 1
+m 032D 1
+p 0167 0001
+n 5F43
+m 0325 1
+m 032D 1
+p 0167 0001
+n 5F43
+m 0325 1
+m 032D 1
+p 0167 0001
+n 5F43
+m 0325 1
+m 032D 1
+p 0167 0001
+n 5F43
+m 0325 1
+m 032D 1
+p 0167 0001
+n 5F43
+m 0325 1
+m 032D 1
+p 0167 0001
+n 5F43
+m 0325 1
+m 032D 1
+p 0167 0001
+n 5F43
+m 0325 1
+m 032D 1
+
+; === stop: 3 idle frames ===
+p 0167 0000
+n 5F43
+m 0325 1
+m 032D 1
+p 0167 0000
+n 5F43
+m 0325 1
+m 032D 1
+p 0167 0000
+n 5F43
+m 0325 1
+m 032D 1
+
+; === east (direction=3): 8 frames ===
+p 0167 0003
+n 5F43
+m 0325 1
+m 032D 1
+p 0167 0003
+n 5F43
+m 0325 1
+m 032D 1
+p 0167 0003
+n 5F43
+m 0325 1
+m 032D 1
+p 0167 0003
+n 5F43
+m 0325 1
+m 032D 1
+p 0167 0003
+n 5F43
+m 0325 1
+m 032D 1
+p 0167 0003
+n 5F43
+m 0325 1
+m 032D 1
+p 0167 0003
+n 5F43
+m 0325 1
+m 032D 1
+p 0167 0003
+n 5F43
+m 0325 1
+m 032D 1
+
+; === stop: 3 idle frames ===
+p 0167 0000
+n 5F43
+m 0325 1
+m 032D 1
+p 0167 0000
+n 5F43
+m 0325 1
+m 032D 1
+
+; === south (direction=5): 8 frames (Y should increase) ===
+p 0167 0005
+n 5F43
+m 0325 1
+m 032D 1
+p 0167 0005
+n 5F43
+m 0325 1
+m 032D 1
+p 0167 0005
+n 5F43
+m 0325 1
+m 032D 1
+p 0167 0005
+n 5F43
+m 0325 1
+m 032D 1
+p 0167 0005
+n 5F43
+m 0325 1
+m 032D 1
+p 0167 0005
+n 5F43
+m 0325 1
+m 032D 1
+p 0167 0005
+n 5F43
+m 0325 1
+m 032D 1
+p 0167 0005
+n 5F43
+m 0325 1
+m 032D 1
+
+q

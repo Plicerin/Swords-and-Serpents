@@ -1,0 +1,66 @@
+# ============================================================
+# Swords & Serpents — Full Memory Dump Script for jzIntv
+# ============================================================
+# Usage:
+#   1. Start:  jzintv -d --script=scripts/debug_dump_all.txt -e exec.bin -g grom.bin "Swords and Serpents.bin"
+#   2. Press F4 to break into the debugger at your desired point
+#   3. This script will dump everything from the current machine state
+#
+# Or use interactively:
+#   > b $557B
+#   > r
+#   (navigate title screen, press 1 to start game)
+#   (when breakpoint hits, run this script from debugger prompt)
+#
+# Output files:
+#   dump_all_backtab.bin     — Background tile table (240 words)
+#   dump_all_gram.bin        — GRAM sprite cards (256 words)
+#   dump_all_scratch.bin     — Scratchpad RAM (16-bit vars)
+#   dump_all_system.bin      — System RAM $0200-$035F
+#   dump_all_stic_shadow.bin — STIC shadow registers
+#   dump_all_sprite_table.bin— Sprite definition table
+#   dump_all_hud.bin         — HUD area $015D-$0183
+#   dump_all_color_stack.bin — Color Stack $0028-$002B
+# ============================================================
+
+# Dump BackTab — the 20×12 background tile grid
+# Each word: bits 10-3 = card #, bits 2-0 = FG color
+m $0200 $02EF dump_all_backtab.bin
+
+# Dump GRAM — the 64 8×8 sprite card definitions
+# 256 bytes = 64 cards × 4 words each
+m $3800 $39FF dump_all_gram.bin
+
+# Dump scratchpad RAM ($0100-$01EF)
+# Contains 16-bit game variables, controller state, timers
+m $0100 $01EF dump_all_scratch.bin
+
+# Dump full system RAM area (BackTab through STIC shadows)
+m $0200 $035F dump_all_system.bin
+
+# Dump STIC register shadow area ($0325-$035F)
+# $0325-$032F: MOB attribute shadows (12 MOBs)
+# $033D-$0344: Collision/status registers
+# $0345-$0354: Additional sprite data
+# $0355-$035D: STIC register shadows (border, hdly, vdly, etc.)
+m $0325 $035F dump_all_stic_shadow.bin
+
+# Dump sprite definition table ($5A40-$5A9F)
+# 12 MOBs × 8 DECLEs each = 96 DECLEs
+m $5A40 $5A9F dump_all_sprite_table.bin
+
+# Dump STIC A color register shadow ($5BB5-$5BC0)
+# 12 MOBs × 1 DECLE each
+m $5BB5 $5BC0 dump_all_stic_a.bin
+
+# Dump HUD variables ($015D-$0183)
+# Player health, score, inventory, etc.
+m $015D $0183 dump_all_hud.bin
+
+# NOTE: Color Stack registers ($0028-$002B) are STIC hardware I/O,
+# not RAM. They can't be dumped via 'm'. The STIC shadow values
+# are captured above in dump_all_stic_shadow.bin ($0355-$035D).
+
+# Done - return to debugger prompt
+# (remove 'q' below if you want to continue playing)
+q

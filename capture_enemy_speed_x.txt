@@ -1,0 +1,32 @@
+; Disable HLT break and advance through gameplay
+hlt_break 0
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+b 5072
+r 8000000
+p 018C 0001
+g 7 56C9
+b 5072
+r 8000000
+; Dump MOB Y and X positions
+m 0010 10
+m 0020 10
+; Also dump some RAM that might contain speed/velocity
+m 0100 20
+; Advance a few frames
+r 800000
+m 0010 10
+m 0020 10
+r 800000
+m 0010 10
+m 0020 10
+r 800000
+m 0010 10
+m 0020 10
+r 800000
+m 0010 10
+m 0020 10
+q

@@ -1,0 +1,103 @@
+## Note:  All cues are moved back by 22 units to account for the fact
+##        that they're processed when the world is decoded off the
+##        right-hand side of the screen.
+
+## The data segments below are named after the checkpoint they END at.
+
+## Checkpoint K, Champion Course
+## Blocks 000 - 089
+0   LABEL '@@ckpt_0k'
+
+10  CUE '2_mine_b'
+15  CUE '1_whi2_c'
+25  CUE '2_pin2_c'
+50  CUE '2_blu2_c'
+61  EXIT 'whi2_c'
+65  CUE '2_bould'
+74  CUE '2_bould'
+79  EXIT 'pin2_c'
+80  LEVEL 'K'
+
+## Checkpoint L, Champion Course
+## Blocks 090 - 179
+81  LABEL '@@ckpt_0l'
+
+84  CUE '2_boulc'
+93  CUE '1_bould'
+99  EXIT 'blu2_c'
+101 CUE '2_boulc'
+109 ROCK3
+110 CUE '2_pin2_d'
+122 ROCK3
+125 CUE '2_pin2_e'
+135 CUE '2_boulc'
+145 CRAT1
+152 CRAT4
+161 CRAT3
+168 CRAT2
+170 EXIT 'pin2_d'
+173 LEVEL 'L'
+
+## Checkpoint M, Champion Course
+## Blocks 180 - 269
+174 LABEL '@@ckpt_0m'
+
+176 CAUTION 3
+178 EXIT 'pin2_e'
+185 CUE 'charger5'             # Reverse-flying follower
+190 EXIT 'flexit'             ### bullet 1
+195 EXIT 'flexit'             ### bullet 2
+197 ROCK1
+200 ROCK1
+202 EXIT 'flexit'             ### bullet 3
+206 ROCK3
+213 ROCK1
+220 EXIT 'flexit'             ### bullet 4
+231 EXIT 'flexit'             ### bullet 5
+232 CUE '2_blu2_d'
+240 EXIT 'flexit'             ### exit follower stage
+247 ROCK2
+254 CUE '1_turret'
+257 ROCK1
+266 CUE '1_turret'
+267 LEVEL 'M'
+
+## Checkpoint N, Champion Course
+## Blocks 270 - 359
+268 LABEL '@@ckpt_0n'
+
+277 CUE '2_mine_a'
+283 CUE '1_mine_a'
+294 CRAT4
+297 CAUTION 1
+301 CRAT2
+309 CUE '2_mine_c'
+311 CUE '2_mine_b'
+312 CUE '3_whi2_d'
+316 CUE '2_mine_f'
+320 CUE '3_pink_a'
+334 CUE '3_whit_a'
+341 CRAT1
+351 CRAT1
+359 EXIT 'whi2_d'
+360 LEVEL 'N'
+
+## Checkpoint O, Champion Course
+## Blocks 360 - 449
+361 LABEL '@@ckpt_0o'
+
+361 EXIT 'whit_a'
+367 CUE '3_blu2_e'
+368 CRAT1
+375 CRAT3
+382 CRAT2
+390 CUE '1_turret'
+400 CUE '3_pink_b'
+410 CUE '1_turret'
+420 CUE '1_turret'
+422 ROCK2
+434 CUE '1_turret'
+444 CUE '1_turret'
+447 CRAT4
+449 EXIT 'pink_b'
+453 LEVEL 'o'                 ### END OF LEVEL - letter must be lower case

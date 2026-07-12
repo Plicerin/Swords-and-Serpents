@@ -1,0 +1,35 @@
+; Speed patches
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+p 5318 0034
+p 5319 0034
+p 531A 0034
+p 531B 02B8
+p 531C 0001
+p 56CC 0034
+p 56CD 0034
+; NOP X_FILL_MEM
+p 5638 0034
+p 5639 0034
+; Force past title screen
+w 018C 0001
+; Run to gameplay
+r 8000000
+; Take screenshot FIRST (before dumps might affect state)
+vs
+; Dump BACKTAB
+m 0200 240
+; Dump GRAM
+m 3800 512
+; Dump STIC color stack
+m 0028 4
+; Dump MOB registers
+m 0000 32
+; Dump SYSRAM MOB shadow
+m 0300 96
+; Dump 8-bit RAM
+m 0100 256
+q

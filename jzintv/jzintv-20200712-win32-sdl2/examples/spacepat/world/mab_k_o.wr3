@@ -1,0 +1,112 @@
+## Note:  All cues are moved back by 22 units to account for the fact
+##        that they're processed when the world is decoded off the
+##        right-hand side of the screen.
+
+## The data segments below are named after the checkpoint they END at.
+
+## Checkpoint K, Beginner Course
+## Blocks 000 - 089
+0   LABEL '@@ckpt_0k'
+
+11  CUE '1_bould'
+20  CUE '1_bould'
+28  CUE '2_bould'
+34  CAUTION 2
+35  CUE '2_bould'
+43  CUE '1_mine_a'
+49  CUE '1_mine_b'
+54  CUE '1_mine_b'
+60  CUE '2_mine_a'
+65  CUE '1_mine_b'
+71  CUE '2_mine_d'
+77  CUE '1_mine_a'
+80  LEVEL 'K'
+
+## Checkpoint L, Beginner Course
+## Blocks 090 - 179
+81  LABEL '@@ckpt_0l'
+
+82  CAUTION 2
+95  CUE '1_mine_a'
+96  CUE '2_pin2_b'
+102 CUE '2_mine_b'
+110 CUE '1_plant'
+111 CRAT1
+123 CRAT2
+130 CUE '2_pink_e'
+142 CUE '2_mine_c'
+145 CUE '2_mine_b'
+151 CUE '1_mine_b'
+157 CUE '1_mine_b'
+165 CUE '2_mine_f'
+167 EXIT 'pin2_b'
+168 CAUTION 2
+170 EXIT 'pink_e'
+173 LEVEL 'L'
+
+## Checkpoint M, Beginner Course
+## Blocks 180 - 269
+174 LABEL '@@ckpt_0m'
+
+176 CAUTION 2
+178 CUE '1_mine_b'
+184 CUE '1_mine_a'
+189 CUE '2_mine_f'
+197 CRAT2
+198 CUE '2_blue_e'
+202 CAUTION 2
+205 CRAT4
+216 CUE '2_mine_d'
+223 CUE '2_blu2_d'
+226 CUE '1_plant'
+227 CRAT1
+240 CUE '1_mine_b'
+248 CUE '1_mine_a'
+249 CAUTION 1
+259 CUE '2_pink_d'
+265 EXIT 'blue_e'
+266 EXIT 'blu2_d'
+267 LEVEL 'M'
+
+## Checkpoint N, Beginner Course
+## Blocks 270 - 359
+268 LABEL '@@ckpt_0n'
+
+272 CAUTION 1
+275 CUE '2_blu2_e'
+280 CUE '1_pink_b'
+285 CUE '1_bould'
+300 CUE '2_boulc'
+305 CUE '2_pink_c'
+320 CUE '1_plant'
+321 CRAT1
+334 CUE '2_boulc'
+345 CUE '2_bould'
+350 EXIT 'blu2_e'
+351 CUE '2_mine_a'
+352 EXIT 'pink_b'
+356 EXIT 'pink_c'
+360 LEVEL 'N'
+
+## Checkpoint O, Beginner Course
+## Blocks 360 - 449
+361 LABEL '@@ckpt_0o'
+
+365 CRAT1
+370 CAUTION 1
+376 CRAT4
+380 CUE '1_whit_b'
+387 CUE '1_pin2_e'
+395 CUE '1_pin2_d'
+400 CUE '1_whi2_a'
+410 CRAT2
+420 CUE '2_whit_c'
+425 CRAT2
+435 CAUTION 2
+437 CRAT3
+439 CUE '2_whit_d'
+443 EXIT 'whi2_b'
+445 EXIT 'whi2_a'
+453 LEVEL 'o'                 ### END OF LEVEL - letter must be lower case
+454 EXIT 'whit_c'
+455 EXIT 'whit_d'

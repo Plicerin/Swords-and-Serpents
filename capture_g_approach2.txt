@@ -1,0 +1,58 @@
+; Use room capture to reach gameplay state, then let the main loop run
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+p 5318 0034
+p 5319 0034
+p 531A 0034
+p 531B 02B8
+p 531C 0001
+p 56CC 0034
+p 56CD 0034
+p 55C0 0034
+p 55C1 0034
+p 55C2 0034
+p 55CF 02B8
+p 55D0 0000
+p 55D3 02B8
+p 55D4 0000
+b 5038
+r 8000000
+p 019C 0000
+p 02F4 65DC
+b 55DA
+r 8000000
+; Room loaded. Now clear all breakpoints and set main loop break
+n 5038
+n 55DA
+b 5072
+; Run to hit main loop once
+g 0 5072
+; Now clear breakpoint and advance a full frame with 'r'
+n 5072
+r 800000
+; Set breakpoint again and dump
+b 5072
+g 0 5072
+m 0010 10
+m 0020 10
+m 0325 18
+; Advance again
+n 5072
+r 800000
+b 5072
+g 0 5072
+m 0010 10
+m 0020 10
+m 0325 18
+; And again
+n 5072
+r 800000
+b 5072
+g 0 5072
+m 0010 10
+m 0020 10
+m 0325 18
+q

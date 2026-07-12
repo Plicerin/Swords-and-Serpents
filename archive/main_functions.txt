@@ -1,0 +1,165 @@
+
+=== L_5072 ===
+Address: 0x5072
+        JSR     R5,     L_5086                  ; 5072   0004 0150 0086
+        JSR     R5,     L_50BD                  ; 5075   0004 0150 00BD
+        JSR     R5,     L_50E2                  ; 5078   0004 0150 00E2
+        JSR     R5,     L_5143                  ; 507B   0004 0150 0143
+        JSR     R5,     .EXEC.4F1               ; 507E   0004 0114 00F1
+        JSR     R5,     .EXEC.AAD               ; 5081   0004 0118 02AD
+
+        B       L_5072                          ; 5084   0220 0013
+
+L_5086:
+        PSHR    R5                              ; 5086   0275
+        MVI     G_0118, R0                      ; 5087   0280 0118
+        TSTR    R0                              ; 5089   0080
+        BNEQ    L_50BC                          ; 508A   020C 0030
+
+        JSR     R5,     L_5D08                  ; 508C   0004 015C 0108
+
+        MVII    #$0003, R0                      ; 508F   02B8 0003
+        MVO     R0,     G_0118                  ; 5091   0240 0118
+        SDBD                                    ; 5093   0001
+        MVII    #$5566, R4                      ; 5094   02BC 0066 0055
+        MVII    #$0163, R3                      ; 5097   02BB 0163
+L_5099:
+        MVI@    R3,     R0                      ; 5099   0298
+
+        JSR     R5,     X_EXT_SIGN_LO           ; 509A   0004 0114 0268
+
+        TSTR    R0                              ; 509D   0080
+        BMI     L_50B3                          ; 509E   020B 0013
+        BEQ     L_50A5                          ; 50A0   0204 0003
+
+=== L_5086 ===
+Address: 0x5086
+        PSHR    R5                              ; 5086   0275
+        MVI     G_0118, R0                      ; 5087   0280 0118
+        TSTR    R0                              ; 5089   0080
+        BNEQ    L_50BC                          ; 508A   020C 0030
+
+        JSR     R5,     L_5D08                  ; 508C   0004 015C 0108
+
+        MVII    #$0003, R0                      ; 508F   02B8 0003
+        MVO     R0,     G_0118                  ; 5091   0240 0118
+        SDBD                                    ; 5093   0001
+        MVII    #$5566, R4                      ; 5094   02BC 0066 0055
+        MVII    #$0163, R3                      ; 5097   02BB 0163
+L_5099:
+        MVI@    R3,     R0                      ; 5099   0298
+
+        JSR     R5,     X_EXT_SIGN_LO           ; 509A   0004 0114 0268
+
+        TSTR    R0                              ; 509D   0080
+        BMI     L_50B3                          ; 509E   020B 0013
+        BEQ     L_50A5                          ; 50A0   0204 0003
+
+        DECR    R0                              ; 50A2   0010
+        BNEQ    L_50B3                          ; 50A3   020C 000E
+
+L_50A5:
+        MVI@    R4,     R0                      ; 50A5   02A0
+        MVO@    R0,     R3                      ; 50A6   0258
+        PSHR    R4                              ; 50A7   0274
+        PSHR    R3                              ; 50A8   0273
+        SDBD                                    ; 50A9   0001
+
+=== L_50BD ===
+Address: 0x50BD
+        PSHR    R5                              ; 50BD   0275
+        CLRR    R1                              ; 50BE   01C9
+        DIS                                     ; 50BF   0003
+        MVI     G_0117, R2                      ; 50C0   0282 0117
+        MVO     R1,     G_0117                  ; 50C2   0241 0117
+        EIS                                     ; 50C4   0002
+        MVII    #$033D, R3                      ; 50C5   02BB 033D
+L_50C7:
+        RRC     R2,     1                       ; 50C7   0072
+        BNC     L_50DC                          ; 50C8   0209 0012
+
+        MVI@    R3,     R4                      ; 50CA   029C
+        TSTR    R4                              ; 50CB   00A4
+        BEQ     L_50DC                          ; 50CC   0204 000E
+
+        ADDI    #$0000, R4                      ; 50CE   02FC 0000
+        SDBD                                    ; 50D0   0001
+        MVII    #$50DA, R5                      ; 50D1   02BD 00DA 0050
+        PSHR    R2                              ; 50D4   0272
+        PSHR    R3                              ; 50D5   0273
+        SUBI    #$033D, R3                      ; 50D6   033B 033D
+        SDBD                                    ; 50D8   0001
+        MVI@    R4,     R7                      ; 50D9   02A7
+
+        PULR    R3                              ; 50DA   02B3
+        PULR    R2                              ; 50DB   02B2
+L_50DC:
+        INCR    R3                              ; 50DC   000B
+        CMPI    #$0344, R3                      ; 50DD   037B 0344
+        BLE     L_50C7                          ; 50DF   0226 0019
+
+=== L_50E2 ===
+Address: 0x50E2
+        PSHR    R5                              ; 50E2   0275
+        MVII    #$0355, R3                      ; 50E3   02BB 0355
+        MVII    #$0325, R2                      ; 50E5   02BA 0325
+L_50E7:
+        CLRR    R5                              ; 50E7   01ED
+        MVI@    R2,     R0                      ; 50E8   0290
+        ANDI    #$0100, R0                      ; 50E9   03B8 0100
+        BNEQ    L_50EE                          ; 50EB   020C 0001
+
+        INCR    R5                              ; 50ED   000D
+L_50EE:
+        ADDI    #$0018, R2                      ; 50EE   02FA 0018
+        MVI@    R2,     R4                      ; 50F0   0294
+        TSTR    R4                              ; 50F1   00A4
+        BNEQ    L_50F5                          ; 50F2   020C 0001
+
+        INCR    R5                              ; 50F4   000D
+L_50F5:
+        CLRR    R1                              ; 50F5   01C9
+        MVII    #$03FF, R0                      ; 50F6   02B8 03FF
+        DIS                                     ; 50F8   0003
+        AND@    R3,     R0                      ; 50F9   0398
+        MVO@    R1,     R3                      ; 50FA   0259
+        EIS                                     ; 50FB   0002
+        TSTR    R5                              ; 50FC   00AD
+        BNEQ    L_513B                          ; 50FD   020C 003C
+
+        ADDI    #$0005, R4                      ; 50FF   02FC 0005
+        MVI@    R4,     R1                      ; 5101   02A1
+        ANDR    R1,     R0                      ; 5102   0188
+
+=== L_5143 ===
+Address: 0x5143
+        PSHR    R5                              ; 5143   0275
+        MVI     G_011A, R0                      ; 5144   0280 011A
+        RRC     R0,     1                       ; 5146   0070
+        BC      L_5159                          ; 5147   0201 0010
+
+        SETC                                    ; 5149   0007
+        RLC     R0,     1                       ; 514A   0050
+        MVO     R0,     G_011A                  ; 514B   0240 011A
+        MVII    #$0345, R2                      ; 514D   02BA 0345
+        MVII    #$033D, R4                      ; 514F   02BC 033D
+        MVII    #$0004, R1                      ; 5151   02B9 0004
+        MVII    #$0008, R0                      ; 5153   02B8 0008
+
+        JSR     R5,     L_516F                  ; 5155   0004 0150 016F
+
+        PULR    R7                              ; 5158   02B7
+
+L_5159:
+        RRC     R0,     1                       ; 5159   0070
+        BC      L_516E                          ; 515A   0201 0012
+
+        MVII    #$0003, R0                      ; 515C   02B8 0003
+        MVO     R0,     G_011A                  ; 515E   0240 011A
+        MVII    #$02F1, R2                      ; 5160   02BA 02F1
+        MVII    #$015D, R4                      ; 5162   02BC 015D
+        MVII    #$0002, R1                      ; 5164   02B9 0002
+        MVII    #$0003, R0                      ; 5166   02B8 0003
+        TSTR    R0                              ; 5168   0080
+        BEQ     L_516E                          ; 5169   0204 0003
+

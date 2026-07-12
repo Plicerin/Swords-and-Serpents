@@ -1,0 +1,89 @@
+# Debug script: bypass title screen and capture first room BackTab
+# Strategy: break at L_56C9 (checks G_018C for player count),
+# set G_018C = 1, then continue into game entry
+
+# Disable speed throttling for faster script execution
+e 1 0
+
+# Break at L_506A (post-init idle - wait for G_0119 to be zero)
+b 506A
+c
+
+# At this point the ROM is initialized and the title screen setup is about to run
+# Remove the breakpoint at 506A and set one at L_56C9
+b -506A
+b 56C9
+c
+
+# At L_56C9: MVI G_018C, R0
+# We need G_018C to be 1 (1-player game)
+# Poke it directly
+p 018C 0001
+
+# Also need to toggle the game-started flag in G_018B
+# L_56DB does XORI #$0080, R0 and MVO R0, G_018B
+# Let's just set G_018B = bit7 set
+p 018B 0080
+
+# Remove the 56C9 breakpoint
+b -56C9
+
+# Now continue - the code will enter the game at L_56DB,
+# call L_557B (game init with room loading), 
+# then return to the main loop
+
+# Run for several frames to let the room render
+# Break at L_5072 (top of main loop) after 30 frames
+b 5072
+
+# Continue 30 times through main loop
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+
+# Remove breakpoint and dump BackTab
+b -5072
+
+# Dump BackTab ($0200-$02EF) = 240 words
+# Show it in the output
+m 0200 02EF
+
+# Also dump scratchpad RAM for context
+m 0100 01FF
+
+# And dump the room parameters
+m 0184 0186
+m 02F2 02F3
+
+# Dump GRAM for tile rendering
+m 3800 39FF
+
+# Done
+q

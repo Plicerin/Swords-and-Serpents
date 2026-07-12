@@ -1,0 +1,12 @@
+b 5E68
+r 12000000
+; At $5E68 - just before SDBD MVI@ from $65CE
+; Dump the card table $65A0
+m 65A0 32
+; Dump the attribute table $65B7
+m 65B7 32
+; Dump the SDBD pointer table $65CE 
+m 65CE 32
+; Dump G_02F4 and G_02F5 (table base pointers)
+m 02F4 2
+q

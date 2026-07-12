@@ -1,0 +1,14 @@
+
+; Check what's at address E64 before execution
+m 5E64 2
+
+; Set breakpoint at the MVI@ instruction
+b 5E68
+
+; Run with enough cycles to get through init and room drawing
+r 15000000
+
+; If we hit the breakpoint, show R4 and read memory
+; (but jzIntv debugger doesn't support conditional breakpoints well)
+; So we break unconditionally and inspect
+q

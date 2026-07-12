@@ -1,0 +1,34 @@
+; Swords & Serpents — GAMEPLAY room capture for jzIntv
+; Drives the emulator into the actual first dungeon (not the title/boot point):
+;   1. NOP boot idle loops for speed
+;   2. Break at main loop $5072 (reached while the title/menu runs)
+;   3. Poke G_018C=1 (single player) and force PC to $56C9, the player-count
+;      check, which falls through to game-start $56DB — bypassing the keypad
+;      menu (which otherwise waits for a controller press, impossible headless)
+;   4. Advance frames so the dungeon renders and GRAM loads with real tiles
+;   5. Dump BACKTAB ($0200) + GRAM ($3800)
+; Run: jzintv -d --script=scripts/debug_capture_gameplay.txt -e exec.bin -g grom.bin "Swords and Serpents.bin"
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+b 5072
+r 8000000
+p 018C 0001
+g 7 56C9
+n 5072
+b 5072
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+m 0200 240
+m 3800 512
+q

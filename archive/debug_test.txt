@@ -1,0 +1,4 @@
+echo "SCRIPT STARTED"
+regs
+disasm $1000, $1010
+quit

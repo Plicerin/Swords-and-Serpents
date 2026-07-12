@@ -1,0 +1,62 @@
+AVI: 1.000 1.000 1.000
+Loading:
+  C:\Users\vrock\Documents\Swords and Serpents\Swords and Serpents.bin
+Name                     Swords and Serpents
+Short Name               Swords and Serpents
+Release date             1982
+Compatibility:
+  ECS                    Tolerates
+  Intellivoice           Tolerates
+  Intellivision II       Tolerates
+  Keyboard Component     Tolerates
+  TutorVision            Tolerates
+JLP Support:
+  JLP Accel              Disabled
+  JLP Flash Sectors      0
+jzintv:  Initializing Master Component and peripherals...
+ay8910:  Automatic sliding-window setting: 9
+CP-1610          [0x0000...0x0000]
+PSG0 AY8914      [0x01F0...0x01FF]
+[Graphics]       [0x0000...0x0000]
+[Sound]          [0x0000...0x0000]
+Scratch RAM      [0x0100...0x01EF]
+System RAM       [0x0200...0x035F]
+EXEC ROM         [0x1000...0x1FFF]
+Pad Pair 0       [0x01F0...0x01FF]
+STIC             [0x0000...0x007F]
+STIC (alias)     [0x4000...0x403F]
+STIC (alias)     [0x8000...0x803F]
+STIC (alias)     [0xC000...0xC03F]
+STIC (BTAB)      [0x0200...0x02EF]
+GROM/GRAM        [0x3000...0x3FFF]
+GRAM (alias)     [0x7800...0x7FFF]
+GRAM (alias)     [0xB800...0xBFFF]
+GRAM (alias)     [0xF800...0xFFFF]
+[Event]          [0x0000...0x0000]
+Legacy BIN+CFG   [0x5000...0x6FFF]
+CP-1610 Snoop    [0x0200...0x035F]
+[Debugger]       [0x0000...0xFFFF]
+Starting jzIntv...
+ 0000 0000 0000 0000 0000 0000 0000 1000 --------  JSRD R5,$1026            0
+> r 590327
+ 00FF 0000 0000 032B 0131 0000 0305 5338 -Z-CI---  PSHR R4       5070460
+> p 506A 0034
+> p 506B 0034
+> p 506C 0034
+> p 506D 0034
+> p 506E 0034
+> p 5318 0034
+> p 5319 0034
+> p 531A 0034
+> p 531B 02B8
+> p 531C 0001
+> r 40000000
+ F075 0000 0000 01FF 01FE 0001 02FF 1686 -Z--I-i-  SLL  R0,2     333735052
+> m 104 1
+0100:  00C3  0051  0081  0000   0001* 0001  0000  0000    # ...Q............
+> m 10 8
+0010:  0987* 2997  09A2  09B6   29C0  29D0  09E0  09F0    # ................
+> m 18 8
+0018:  3C00* 3C00  3C00  3C00   3C00  3C00  3C00  3C00    # ................
+> q
+Exited on user request.

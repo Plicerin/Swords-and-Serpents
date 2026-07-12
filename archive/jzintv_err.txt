@@ -1,0 +1,14 @@
+Requesting debugger halt.
+se candidate files:
+  Swords
+  Swords.rom
+  Swords.cc3
+  Swords.bin
+  Swords.int
+  Swords.itv
+
+Search path:
+  .
+  C:\Users\vrock\Documents\jzintv-20200712-win32-sdl2\jzintv-20200712-win32-sdl2\bin\..\rom
+
+ERROR:  Failed to initialize game

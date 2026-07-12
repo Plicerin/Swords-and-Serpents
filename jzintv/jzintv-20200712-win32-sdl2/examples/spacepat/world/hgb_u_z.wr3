@@ -1,0 +1,119 @@
+## Note:  All cues are moved back by 22 units to account for the fact
+##        that they're processed when the world is decoded off the
+##        right-hand side of the screen.
+
+## The data segments below are named after the checkpoint they END at.
+
+## Checkpoint U, Beginner Course
+## Blocks 000 - 089
+0   LABEL '@@ckpt_0u'
+
+11  CUE '1_turret'
+19  ROCK3
+24  ROCK1
+30  CUE '2_pin2_c'
+35  CUE '1_turret'
+38  CUE '1_plant'
+39  CRAT1
+52  CUE '2_bould'
+61  CUE '1_turret'
+65  CUE '2_pin2_b'
+70  ROCK3
+76  ROCK1
+80  LEVEL 'U'
+
+## Checkpoint V, Beginner Course
+## Blocks 090 - 179
+81  LABEL '@@ckpt_0v'
+
+87  CUE '1_plant'
+88  CRAT1
+96  CUE '2_mine_f'
+115 CRAT2
+130 CRAT1
+140 CUE '2_pink_e'
+145 CUE '2_blu2_b'
+150 CUE '1_bould'
+152 CUE '2_bould'
+161 CUE '2_pink_d'
+173 LEVEL 'V'
+
+## Checkpoint W, Beginner Course
+## Blocks 180 - 269
+174 LABEL '@@ckpt_0w'
+
+179 CRAT1
+186 CUE '1_turret'
+195 CUE '1_turret'
+201 CUE '1_plant'
+202 CRAT1
+209 CUE '2_mine_b'
+215 CUE '2_mine_a'
+220 CUE '2_whit_d'
+225 CRAT3
+229 CUE '2_whit_a'
+247 CRAT4
+262 CRAT2
+266 EXIT 'whit_d'
+267 LEVEL 'W'
+
+## Checkpoint X, Beginner Course
+## Blocks 270 - 359
+268 LABEL '@@ckpt_0x'
+
+270 EXIT 'whit_a'
+271 CUE '1_pink_c'
+275 CUE '1_turret'
+283 CUE '1_turret'
+291 CUE '3_blue_b'
+295 CUE '1_turret'
+310 CRAT2
+312 CUE '1_turret'
+315 CUE '2_pink_b'
+325 CUE '1_turret'
+332 CUE '2_whit_a'
+336 CUE '1_plant'
+337 CRAT1
+345 CAUTION 1
+346 EXIT 'whit_a'
+351 CUE '1_turret'
+355 CUE '3_blue_e'
+360 LEVEL 'X'
+
+## Checkpoint Y, Beginner Course
+## Blocks 360 - 449
+361 LABEL '@@ckpt_0y'
+
+363 CAUTION 1
+364 CUE '1_pink_a'
+374 CUE '1_pin2_b'
+380 CUE '1_turret'
+384 CUE '1_pink_c'
+394 CUE '1_pin2_d'
+400 CUE '1_turret'
+404 CUE '2_pink_e'
+414 CUE '1_blue_a'
+424 CUE '1_blu2_d'
+430 CUE '1_plant'
+431 CRAT1
+434 CUE '1_blue_c'
+440 CRAT3
+444 CUE '2_blu2_a'
+450 CUE '1_blue_e'
+
+453 LEVEL 'Y'
+
+## Checkpoint Z, Beginner Course
+## Blocks 450 - 539
+454 LABEL '@@ckpt_0z'
+
+460 CUE '2_pink_c'
+470 CUE '3_blue_d'
+505 ROCK2
+520 CUE '1_turret'
+517 CRAT2
+525 CUE '3_blu2_c'
+527 CRAT2
+532 CUE '1_turret'
+546 CUE '1_turret'
+547 LEVEL 'z'                 ### END OF LEVEL - letter must be lower case

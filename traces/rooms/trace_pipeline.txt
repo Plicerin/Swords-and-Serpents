@@ -1,0 +1,35 @@
+
+; Set breakpoints
+b 5E68
+b 5EC7
+
+; Run until first hit of L_5E48
+r 12000000
+
+; We're at $5E68 - MVI@ R4,R2
+; R4 points to table entry, R0 = tile index
+; Dump the table pointer value and trace
+
+; First, note our state
+; R0 = tile index, R1 = something, R2 = ?, R3 = ?, R4 = table ptr, R5 = return addr
+
+; Read the value about to be loaded into R2
+; Actually, single step to get it
+s
+; Now R2 has the tile data pointer
+
+; Read what's at that pointer (first 16 DECLEs)
+; R2 = pointer value from trace - but we don't know it yet
+; Let's just dump a range after the breakpoint
+; Actually, let's use a different approach - dump memory at known interesting spots
+
+; Instead, let's break at L_5EC7 (BACKTAB construction) 
+; and dump its inputs
+c
+; Now at L_5EC7 - inputs: R1 = raw tile data word, R3/G_02F5 = color table base
+; R5 = card table base ($65A0)
+; Dump registers
+r
+; Dump G_02F5
+m 02F5 1
+q

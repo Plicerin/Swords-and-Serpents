@@ -1,0 +1,126 @@
+## Note:  All cues are moved back by 22 units to account for the fact
+##        that they're processed when the world is decoded off the
+##        right-hand side of the screen.
+
+## The data segments below are named after the checkpoint they END at.
+
+## Checkpoint U, Champion Course
+## Blocks 000 - 089
+0   LABEL '@@ckpt_0u'
+
+10  CAUTION 3
+40  CUE 'follower'             # follower
+51  EXIT 'flexit'             ### exit follower stage 0
+56  EXIT 'flexit'             ### exit follower stage 1
+57  EXIT 'flexit'             ### exit follower stage 2
+79  CAUTION 3
+80  LEVEL 'U'
+
+## Checkpoint V, Champion Course
+## Blocks 090 - 179
+81  LABEL '@@ckpt_0v'
+
+84  CAUTION 3
+89  CUE 'minelyr5'            # Mine-laying follower
+94  EXIT 'flexit'             ### exit follower stage 0
+99  EXIT 'flexit'             ### exit follower stage 1
+107 EXIT 'flexit'             ### mine 1
+112 EXIT 'flexit'             ### mine 2
+117 EXIT 'flexit'             ### mine 3
+121 ROCK3
+129 EXIT 'flexit'             ### mine 4
+131 EXIT 'flexit'             ### mine 5
+133 EXIT 'flexit'             ### exit follower stage 2
+145 CUE '1_turret'
+155 CUE '1_turret'
+164 CUE '1_turret'
+166 CAUTION 1
+172 CUE '1_turret'
+173 LEVEL 'V'
+
+## Checkpoint W, Champion Course
+## Blocks 180 - 269
+174 LABEL '@@ckpt_0w'
+
+175 CAUTION 1
+176 CUE '1_whit_b'
+184 CUE '1_pin2_b'
+185 ROCK1
+190 CUE '1_blu2_b'
+191 ROCK3
+196 CUE '1_whit_d'
+198 CRAT1
+204 CUE '1_pin2_d'
+210 CUE '1_blu2_e'
+216 ROCK1
+220 CUE '1_whit_c'
+225 CRAT1
+226 CUE '1_pin2_c'
+232 CUE '1_blue_a'
+235 CRAT1
+253 ROCK2
+267 LEVEL 'W'
+
+## Checkpoint X, Champion Course
+## Blocks 270 - 359
+268 LABEL '@@ckpt_0x'
+
+269 EXIT 'whit_a'
+270 EXIT 'whit_b'
+271 EXIT 'whit_c'
+272 CAUTION 1
+275 CUE '1_turret'
+280 CUE '2_pink_d'
+290 CUE '2_blu2_d'
+300 CUE '1_plant'
+301 CRAT1
+303 CRAT1
+309 CRAT1
+310 CUE '1_plant'
+311 CRAT1
+319 CUE '2_blue_e'
+324 CUE '2_pin2_e'
+325 CRAT2
+336 ROCK1
+338 ROCK1
+346 ROCK2
+350 ROCK2
+354 ROCK3
+358 ROCK2
+360 LEVEL 'X'
+
+## Checkpoint Y, Champion Course
+## Blocks 360 - 449
+361 LABEL '@@ckpt_0y'
+
+363 CUE '3_whi2_b'
+364 CRAT1
+378 CRAT1
+395 CRAT1
+396 CAUTION 1
+400 EXIT 'whi2_b'
+406 CUE '2_blue_c'
+415 CUE '2_pink_a'
+423 CUE '1_turret'
+435 CUE '1_turret'
+440 CUE '2_pink_b'
+450 CUE '1_turret'
+453 LEVEL 'Y'
+
+## Checkpoint Z, Champion Course
+## Blocks 450 - 539
+454 LABEL '@@ckpt_0z'
+
+459 CUE '1_turret'
+466 CUE '3_blu2_b'
+470 ROCK2
+484 ROCK2
+486 CUE '3_pin2_a'
+509 CUE '3_pink_a'
+514 CUE '1_turret'
+528 CUE '1_turret'
+529 CUE '3_blu2_c'
+537 CUE '1_turret'
+539 CRAT1
+543 CRAT1
+547 LEVEL 'z'

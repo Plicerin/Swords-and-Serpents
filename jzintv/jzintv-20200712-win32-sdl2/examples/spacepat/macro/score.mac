@@ -1,0 +1,30 @@
+;; ======================================================================== ;;
+;;  Scoring macros                                                          ;;
+;; ======================================================================== ;;
+
+
+MACRO   Score(x)
+((%x%)/50)
+ENDM
+        ; Constant score
+MACRO   CSTSCO  s
+        CALL    ADDSCORE.cst
+        DECLE   (%s%) / 50
+ENDM
+        ; One of four random scores in R0/R1
+MACRO   RNDSCO  
+        CALL    ADDSCORE.rnd
+ENDM
+        ; Score in register
+MACRO   REGSCO
+        CALL    ADDSCORE.reg
+ENDM
+
+MACRO   DEFER   cst
+    IF (STRLEN("%cst%")<>2) OR (ASC("%cst%",0)<>$52) OR (ASC("%cst",1)<>$30)
+        MVII    #%cst%,     R0
+    ENDI
+        ADD     DEFSCO,     R0
+        MVO     R0,         DEFSCO
+ENDM
+

@@ -1,0 +1,47 @@
+; Probe: what drives $0325 (player X) per frame?
+; Baseline: X=0x1958, companion $0326=0x6900
+; Test 1: watch all companion words over 3 idle frames first
+; Test 2: poke $0326 (velocity?) and see if X changes
+; Test 3: poke G_0179 to see if it triggers movement
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+b 5072
+r 8000000
+p 018C 0001
+g 7 56C9
+n 5072
+b 5072
+r 8000000
+r 8000000
+r 8000000
+; baseline: dump $0320-$033F and $0100-$010F
+m 0320 16
+m 0100 8
+; 3 idle frames to see what naturally drifts
+r 8000000
+m 0320 16
+r 8000000
+m 0320 16
+r 8000000
+m 0320 16
+; --- test: poke $0326 to large positive (right motion)?
+p 0326 0100
+r 8000000
+m 0320 16
+; --- test: poke $032E to large positive (down motion)?
+p 032E 0100
+r 8000000
+m 0320 16
+; --- test: poke $0179 to 1 (disc north?)
+p 0179 0001
+r 8000000
+m 0320 16
+; --- test: poke $0179 to 0 (no disc) and check $017F (speed var)
+p 0179 0000
+m 017F 1
+r 8000000
+m 0320 16
+q

@@ -1,0 +1,11 @@
+
+; Check the immediate field at E64
+m 5E64 1
+
+; Break BEFORE the MVII instruction
+b 5E63
+
+; Run until we're in the room drawing loop
+r 12000000
+
+q

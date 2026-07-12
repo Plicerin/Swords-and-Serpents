@@ -1,0 +1,9 @@
+
+b 5E68
+r 12000000
+; Dump the full $65CE table
+m 65CE 32
+; Read G_02F5 (color table pointer)
+m 02F5 1
+m 02F4 1
+q

@@ -1,0 +1,14 @@
+
+; Break at the MVI@ R4,R2 instruction in L_5E48
+; This reads the $00CE lookup table
+b 5E68
+
+; Also break after room init to verify state
+b 55D7
+
+; Run the game
+r 9000000
+
+; Print registers at first break
+; Actually let's just print all regs
+q

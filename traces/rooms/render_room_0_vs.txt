@@ -1,0 +1,62 @@
+; Auto-generated script for room 0
+;   Using G_02F4=$65DC (base) + G_019C*8 to index room data
+
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+p 5318 0034
+p 5319 0034
+p 531A 0034
+p 531B 02B8
+p 531C 0001
+p 56CC 0034
+p 56CD 0034
+
+; NOP X_FILL_MEM — prevents title screen from wiping BACKTAB
+p 5638 0034
+p 5639 0034
+
+; NOP CLRR + MVO G_019C — room index written separately
+p 55C0 0034
+p 55C1 0034
+p 55C2 0034
+
+; Break after X_FILL_ZERO (which wipes G_019C/G_018C)
+b 5038
+
+; Run through boot + X_FILL_ZERO
+r 8000000
+
+; Write G_019C=0 (room index)
+p 019C 0000
+
+; Write G_018C=1 to force past title screen into gameplay
+p 018C 0001
+
+; Continue past boot + title screen into gameplay
+r 8000000
+
+; Dump BACKTAB
+m 0200 240
+
+; Dump GRAM
+m 3800 512
+
+; Dump STIC color stack
+m 0028 4
+
+; Dump STIC MOB registers
+m 0000 32
+
+; Dump SYSRAM MOB shadow
+m 0300 96
+
+; Dump 8-bit RAM (game state)
+m 0100 256
+
+; Take screenshot
+vs
+
+q

@@ -1,0 +1,42 @@
+; capture_simple.script - simple BACKTAB dump with ROM table inspection
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+p 56CC 0034
+p 56CD 0034
+
+; Run to gameplay
+r 50000000
+k 20
+r 2000000
+k 20
+r 2000000
+k 0D
+r 3000000
+
+; Dump BACKTAB
+e "=== BACKTAB ==="
+m 0200 f0
+
+; Dump object table from ROM ($655E) - 32 words = 64 bytes
+e "=== OBJECT TABLE ROM $655E-$659D ==="
+m 655E 40
+
+; Dump room data from ROM ($64DE-$655D) - first part
+e "=== ROOM DATA ROM $64DE-$655D ==="
+m 64DE 80
+
+; Dump type index table ($6580-$659F)
+e "=== TYPE INDEX TABLE $6580-$659F ==="
+m 6580 20
+
+; Show key RAM variables  
+e "=== KEY RAM ==="
+m 0175 8
+m 019C 8
+m 01A8 8
+m 01AB 4
+
+q

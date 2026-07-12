@@ -1,0 +1,49 @@
+; Minimal JZINTV script: capture scratchpad card table and R5 at render time
+; Uses same boot as successful render_room_0
+
+; NOP out title screen + fill routines
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+p 5318 0034
+p 5319 0034
+p 531A 0034
+p 531B 02B8
+p 531C 0001
+p 56CC 0034
+p 56CD 0034
+p 5638 0034
+p 5639 0034
+p 55C0 0034
+p 55C1 0034
+p 55C2 0034
+
+; Break after X_FILL_ZERO
+b 5038
+
+; Run through boot
+r 8000000
+
+; Write G_019C=0, G_018C=1
+p 019C 0000
+p 018C 0001
+
+; Continue to gameplay (BACKTAB rendered)
+r 8000000
+
+; Now dump:
+; 1. Scratchpad $00A0-$00FF (potential card table location)
+m 00A0 96
+
+; 2. SYSRAM $02F0-$02FF
+m 02F0 16
+
+; 3. BACKTAB $0200-$023F (first 3 rows)
+m 0200 64
+
+; 4. 8-bit RAM $0100-$01EF (scratchpad game state)
+m 0100 240
+
+q

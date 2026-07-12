@@ -1,0 +1,7 @@
+# Swords and Serpents - Extracted Functions from CP1600 Disassembly
+# ROM: 0x5000-0x6FFF (16KB)
+# Generated from dis1600.exe disassembly
+# ================================================================
+
+## MAIN LOOP AND CORE FUNCTIONS
+

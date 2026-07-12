@@ -1,0 +1,251 @@
+#!Rosegarden
+#
+#  Musical Notation File
+#
+
+RV21
+
+
+Staves 1
+
+
+Name Staff 1
+Key
+	Key Name A  maj / F# min
+Clef
+	Clef Name Treble
+Group
+	Beamed
+	: Quaver 0 1 0 0
+	: Quaver 0 1 0 0
+	End
+Group
+	Beamed
+	: Quaver 0 1 7 0
+	End
+Group
+	Beamed
+	: Semiquaver 0 1 7 0
+	End
+: Quaver 0 1 6 0
+: Semiquaver 0 1 6 0
+: Quaver 0 1 4 0
+: Quaver 0 1 6 0
+: Quaver 0 1 7 0
+Group
+	Beamed
+	: Quaver 0 1 0 0
+	: Quaver 0 1 0 0
+	End
+Group
+	Beamed
+	: Quaver 0 1 7 0
+	End
+Group
+	Beamed
+	: Semiquaver 0 1 7 0
+	End
+: Quaver 0 1 6 0
+: Semiquaver 0 1 6 0
+Group
+	Beamed
+	: Quaver 0 1 4 0
+	End
+: Semiquaver 0 1 3 0
+: Semiquaver 0 1 4 2
+: Quaver 0 1 4 0
+Group
+	Beamed
+	: Quaver 0 1 0 0
+	: Quaver 0 1 0 0
+	End
+Group
+	Beamed
+	: Quaver 0 1 7 0
+	End
+Group
+	Beamed
+	: Semiquaver 0 1 7 0
+	End
+: Quaver 0 1 6 0
+: Semiquaver 0 1 6 0
+: Quaver 0 1 4 0
+: Quaver 0 1 6 0
+: Quaver 0 1 7 0
+Group
+	Beamed
+	: Quaver 0 1 0 0
+	: Quaver 0 1 0 0
+	End
+Group
+	Beamed
+	: Quaver 0 1 7 0
+	End
+Group
+	Beamed
+	: Semiquaver 0 1 7 0
+	End
+: Quaver 0 1 6 0
+: Semiquaver 0 1 6 0
+Group
+	Beamed
+	: Quaver 0 1 4 0
+	: Semiquaver 0 1 3 0
+	: Semiquaver 0 1 4 2
+	End
+: Quaver 0 1 4 0
+Group
+	Beamed
+	: Quaver 0 1 3 0
+	: Quaver 0 1 3 0
+	End
+Group
+	Beamed
+	: Quaver 0 1 10 0
+	End
+Group
+	Beamed
+	: Semiquaver 0 1 10 0
+	End
+: Quaver 0 1 9 0
+: Semiquaver 0 1 9 0
+: Quaver 0 1 7 0
+: Quaver 0 1 9 0
+: Quaver 0 1 10 0
+Group
+	Beamed
+	: Quaver 0 1 3 0
+	: Quaver 0 1 3 0
+	End
+Group
+	Beamed
+	: Quaver 0 1 10 0
+	End
+Group
+	Beamed
+	: Semiquaver 0 1 10 0
+	End
+: Quaver 0 1 9 0
+: Semiquaver 0 1 9 0
+Group
+	Beamed
+	: Quaver 0 1 7 0
+	End
+: Semiquaver 0 1 6 0
+: Semiquaver 0 1 6 1
+: Quaver 0 1 7 0
+Group
+	Beamed
+	: Quaver 0 1 0 0
+	: Quaver 0 1 0 0
+	End
+Group
+	Beamed
+	: Quaver 0 1 7 0
+	End
+Group
+	Beamed
+	: Semiquaver 0 1 7 0
+	End
+: Quaver 0 1 6 0
+: Semiquaver 0 1 6 0
+: Quaver 0 1 4 0
+: Quaver 0 1 6 0
+: Quaver 0 1 7 0
+Group
+	Beamed
+	: Quaver 0 1 0 0
+	: Quaver 0 1 0 0
+	End
+Group
+	Beamed
+	: Quaver 0 1 7 0
+	End
+Group
+	Beamed
+	: Semiquaver 0 1 7 0
+	End
+: Quaver 0 1 6 0
+: Semiquaver 0 1 6 0
+Group
+	Beamed
+	: Quaver 0 1 4 0
+	End
+: Semiquaver 0 1 3 0
+: Semiquaver 0 1 4 2
+: Quaver 0 1 4 0
+Group
+	Beamed
+	: Quaver 0 1 4 0
+	: Quaver 0 1 4 0
+	End
+Group
+	Beamed
+	: Quaver 0 1 11 0
+	End
+Group
+	Beamed
+	: Semiquaver 0 1 11 0
+	End
+: Quaver 0 1 10 0
+: Semiquaver 0 1 10 0
+: Quaver 0 1 8 1
+: Quaver 0 1 10 0
+: Quaver 0 1 11 0
+Group
+	Beamed
+	: Quaver 0 1 3 0
+	: Quaver 0 1 3 0
+	End
+Group
+	Beamed
+	: Quaver 0 1 10 0
+	End
+Group
+	Beamed
+	: Semiquaver 0 1 10 0
+	End
+: Quaver 0 1 9 0
+: Semiquaver 0 1 9 0
+: Quaver 0 1 7 0
+: Quaver 0 1 9 0
+: Quaver 0 1 10 0
+Group
+	Beamed
+	: Quaver 0 1 0 0
+	: Quaver 0 1 0 0
+	End
+Group
+	Beamed
+	: Quaver 0 1 7 0
+	End
+Group
+	Beamed
+	: Semiquaver 0 1 7 0
+	End
+: Quaver 0 1 6 0
+: Semiquaver 0 1 6 0
+Group
+	Beamed
+	: Quaver 0 1 4 0
+	: Quaver 0 1 6 0
+	End
+: Quaver 0 1 7 0
+: Semiquaver 0 1 0 0
+: Quaver 0 1 0 0
+: Semiquaver 0 1 0 0
+: Semiquaver 0 1 2 1
+: Quaver 0 1 2 1
+: Semiquaver 0 1 2 1
+: Semiquaver 0 1 3 0
+: Quaver 0 1 3 0
+: Semiquaver 0 1 3 0
+: Semiquaver 0 1 3 1
+: Quaver 0 1 3 1
+: Semiquaver 0 1 3 1
+End
+
+Bar 0 0 time 4 4
+Stave 0 tags 1 1 connected 0 program 0
+
+End

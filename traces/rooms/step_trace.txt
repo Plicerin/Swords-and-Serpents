@@ -1,0 +1,11 @@
+
+b 5E63
+r 12000000
+; At this point we're at MVII #???, R4
+; Single step
+s
+s
+s
+s
+s
+q

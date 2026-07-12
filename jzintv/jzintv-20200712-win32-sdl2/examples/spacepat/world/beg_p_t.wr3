@@ -1,0 +1,70 @@
+## Note:  All cues are moved back by 22 units to account for the fact
+##        that they're processed when the world is decoded off the
+##        right-hand side of the screen.
+
+## The data segments below are named after the checkpoint they END at.
+
+## Checkpoint P, Beginner Course
+## Blocks 000 - 089
+0   LABEL '@@ckpt_0p'
+
+10  CUE '2_whit_e'             # two white ships
+12  CUE '2_whi2_c'             # two white ships
+30  CUE '1_pink_a'             # one pink ships
+40  CUE '2_pink_e'             # two pink ships
+66  EXIT 'whit_e'             ### exit white
+68  EXIT 'whi2_c'             ### exit white
+70  EXIT 'pink_a'             ### exit pink
+72  EXIT 'pink_e'             ### exit pink
+80  LEVEL 'P'
+
+## Checkpoint Q, Beginner Course
+## Blocks 090 - 179
+81  LABEL '@@ckpt_0q'
+
+98  CUE '1_bould'              # cue 1 boulder
+105 CUE '1_bould'              # cue 1 boulder
+115 CUE '2_bould'              # cue 2 boulder
+123 CUE '1_bould'              # cue 1 boulder
+133 CUE '2_bould'              # cue 2 boulder
+138 CUE '1_bould'              # cue 1 boulder
+145 CUE '2_bould'              # cue 2 boulder
+151 CAUTION 1
+153 CUE '1_bould'              # cue 1 boulder
+159 CUE '1_bould'              # cue 1 boulder
+171 CUE '2_blu2_d'             # two blue ships
+173 LEVEL 'Q'
+
+## Checkpoint R, Beginner Course
+## Blocks 180 - 269
+174 LABEL '@@ckpt_0r'
+
+177 CUE '2_blue_b'             # two blue ships
+203 ROCK2
+224 ROCK3
+244 CRAT2
+247 EXIT 'blu2_d'             ### exit blue
+251 EXIT 'blue_b'             ### exit blue
+254 ROCK3
+266 CAUTION 1
+267 LEVEL 'R'
+
+## Checkpoint S, Beginner Course
+## Blocks 270 - 359
+268 LABEL '@@ckpt_0s'
+
+287 CUE '2_blue_e'             # two blue ships
+307 CUE '2_pin2_d'             # two pink ships
+340 EXIT 'blue_e'             ### exit blue
+345 EXIT 'pin2_d'             ### exit pink
+360 LEVEL 'S'
+
+## Checkpoint T, Beginner Course
+## Blocks 360 - 449
+361 LABEL '@@ckpt_0t'
+
+363 CUE '3_pink_c'             # two pink ships
+380 CUE '3_whit_d'             # two white ships
+423 EXIT 'pink_c'             ### exit pink
+438 EXIT 'whit_d'             ### exit white
+453 LEVEL 't'                 ### END OF LEVEL - letter must be lower case

@@ -1,0 +1,19 @@
+# ============================================================
+# Swords & Serpents — State Dump
+# Uses jzIntv's 'd' (dump state) command to save all memory
+# ============================================================
+
+# Enable history logging (required for 'd' command)
+h
+
+# Run for many frames
+r 500000
+
+# Dump all state to dump.hst, dump.cpu, dump.mem, dump.atr
+d
+
+# Also dump key memory regions to console for parsing
+m $0200 $02EF
+m $3800 $39FF
+
+q

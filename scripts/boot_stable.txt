@@ -1,0 +1,38 @@
+; STABLE gameplay boot — fixes the HLT crash.
+; Root cause: the menu decode routine starts at $5684 (PSHR R5) and ends at
+; $56F8 (PULR R7). The old bypass force-jumped to $56C9/$56DB, SKIPPING the
+; PSHR R5, so $56F8's PULR R7 pops stack garbage -> PC derails to $0000 -> HLT.
+;
+; Fix: let the game-start init L_56DB run (it sets G_035D=$62D0, calls L_5F5B,
+; sets G_0335, clears G_01A3/A4/AB, calls room-init L_557B), but break at the
+; unbalanced PULR ($56F8), then redirect PC to the main loop $5072 with the
+; stack pointer reset to its boot base ($02F7) -> clean, balanced entry.
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+b 5072
+r 8000000
+p 018C 0001
+n 5072
+b 56F8
+g 7 56DB
+r 8000000
+n 56F8
+g 6 02F7
+g 7 5072
+; run several frames of REAL gameplay; if the fix works there is NO "HALT!"
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+m 0000 16
+m 0325 16
+q

@@ -1,0 +1,103 @@
+## Note:  All cues are moved back by 22 units to account for the fact
+##        that they're processed when the world is decoded off the
+##        right-hand side of the screen.
+
+## The data segments below are named after the checkpoint they END at.
+
+## Checkpoint F, Champion Course
+## Blocks 000 - 089
+0   LABEL '@@ckpt_0f'
+
+10  ROCK3
+14  CRAT4
+21  ROCK1
+29  CUE '1_whi2_d'
+40  CRAT2
+52  CUE '1_whit_b'
+60  CRAT1
+75  CRAT1
+77  EXIT 'whi2_d'
+78  EXIT 'whit_b'
+80  LEVEL 'F'
+
+## Checkpoint G, Champion Course
+## Blocks 090 - 179
+81  LABEL '@@ckpt_0g'
+
+87  CUE '1_mine_a'
+92  CAUTION 3
+96  CUE '1_mine_b'
+99 CUE 'minelyr5'            # Mine-laying follower
+101 CUE '1_mine_b'
+113 EXIT 'flexit'             ### exit follower stage 0
+118 EXIT 'flexit'             ### exit follower stage 1
+119 ROCK1
+132 EXIT 'flexit'             ### mine 1
+140 EXIT 'flexit'             ### mine 2
+145 EXIT 'flexit'             ### mine 3
+155 EXIT 'flexit'             ### mine 4
+165 EXIT 'flexit'             ### mine 5
+172 EXIT 'flexit'             ### exit follower stage 2
+173 LEVEL 'G'
+
+## Checkpoint H, Champion Course
+## Blocks 180 - 269
+174 LABEL '@@ckpt_0h'
+
+176 CUE '1_mine_b'
+182 CUE '1_mine_a'
+185 CAUTION 1
+193 CUE '1_mine_a'
+195 CUE '2_blue_a'
+210 CUE '1_whit_d'
+213 CRAT2
+223 CUE '2_whit_c'
+233 CRAT1
+239 CUE '2_pin2_d'
+252 CUE '1_plant'
+253 CRAT1
+256 EXIT 'whit_d'
+258 EXIT 'whit_c'
+261 ROCK2
+264 EXIT 'blue_a'
+266 EXIT 'pin2_d'
+267 LEVEL 'H'
+
+## Checkpoint I, Champion Course
+## Blocks 270 - 359
+268 LABEL '@@ckpt_0i'
+
+273 ROCK2
+284 ROCK3
+287 CUE '2_pink_e'
+291 ROCK1
+297 ROCK3
+305 CUE '3_blue_c'
+310 ROCK2
+320 CUE '2_pin2_a'
+325 ROCK2
+340 CUE '1_turret'
+347 CUE '1_turret'
+350 EXIT 'pink_e'
+356 EXIT 'pin2_a'
+358 EXIT 'blue_c'
+359 CUE '1_turret'
+360 LEVEL 'I'
+
+## Checkpoint J, Champion Course
+## Blocks 360 - 449
+361 LABEL '@@ckpt_0j'
+
+370 CUE '1_turret'
+372 CRAT3
+386 CUE '1_plant'
+387 CRAT1
+396 CUE '3_whit_e'
+409 CRAT2
+424 CUE '1_plant'
+425 CRAT1
+426 CUE '3_whi2_a'
+447 CRAT4
+453 LEVEL 'j'                 ### END OF LEVEL - letter must be lower case
+454 EXIT 'whit_e'
+459 EXIT 'whi2_a'

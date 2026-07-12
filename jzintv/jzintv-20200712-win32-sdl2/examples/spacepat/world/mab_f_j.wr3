@@ -1,0 +1,83 @@
+## Note:  All cues are moved back by 22 units to account for the fact
+##        that they're processed when the world is decoded off the
+##        right-hand side of the screen.
+
+## The data segments below are named after the checkpoint they END at.
+
+## Checkpoint F, Beginner Course
+## Blocks 000 - 089
+0   LABEL '@@ckpt_0f'
+
+10  CAUTION 1
+15  CUE '2_pin2_e'
+25  CRAT1
+40  CUE '2_blu2_e'
+55  CUE '1_pink_b'
+65  EXIT 'pin2_e'
+75  ROCK1
+79  EXIT 'blu2_e'
+80  LEVEL 'F'
+
+## Checkpoint G, Beginner Course
+## Blocks 090 - 179
+81  LABEL '@@ckpt_0g'
+
+88  CRAT3
+96  CRAT2
+98  EXIT 'pink_b'
+99  ROCK1
+105 CRAT4
+122 ROCK3
+133 ROCK2
+143 ROCK1
+151 CRAT1
+156 CRAT1
+164 CRAT1
+173 LEVEL 'G'
+
+## Checkpoint H, Beginner Course
+## Blocks 180 - 269
+174 LABEL '@@ckpt_0h'
+
+180 CAUTION 1
+190 CUE '1_blue_a'
+193 ROCK3
+195 CUE '2_pin2_c'
+200 ROCK2
+212 ROCK2
+231 ROCK2
+235 CUE '2_blue_d'
+259 CAUTION 1
+260 EXIT 'pin2_c'
+263 EXIT 'blue_a'
+265 EXIT 'blue_d'
+267 LEVEL 'H'
+
+## Checkpoint I, Beginner Course
+## Blocks 270 - 359
+268 LABEL '@@ckpt_0i'
+
+269 CUE '2_whi2_b'
+310 CUE '2_pink_a'
+333 EXIT 'whi2_b'
+350 CUE '1_turret'
+357 CUE '2_whit_d'
+358 EXIT 'pink_a'
+360 LEVEL 'I'
+
+## Checkpoint J, Beginner Course
+## Blocks 360 - 449
+361 LABEL '@@ckpt_0j'
+
+377 CUE '2_blue_e'
+393 CRAT4
+404 EXIT 'whit_d'
+409 CUE '1_turret'
+410 EXIT 'blue_e'
+419 CRAT3
+428 CUE '1_pink_d'
+430 ROCK1
+438 ROCK3
+444 ROCK2
+453 LEVEL 'j'                 ### END OF LEVEL - letter must be lower case
+456 EXIT 'pink_d'

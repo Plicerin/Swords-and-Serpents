@@ -1,0 +1,11 @@
+b 5E68
+r 12000000
+; Dump card table $65A0 (23 words)
+m 65A0 32
+; Dump attr table $65B7 (23 words)
+m 65B7 32
+; Dump SDBD table $65CE 
+m 65CE 16
+; Dump G_02F4, G_02F5
+m 02F4 2
+q

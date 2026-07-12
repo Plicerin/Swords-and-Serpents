@@ -1,0 +1,75 @@
+## Note:  All cues are moved back by 22 units to account for the fact
+##        that they're processed when the world is decoded off the
+##        right-hand side of the screen.
+
+## The data segments below are named after the checkpoint they END at.
+
+## Checkpoint A, Champion Course
+## Blocks 000 - 089
+0   LABEL '@@ckpt_0a'
+
+12  CUE '3_pin2_a'             # one pink ships
+34  CUE '3_blu2_e'             # two blue ships
+67  EXIT 'pin2_a'             ### exit pink
+76  EXIT 'blu2_e'             ### exit blue
+80  LEVEL 'A'
+
+## Checkpoint B, Champion Course
+## Blocks 090 - 179
+81  LABEL '@@ckpt_0b'
+
+82  CAUTION 3
+90  CUE 'follower'             # follower
+162 EXIT 'flexit'             ### exit follower stage 0
+172 EXIT 'flexit'             ### exit follower stage 1
+173 LEVEL 'B'
+
+## Checkpoint C, Champion Course
+## Blocks 180 - 269
+174 LABEL '@@ckpt_0c'
+
+200 EXIT 'flexit'             ### exit follower stage 2
+213 CUE '1_turret'             # turret
+220 ROCK2
+225 ROCK2
+237 ROCK1
+247 CRAT2
+250 CUE '1_turret'             # turret
+255 CRAT2
+267 LEVEL 'C'
+
+## Checkpoint D, Champion Course
+## Blocks 270 - 359
+268 LABEL '@@ckpt_0d'
+
+269 CUE '1_turret'             # turret
+277 CUE '1_turret'             # turret
+285 CUE '1_turret'             # turret
+294 CUE '1_turret'             # turret
+296 CRAT2
+303 ROCK2
+311 ROCK2
+320 CUE '1_turret'             # turret
+326 CUE '1_turret'             # turret
+328 CRAT2
+335 ROCK2
+348 CUE '1_turret'             # turret
+355 CUE '1_turret'             # turret
+357 CRAT2
+360 LEVEL 'D'
+
+## Checkpoint E, Champion Course
+## Blocks 360 - 449
+361 LABEL '@@ckpt_0e'
+
+363 CAUTION 1
+383 CUE '3_pin2_c'             # one pink ships
+386 CRAT2
+394 CRAT2
+403 CRAT2
+413 ROCK2
+424 ROCK2
+433 CRAT2
+448 ROCK2
+451 EXIT 'pin2_c'             ### exit pink
+453 LEVEL 'e'                 ### END OF LEVEL - letter must be lower case

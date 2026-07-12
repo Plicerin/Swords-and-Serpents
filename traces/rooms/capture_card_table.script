@@ -1,0 +1,64 @@
+; Capture L_5EC7 runtime values - break after first render completes
+; collect BACKTAB and tile stream data from known ROM addresses
+
+; Speed patches
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+p 5318 0034
+p 5319 0034
+p 531A 0034
+p 531B 02B8
+p 531C 0001
+p 56CC 0034
+p 56CD 0034
+
+; NOP X_FILL_MEM
+p 5638 0034
+p 5639 0034
+
+; NOP CLRR + MVO G_019C
+p 55C0 0034
+p 55C1 0034
+p 55C2 0034
+
+; Break after X_FILL_ZERO
+b 5038
+r 8000000
+
+; Write room index 0 and force gameplay
+p 019C 0000
+p 018C 0001
+
+; Run past boot + title screen
+r 8000000
+
+; Dump BACKTAB
+echo "=== BACKTAB ==="
+m 0200 240
+
+; Dump SYSRAM key state
+echo "=== SYSRAM ==="
+m 02F0 16
+
+; Dump the ROM card table ($65A0-$65AF, 8 words = 16 bytes)
+; ROM at CPU $65A0 = file offset ($65A0-$5000)*2 = $2B40
+echo "=== ROM CARD TABLE ==="
+; We dump via 8-bit RAM mapped region... actually this is ROM
+; Instead, read the data stream areas
+; The SDBD pointers point to these ROM areas
+; $65CE table gives us: $6C98, $6D11, $6D86, $6E13, $6E9E, $6F20, $6F9E, $6A42
+
+; Let's dump the ROM data at these addresses using the debugger's 'm' command
+; But 'm' only works on RAM regions...
+; Instead, dump 8-bit scratchpad at $0100 to see the card table if it's copied there
+echo "=== SCRATCHPAD CARD TABLE AREA ==="
+m 0080 128
+
+; Also dump 0100-01EF for runtime card data
+echo "=== 8-bit RAM ==="
+m 0100 240
+
+q

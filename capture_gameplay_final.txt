@@ -1,0 +1,51 @@
+; Proper game start: skip title and enter gameplay with enemies
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+; Skip title screen checks
+b 5072
+r 8000000
+; Set single player
+p 018C 0001
+; Jump past title/keypad menu
+g 7 56C9
+; Now clear and reset breakpoint at main loop
+n 5072
+b 5072
+g 0 5072
+; Game should be in main loop now. Measure MOB positions
+m 0010 10
+m 0020 10
+m 0325 20
+; Advance one frame (unset break, run, reset break)
+n 5072
+r 400000
+b 5072
+g 0 5072
+m 0010 10
+m 0020 10
+m 0325 20
+n 5072
+r 400000
+b 5072
+g 0 5072
+m 0010 10
+m 0020 10
+m 0325 20
+n 5072
+r 400000
+b 5072
+g 0 5072
+m 0010 10
+m 0020 10
+m 0325 20
+n 5072
+r 400000
+b 5072
+g 0 5072
+m 0010 10
+m 0020 10
+m 0325 20
+q

@@ -1,0 +1,49 @@
+; ARCHITECTURE DECIDER v2 — corrected poke preserves the high byte of $0325.
+; Baseline $0325 = 0x1958 (high 0x19 = flags, low 0x58 = X=88). Poke to 0x1920
+; (keep flags, move X to col 3 = 0x20) so the player's "active" bit-8 stays set.
+;
+;   outcome 1: MOB-0 X ($0000 low) follows 0x58 -> 0x20, BACKTAB unchanged -> FIXED room
+;   outcome 2: MOB-0 X stays 0x58, BACKTAB ($0200) shifts                  -> SCROLLING
+;   outcome 3: MOB-0 X stays 0x58, BACKTAB unchanged -> $0325 isn't the driver
+
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+b 5072
+r 8000000
+p 018C 0001
+g 7 56C9
+n 5072
+b 5072
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+
+; ===== BASELINE =====
+m 0000 16
+m 0325 16
+m 0200 240
+
+; ===== POKE player X low byte 0x58 -> 0x20, preserve high byte 0x19 =====
+p 0325 1920
+
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+
+; ===== AFTER =====
+m 0000 16
+m 0325 16
+m 0200 240
+q

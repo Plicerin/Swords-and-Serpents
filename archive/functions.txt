@@ -1,0 +1,4 @@
+# Swords and Serpents - CP1600 Function Extraction
+# Generated from dis1600 disassembly
+# ROM mapped at 0x5000-0x6FFF
+

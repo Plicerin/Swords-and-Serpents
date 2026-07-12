@@ -1,0 +1,153 @@
+;; ======================================================================== ;;
+;;  TRACKER.MAC                                                             ;;
+;;  Arnauld Chevallier                                                      ;;
+;; ======================================================================== ;;
+
+    IF (DEFINED _TRACKER_MAC) = 0
+
+_TRACKER_MAC EQU 1
+
+_NOTE_OFFSET EQU $10
+
+;; ======================================================================== ;;
+;;  NOTES       n0, n1, n2, n3                                              ;;
+;;  Defines 4 notes at once, by invokating the NOTE macro 4 times           ;;
+;;                                                                          ;;
+;;  ARGUMENTS                                                               ;;
+;;      n0  String defining note #0.                                        ;;
+;;      n1  String defining note #1.                                        ;;
+;;      n2  String defining note #2.                                        ;;
+;;      n3  String defining note #3.                                        ;;
+;; ======================================================================== ;;
+MACRO NOTES(n0, n1, n2, n3)
+      ;
+      LISTING "code"
+      NOTE(%n0%)
+      NOTE(%n1%)
+      NOTE(%n2%)
+      NOTE(%n3%)
+      LISTING "prev"
+ENDM
+
+;; ======================================================================== ;;
+;;  NOTE        n                                                           ;;
+;;  Defines 1 note                                                          ;;
+;;                                                                          ;;
+;;  ARGUMENTS                                                               ;;
+;;      n   String defining the note.                                       ;;
+;;                                                                          ;;
+;;      String format:  NnO IVL                                             ;;
+;;                                                                          ;;
+;;      N = Note (C, D, E, F, G, A, B)                                      ;;
+;;      n = '-' or '#'                                                      ;;
+;;      O = Octave (1 - 7)                                                  ;;
+;;      I = new Instrument (1 - F, or 0 for unchanged)                      ;;
+;;      V = Volume (0 - F)                                                  ;;
+;;      L = Length (0 - F)                                                  ;;
+;;                                                                          ;;
+;;      The string "NUL" can be used instead of the NnO parameters to       ;;
+;;      indicate that the current note is actually not changed.             ;;
+;;      (Including such directives is required when a note lasts longer     ;;
+;;      than the maximal length which can be specified.)                    ;;
+;;                                                                          ;;
+;;      The string "OFF" can also be used as a special code to disable      ;;
+;;      ticks on the ECS.                                                   ;;
+;;                                                                          ;;
+;;  EXAMPLES                                                                ;;
+;;      NOTE("C-3 1F1")                                                     ;;
+;;      NOTE("D#4 0F1")                                                     ;;
+;;      NOTE("NUL 0F1")                                                     ;;
+;; ======================================================================== ;;
+MACRO NOTE(n)
+      ;
+      IF STRLEN(%n%) > 0
+      ; instrument
+HEX2DEC(_i, ASC(%n%, 4))
+      ; volume
+HEX2DEC(_v, ASC(%n%, 5))
+      ; length
+HEX2DEC(_l, ASC(%n%, 6))
+      ; "OFF" ?
+      IF ASC(%n%, 0) = 79 AND ASC(%n%, 1) = 70 AND ASC(%n%, 2) = 70
+      DECLE  $8000 + _l * $10 + (15-_v)
+      ELSE
+      ; "NUL" ?
+      IF ASC(%n%, 0) = 78 AND ASC(%n%, 1) = 85 AND ASC(%n%, 2) = 76
+            IF _i <> 0
+      DECLE  $8000 + _l * $10 + (15-_v)
+      DECLE (_i - 1) * 3
+            ELSE
+      DECLE  _l * $10 + (15-_v)
+            ENDI
+      ELSE
+            INC_NOTE(%n%, _i, _v, _l)
+      ENDI
+      ENDI
+      ENDI
+ENDM
+
+;; ======================================================================== ;;
+;;  INC_NOTE    n, i, v, l                                                  ;;
+;;  Inludes the decle(s) defining a note                                    ;;
+;;                                                                          ;;
+;;  ARGUMENTS                                                               ;;
+;;      n   Value of the note.                                              ;;
+;;      i   Instrument used.                                                ;;
+;;      v   Volume used.                                                    ;;
+;;      l   Length of the note.                                             ;;
+;; ======================================================================== ;;
+MACRO INC_NOTE(n, i, v, l)
+      ; note
+_n0   SET   ASC(%n%, 0)
+      IF (_n0 < 65) OR (_n0 > 71)
+            ERR   "Invalid note"
+      ENDI
+      ; conversion letter -> value
+      ;          ABCDEFG
+_n1   SET   ASC("JLACEFH", _n0-65) - 64
+      ; sharp ?
+      IF ASC(%n%, 1) = 35
+_n1   SET   _n1 + 1
+      ELSE
+            ; minus ?
+            IF ASC(%n%, 1) <> 45
+                  ERR   "Invalid note"
+            ENDI
+      ENDI
+      ; octave
+_o    SET   ASC(%n%, 2)
+      IF (_o < 49) OR (_o > 55)
+            ERR   "Invalid octave"
+      ENDI
+      ; value
+_n2   SET   (_n1 + 12 * (_o - 49)) - _NOTE_OFFSET
+      IF %i% <> 0
+      DECLE $8000 + _n2 * $100 + %l% * $10 + (15-%v%)
+      DECLE (%i% - 1) * 3
+      ELSE
+      DECLE _n2 * $100 + %l% * $10 + (15-%v%)
+      ENDI
+ENDM
+
+;; ======================================================================== ;;
+;;  HEX2DEC     e, s                                                        ;;
+;;  Converts a hexadecimal symbol to its decimal value                      ;;
+;;                                                                          ;;
+;;  ARGUMENTS                                                               ;;
+;;      e   Expression to which the result will be affected.                ;;
+;;      s   Hexadecimal value.                                              ;;
+;; ======================================================================== ;;
+MACRO HEX2DEC(e, s)
+      ;
+      IF (%s% >= 48) AND (%s% <= 57)
+%e%   SET   %s% - 48
+      ELSE
+            IF (%s% >= 65) AND (%s% <= 70)
+%e%   SET   %s% - 55
+            ELSE
+                  ERR   "Invalid hexa symbol"
+            ENDI
+      ENDI
+ENDM
+
+    ENDI

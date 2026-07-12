@@ -1,0 +1,68 @@
+# debug_enter_game.txt - Enter the game and capture first room
+#
+# Strategy:
+#   1. Break at $56C9 where the title screen loop checks G_018C
+#   2. Set G_018C = 1 (1 player mode)
+#   3. Remove $56C9 breakpoint, continue to game init at $55BF
+#   4. Run 10 frames to render dungeon room
+#   5. Break and dump BackTab + GRAM + scratchpad
+#
+# Usage:
+#   jzintv -d --script=scripts/debug_enter_game.txt -e exec.bin -g grom.bin "Swords and Serpents.bin"
+
+# Step 1: Break at the G_018C check point
+b $56C9
+
+# Let the game boot and reach the title screen
+r
+
+# Now we're at $56C9 - the title screen is displayed, waiting for input
+# Write 1 to G_018C (address $018C) = 1 player mode
+e $018C $0001
+
+# Also ensure G_018B (game mode) is set to 1 (should already be from init)  
+e $018B $0001
+
+# Remove the title screen breakpoint
+b - $56C9
+
+# Step 2: Break at game init $55BF (called when entering dungeon)
+b $55BF
+
+# Continue execution - game should now enter the dungeon
+r
+
+# We're at $55BF - room has been initialized
+# Run several frames to render the dungeon
+b $5072
+
+r
+
+# At $5072 - main game loop, one frame rendered
+# Run 4 more frames
+r
+r
+r
+r
+
+# Now run more to ensure full rendering
+r
+r
+r
+r
+r
+
+# Dump BackTab (20x12 = 240 words)
+m $0200 $02EF
+
+# Dump GRAM (sprites, 64 cards x 4 words each = 256 words)
+m $3800 $39FF
+
+# Dump scratchpad
+m $0100 $01EF
+
+# Dump room parameters
+m $0184 $018C
+
+# Quit
+q

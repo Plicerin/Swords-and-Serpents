@@ -1,0 +1,87 @@
+## Note:  All cues are moved back by 22 units to account for the fact
+##        that they're processed when the world is decoded off the
+##        right-hand side of the screen.
+
+## The data segments below are named after the checkpoint they END at.
+
+## Checkpoint K, Beginner Course
+## Blocks 000 - 089
+0   LABEL '@@ckpt_0k'
+
+7   CAUTION 2
+27  CUE '2_mine_f'
+33  CUE '2_mine_a'
+40  CUE '2_mine_e'
+45  CUE '2_mine_b'
+52  CUE '2_mine_b'
+57  CUE '1_mine_a'
+63  CUE '2_mine_d'
+74  CUE '1_mine_b'
+80  LEVEL 'K'
+
+## Checkpoint L, Beginner Course
+## Blocks 090 - 179
+81  LABEL '@@ckpt_0l'
+
+83  CUE '2_mine_c'
+89  CUE '2_mine_d'
+95  CUE '1_mine_a'
+102 CUE '1_mine_b'
+107 CUE '2_mine_e'
+112 CUE '1_mine_a'
+119 CUE '2_mine_f'
+125 CUE '2_mine_c'
+131 CUE '2_mine_a'
+137 CUE '2_mine_b'
+143 CUE '2_mine_d'
+150 CUE '2_mine_e'
+157 CUE '2_mine_b'
+162 CUE '2_mine_a'
+168 CUE '2_mine_f'
+173 LEVEL 'L'
+
+## Checkpoint M, Beginner Course
+## Blocks 180 - 269
+174 LABEL '@@ckpt_0m'
+
+177 CUE '1_mine_a'
+183 CUE '1_mine_b'
+189 CUE '2_mine_b'
+196 CUE '1_mine_a'
+201 CUE '2_mine_d'
+208 CUE '2_mine_f'
+214 CUE '2_mine_e'
+220 CUE '1_mine_b'
+228 CUE '2_mine_a'
+234 CUE '2_mine_e'
+240 CUE '1_mine_a'
+246 CUE '2_mine_e'
+249 CAUTION 1
+252 CUE '1_mine_a'
+267 LEVEL 'M'
+
+## Checkpoint N, Beginner Course
+## Blocks 270 - 359
+268 LABEL '@@ckpt_0n'
+
+269 CUE '2_pin2_b'             # two pink ships
+275 CUE '2_pin2_a'             # two pink ships
+318 CUE '2_blue_a'             # two blue ships
+328 CUE '2_blu2_b'             # two blue ships
+330 EXIT 'pin2_b'             ### exit pink
+333 EXIT 'pin2_a'             ### exit pink
+356 EXIT 'blue_a'             ### exit blue
+360 LEVEL 'N'
+
+## Checkpoint O, Beginner Course
+## Blocks 360 - 449
+361 LABEL '@@ckpt_0o'
+
+363 CUE '2_whit_a'             # two white ships
+367 CUE '2_whit_b'             # two white ships
+368 EXIT 'blu2_b'             ### exit blue
+398 CUE '3_blue_c'             # two blue ships
+432 EXIT 'whit_a'             ### exit white
+434 EXIT 'whit_b'             ### exit white
+446 EXIT 'blue_c'             ### exit blue
+453 LEVEL 'o'                 ### END OF LEVEL - letter must be lower case

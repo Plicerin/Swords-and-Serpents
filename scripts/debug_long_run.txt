@@ -1,0 +1,11 @@
+; Run many frames to let the game auto-advance
+; If there's attract mode or timeout, this should catch it
+b 506A
+c
+; Hit the idle loop, now run for many frames
+b -506A
+r 10000000
+; After many cycles, dump BackTab and GRAM
+m 0200 240
+m 3800 512
+q

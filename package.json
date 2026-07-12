@@ -1,0 +1,15 @@
+{
+  "name": "swords-and-serpents",
+  "version": "1.0.0",
+  "description": "Native JS port of Intellivision Swords and Serpents",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build && node -e \"require('fs').cpSync('assets','dist/assets',{recursive:true})\"",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16"
+  }
+}

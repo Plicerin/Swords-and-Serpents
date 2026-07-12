@@ -1,0 +1,124 @@
+## Note:  All cues are moved back by 22 units to account for the fact
+##        that they're processed when the world is decoded off the
+##        right-hand side of the screen.
+
+## The data segments below are named after the checkpoint they END at.
+
+## Checkpoint U, Champion Course
+## Blocks 000 - 089
+0   LABEL '@@ckpt_0u'
+
+10  ROCK3
+13  CAUTION 3
+18  CRAT3
+33  CUE 'follower'             # follower
+43  CRAT1
+53  CRAT4
+58  EXIT 'flexit'             ### exit follower stage 0
+68  EXIT 'flexit'             ### exit follower stage 1
+70  CRAT4
+79  CAUTION 2
+80  LEVEL 'U'
+
+## Checkpoint V, Champion Course
+## Blocks 090 - 179
+
+81  LABEL '@@ckpt_0v'
+83  EXIT 'flexit'             ### exit follower stage 2
+101 CUE '1_mine_b'
+106 CUE '1_mine_a'
+112 CUE '2_mine_e'
+118 CUE '2_mine_f'
+124 CUE '2_mine_c'
+133 ROCK3
+137 CUE '1_mine_b'
+139 CUE '1_mine_c'
+145 ROCK1
+149 CUE '2_mine_b'
+158 CUE '2_mine_a'
+168 CUE '1_mine_b'
+173 LEVEL 'V'
+
+## Checkpoint W, Champion Course
+## Blocks 180 - 269
+174 LABEL '@@ckpt_0w'
+
+176 CUE '2_whit_d'             # two white ships
+178 CUE '2_whit_a'             # two white ships
+188 CUE '1_pink_a'             # one pink ships
+195 ROCK3
+200 CUE '3_pink_b'             # two pink ships
+243 CRAT4
+251 EXIT 'pink_a'             ### exit pink
+253 ROCK2
+257 EXIT 'pink_b'             ### exit pink
+266 EXIT 'whit_d'             ### exit white
+267 LEVEL 'W'
+
+## Checkpoint X, Champion Course
+## Blocks 270 - 359
+268 LABEL '@@ckpt_0x'
+
+269 EXIT 'whit_a'             ### exit white
+273 CUE '1_plant'
+274 CRAT1
+276 ROCK2
+284 CUE '1_plant'
+285 CRAT1
+294 CUE '1_plant'
+295 CRAT1
+303 ROCK2
+311 ROCK2
+314 ROCK3
+319 ROCK2
+324 ROCK2
+334 CUE '1_plant'
+335 CRAT1
+337 ROCK2
+342 CAUTION 1
+343 CUE '1_plant'
+344 CRAT1
+350 ROCK2
+#352 CRAT1                     # crat3  -- this is originally in the arcade game
+354 CRAT2                      # crat3
+357 ROCK3
+360 LEVEL 'X'
+
+## Checkpoint Y, Champion Course
+## Blocks 360 - 449
+361 LABEL '@@ckpt_0y'
+
+363 CUE '3_whit_c'             # one white ships
+368 CUE '2_whit_e'             # two white ships
+378 ROCK2
+381 CUE '1_pink_e'             # one pink ships
+384 ROCK3
+390 CUE '1_pin2_d'             # two pink ships
+400 CUE '1_pin2_c'             # two pink ships
+440 ROCK2
+443 EXIT 'pink_e'             ### exit pink
+447 EXIT 'pin2_d'             ### exit pink
+449 EXIT 'pin2_c'             ### exit pink
+450 EXIT 'whit_c'             ### exit white
+451 ROCK3
+452 EXIT 'whit_e'             ### exit white
+453 LEVEL 'Y'
+
+## Checkpoint Z, Champion Course
+## Blocks 450 - 539
+454 LABEL '@@ckpt_0z'
+
+469 ROCK2
+472 ROCK3
+475 CRAT3
+484 ROCK2
+492 CUE '1_turret'             # turret
+493 CRAT1
+500 ROCK2
+502 CRAT3
+514 CUE '1_plant'
+515 CRAT1
+521 ROCK3
+526 CUE '1_plant'
+527 CRAT1
+547 LEVEL 'z'

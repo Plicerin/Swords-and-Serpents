@@ -1,0 +1,127 @@
+// Endless dungeon world — stitches the 14 ROM mazes into a continuous sequence.
+// As the player descends, new mazes are appended seamlessly.
+// Enemies removed. No room transitions — just endless scroll.
+
+import { Maze } from './maze';
+import { renderGridToCanvas } from '../platform/stic';
+
+const TILE = 8;
+
+const FLOOR = 0x1603; // GROM card 0, bg=11 (olive), fg=3
+
+// Find a walkable tile near the top of a maze (used for entry point).
+function findWalkableTop(m: Maze): number {
+  for (let row = 1; row < 6; row++) {
+    for (let col = 12; col < 20; col++) {
+      if ((((m.grid[row][col] >> 9) & 0xB) | ((m.grid[row][col] >> 11) & 0x4)) === 11) {
+        return col * TILE;
+      }
+    }
+  }
+  return 16 * TILE;
+}
+
+export class EndlessWorld {
+  mazes: Maze[];
+  worldGrid: number[][] = [];
+  worldCanvas: HTMLCanvasElement | null = null;
+  totalHeight: number = 0;
+  entryX: number = 0;
+
+  constructor(mazes: Maze[]) {
+    this.mazes = mazes;
+  }
+
+  build(gram: Uint8Array, grom: Uint8Array): void {
+    this.worldGrid = [];
+    const first = this.mazes[0];
+    this.entryX = findWalkableTop(first) + 4;
+
+    const segStarts: number[] = [];
+    for (let mi = 0; mi < this.mazes.length; mi++) {
+      const m = this.mazes[mi];
+      segStarts.push(this.worldGrid.length);
+
+      // Append all rows
+      for (let r = 0; r < m.h; r++) {
+        this.worldGrid.push([...m.grid[r]]);
+      }
+    }
+
+    // Carve a connecting shaft (cols 14-17) through each seam. The mazes have
+    // solid border walls, so carving only the two border rows leaves a sealed
+    // pocket — tunnel outward from the seam until each side reaches open floor.
+    const isOpen = (row: number): boolean => {
+      for (let c = 14; c < 18; c++) {
+        const w = this.worldGrid[row]?.[c] ?? 0;
+        if ((((w >> 9) & 0xB) | ((w >> 11) & 0x4)) === 11) return true;
+      }
+      return false;
+    };
+    const carve = (row: number): void => {
+      for (let c = 14; c < 18; c++) this.worldGrid[row][c] = FLOOR;
+    };
+
+    for (let mi = 0; mi < this.mazes.length - 1; mi++) {
+      const seamRow = segStarts[mi] + this.mazes[mi].h - 1; // bottom border of maze mi
+      const nextRow = seamRow + 1;                          // top border of maze mi+1
+
+      // The maze data has no solid bottom border, so wall the whole seam row
+      // off first — the carved cols 14-17 become the ONLY way down (the gate).
+      const rowArr = this.worldGrid[seamRow];
+      let wallWord = 0x0000; // black filler if the row has no wall tile to copy
+      for (const w of rowArr) {
+        if ((((w >> 9) & 0xB) | ((w >> 11) & 0x4)) !== 11) { wallWord = w; break; }
+      }
+      for (let c = 0; c < rowArr.length; c++) rowArr[c] = wallWord;
+
+      carve(seamRow);
+      carve(nextRow);
+      // Tunnel up into maze mi until the shaft meets open floor
+      for (let r = seamRow - 1; r > segStarts[mi]; r--) {
+        if (isOpen(r)) break;
+        carve(r);
+      }
+      // Tunnel down into maze mi+1 until the shaft meets open floor
+      const nextEnd = segStarts[mi + 1] + this.mazes[mi + 1].h - 1;
+      for (let r = nextRow + 1; r < nextEnd; r++) {
+        if (isOpen(r)) break;
+        carve(r);
+      }
+    }
+
+    this.totalHeight = this.worldGrid.length * TILE;
+
+    // Render the entire world to a canvas
+    const grid: number[][] = this.worldGrid.map(row => [...row]);
+    this.worldCanvas = renderGridToCanvas(grid, gram, grom);
+  }
+
+  getWidth(): number {
+    if (this.worldGrid.length === 0) return 32 * TILE;
+    return this.worldGrid[0].length * TILE;
+  }
+
+  getHeight(): number {
+    return this.totalHeight;
+  }
+
+  getCanvas(): HTMLCanvasElement | null {
+    return this.worldCanvas;
+  }
+
+  canWalk(x: number, y: number): boolean {
+    const col = Math.floor(x / TILE);
+    const row = Math.floor(y / TILE);
+    if (col < 0 || row < 0 || row >= this.worldGrid.length || col >= (this.worldGrid[0]?.length ?? 0)) return false;
+    const word = this.worldGrid[row][col] ?? 0;
+    return ((((word >> 9) & 0xB) | ((word >> 11) & 0x4)) === 11);
+  }
+
+  tileAt(x: number, y: number): number {
+    const col = Math.floor(x / TILE);
+    const row = Math.floor(y / TILE);
+    if (col < 0 || row < 0 || row >= this.worldGrid.length || col >= (this.worldGrid[0]?.length ?? 0)) return 0;
+    return this.worldGrid[row]?.[col] ?? 0;
+  }
+}

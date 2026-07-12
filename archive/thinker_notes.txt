@@ -1,0 +1,52 @@
+CRITICAL PIXEL CORRELATION DATA (from pixel_correlation.py output):
+
+For 0x0327 (grom, c8=39, FGstd=0, 31/64 bits set):
+- Card bit=0 pixels (33 of them): jzIntv shows PAL[1]:25 + PAL[7]:8
+- Card bit=1 pixels (31 of them): jzIntv shows PAL[1]:23 + PAL[7]:8
+**BOTH bit types show same ~3:1 blue:white ratio!** This means FG value doesn't matter - both bit types produce same color distribution!
+
+TILES WITH SAME COLOR FOR BIT=0 AND BIT=1 (both PAS[3]/pastel tan):
+0x1603 (floor, c8=3, 16/64 bits): bit0->PAS[3]:48, bit1->PAS[3]:16
+0x081B, 0x1E13, 0x026F, 0x024F, 0x022F, 0x021F, 0x023F, 0x03AF, 0x03EF, 0x1E5B, 0x1E40, 0x0367, 0x0347, 0x03BF, 0x036F, 0x1E02
+ALL these tiles: both bit=0 and bit=1 pixels are PAS[3] in jzIntv. These are 17 of 33 unique tiles.
+
+GRAM tile 0x0823 (c8=35): has ALL ZEROS (0/64 bits) in our GRAM dump. Yet jzIntv shows PAL[1]:32+PAL[7]:32 (checkerboard of blue/white). Our GRAM data cannot explain this!
+
+BACKTAB word distribution for room 0 (from earlier analysis):
+ALL tiles have card >= 256 in the raw 11-bit extraction. Only when masked to 8 bits do cards < 256 appear.
+- 0x1603: card=1539, masked c8=3, FGstd=1, adv_std=0, 152 tiles
+- 0x0327: card=807, masked c8=39, FGstd=0, adv_std=0, 6 tiles  
+- 0x020F: card=527, masked c8=15, FGstd=0, adv_std=0, 5 tiles
+- etc.
+
+All GROM tiles have FGstd=0 (except 0x1603 which has FGstd=1). All have adv_std=0.
+
+BRUTE FORCE RESULTS:
+- FG_bits=(13,14,15) + adv=bit12 + fg0_trans=True + CS=all_PAS[3] = 68.83% (all words get FG=0, CS bg only)
+- FG_bits=(13,14,12) + adv=bit15 + fg0_trans=True + CS=all_PAS[3] = 58.26% (current best with standard FG)
+- CS shadow values ($017B-$017E: 0x0F,0x09,0x09,0x02) give 0.00% match
+
+PER-TILE OPTIMAL FG/CS:
+ALL tiles have BestFG=0 (transparent). Color variation must come from CS advancing.
+But: tiles with CS advance=0 for ALL tiles would never advance CS, so CS would be uniform.
+
+DISASSEMBLY:
+- $53BD: MVII #$0028,R1; MVII #$0005,R0; JSR R5,.EXEC.730 - writes primary green to all 4 CS
+- $54F4 area: appears to do memory copy, not CS write
+- L_55DB: dungeon renderer entry point
+- Thinker found MVII #$0081 being stored to display mode shadow $0102 - suggesting FG/BG mode
+
+THE KEY PUZZLE:
+1. Our GROM/GRAM card data cannot produce the colors jzIntv shows (bit=0 and bit=1 have same color distribution)
+2. All tiles have BestFG=0 suggesting no per-tile FG variation
+3. All tiles have CS advance=0 suggesting no CS pointer variation
+4. Yet jzIntv shows 5+ different colors across tiles (PAS[3], PAL[1], PAL[7], PAL[3], PAL[0])
+
+HYPOTHESIS TO TEST: What if the game is using FG/BG mode, and we need to reinterpret BACKTAB completely?
+- Bits 0-2: background color (not bits 9-11 for CS advance)
+- Bits 4-10: card number (7 bits, not 11)
+- Bit 3: bg pastel flag
+- Bits 12-13: foreground color
+- Bit 14: fg pastel flag
+
+OR: What if the card data comes from a completely different source than GROM/GRAM as we know them?

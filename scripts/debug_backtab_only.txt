@@ -1,0 +1,17 @@
+# ============================================================
+# Swords & Serpents — Simple BackTab Dump
+# Usage:
+#   jzintv -d --script=scripts/debug_backtab_only.txt -e exec.bin -g grom.bin "Swords and Serpents.bin"
+#
+# Strategy: Let the game run for a LONG time (300K cycles) to get past
+# the title screen and into the first room, then dump BackTab.
+# ============================================================
+
+# Run for 300,000 cycles (~10 seconds at 30fps) to get well into gameplay
+r 300000
+
+# Dump BackTab to console
+m $0200 $02EF
+
+# Quit
+q

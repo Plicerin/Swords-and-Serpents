@@ -1,0 +1,45 @@
+Cheat Codes!
+
+Feature contributed by Patrick Nadeau.
+
+Cheat codes give you the ability to tweak the game at run time with a
+simple keypress or controller input.  Cheats consist of two pieces:
+
+* A key binding that connects a user input to a cheat.  When you press
+  the bound key, you invoke the cheat.
+
+* A cheat command, provided on the jzIntv commandline, that says what
+  to do when the cheat is invoked.
+
+The cheat feature defines 8 new actions you can use in your kbdhackfile.
+(See doc/jzintv/kbdhackfile.txt for more information on kbdhackfiles.)
+
+    CHEAT0 CHEAT1 CHEAT2 CHEAT3 CHEAT4 CHEAT5 CHEAT6 CHEAT7
+
+When you bind a keyboard or controller input to one of these actions,
+pressing that input will activate the corresponding cheat.  For example,
+the following kbdhackfile line will bind TAB to CHEAT0, so that pressing
+TAB invokes the first cheat:
+
+    TAB CHEAT0
+
+You provide cheats to jzIntv on the command line with the flag 
+--cheat='<cheat>'.  The string in quotes contains 1 to 16 commands,
+optionally separated by vertical bars.  
+
+Supported commands:
+
+    P addr data     Pokes 'data' into address 'addr'
+    E addr data     Enters 'data' into address 'addr' as if from CPU.
+
+The two commands are very similar.  Most of the time, you'll want to use P.
+Commands are case-insensitive.
+
+Both the address and data are in hexadecimal.  You can optionally put a
+dollar sign in front of hexadecimal values.
+
+Example cheats:
+
+* Q*Bert: 6 lives:          --cheat='P $173 6'
+* Demon Attack: 255 lives:  --cheat='P $181 FF'
+

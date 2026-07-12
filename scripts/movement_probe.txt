@@ -1,0 +1,33 @@
+; Swords & Serpents — movement/collision probe.
+; Boots into the first dungeon, settles, then directly pokes player X ($0325)
+; to (a) an open-floor tile and (b) a likely wall tile, dumping X after a frame
+; each time. Reveals whether the game treats $0325 as authoritative position
+; and whether it applies per-frame collision pushback.
+; Baseline expected: X low byte 0x58 (col 10, room center).
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+b 5072
+r 8000000
+p 018C 0001
+g 7 56C9
+n 5072
+b 5072
+r 8000000
+r 8000000
+r 8000000
+m 0325 1
+m 032D 1
+m 0200 240
+p 0325 1968
+r 8000000
+m 0325 1
+p 0325 19A0
+r 8000000
+m 0325 1
+p 0325 1910
+r 8000000
+m 0325 1
+q

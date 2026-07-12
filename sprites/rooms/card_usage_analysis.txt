@@ -1,0 +1,43 @@
+=== GROM Card Usage Analysis for Swords & Serpents Dungeon Rooms ===
+
+Total cards placed across 4 rooms: 960
+Unique GROM cards used: 12 / 256
+
+=== Per-Room Unique Cards ===
+Room 0: [2, 3, 11, 19, 27, 35, 43, 51, 56, 64, 91]
+Room 1: [3, 19, 27, 35, 43, 51, 56, 64]
+Room 2: [2, 3, 27, 35, 43, 51, 56, 64, 83]
+Room 3: [2, 3, 11, 19, 27, 35, 43, 51, 56, 64]
+
+=== Card Frequency (sorted by usage count) ===
+Card   3 (0x03): count=745, category=door/special, rooms=[0, 1, 2, 3]
+Card  35 (0x23): count=109, category=door/special, rooms=[0, 1, 2, 3]
+Card  27 (0x1B): count= 68, category=door/special, rooms=[0, 1, 2, 3]
+Card  43 (0x2B): count= 11, category=decoration  , rooms=[0, 1, 2, 3]
+Card  56 (0x38): count=  6, category=door/special, rooms=[0, 1, 2, 3]
+Card  51 (0x33): count=  5, category=floor       , rooms=[0, 1, 2, 3]
+Card  64 (0x40): count=  5, category=floor       , rooms=[0, 1, 2, 3]
+Card  19 (0x13): count=  4, category=decoration  , rooms=[0, 1, 3]
+Card   2 (0x02): count=  3, category=decoration  , rooms=[0, 2, 3]
+Card  11 (0x0B): count=  2, category=floor       , rooms=[0, 3]
+Card  91 (0x5B): count=  1, category=floor       , rooms=[0]
+Card  83 (0x53): count=  1, category=floor       , rooms=[2]
+
+=== Category Summaries ===
+decoration: 3 cards, 18 total placements
+  Card  43 (0x2B): 11 placements
+  Card  19 (0x13): 4 placements
+  Card   2 (0x02): 3 placements
+
+door/special: 4 cards, 928 total placements
+  Card   3 (0x03): 745 placements
+  Card  35 (0x23): 109 placements
+  Card  27 (0x1B): 68 placements
+  Card  56 (0x38): 6 placements
+
+floor: 5 cards, 14 total placements
+  Card  51 (0x33): 5 placements
+  Card  64 (0x40): 5 placements
+  Card  11 (0x0B): 2 placements
+  Card  91 (0x5B): 1 placements
+  Card  83 (0x53): 1 placements

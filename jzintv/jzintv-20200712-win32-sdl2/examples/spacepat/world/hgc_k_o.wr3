@@ -1,0 +1,149 @@
+## Note:  All cues are moved back by 22 units to account for the fact
+##        that they're processed when the world is decoded off the
+##        right-hand side of the screen.
+
+## The data segments below are named after the checkpoint they END at.
+
+## Checkpoint K, Champion Course
+## Blocks 000 - 089
+0   LABEL '@@ckpt_0k'
+
+11  CUE '2_boulc'
+13  CUE '2_boulc'
+15  CUE '2_boulc'
+17  CUE '2_boulc'
+20  CUE '1_pink_a'
+21  CUE '2_boulc'
+23  CUE '2_boulc'
+25  CUE '2_boulc'
+27  CUE '2_boulc'
+29  CUE '2_boulc'
+31  CUE '2_boulc'
+33  CUE '2_boulc'
+35  CUE '2_boulc'
+37  CUE '2_boulc'
+39  CUE '2_boulc'
+45  CUE '1_blue_e'
+46  CUE '2_boulc'
+48  CUE '2_boulc'
+50  CUE '2_boulc'
+52  CUE '2_boulc'
+54  CUE '2_boulc'
+55  EXIT 'pink_a'
+56  CUE '2_boulc'
+65  CUE '2_pink_d'
+66  CUE '2_boulc'
+68  CUE '1_bould'
+71  CUE '2_bould'
+75  CUE '2_bould'
+77  EXIT 'blue_e'
+78  CUE '2_boulc'
+79  EXIT 'pink_d'
+80  LEVEL 'K'
+
+## Checkpoint L, Champion Course
+## Blocks 090 - 179
+81  LABEL '@@ckpt_0l'
+
+83  CUE '2_boulc'
+85  CUE '2_boulc'
+90  CUE '2_blue_a'
+91  CUE '2_bould'
+95  CUE '2_boulc'
+99  CUE '2_boulc'
+101 CUE '2_boulc'
+104 CUE '2_bould'
+109 CUE '2_boulc'
+115 CUE '2_pink_c'
+116 CUE '2_boulc'
+118 CUE '2_boulc'
+120 CUE '1_bould'
+123 CUE '2_bould'
+126 CUE '2_boulc'
+135 CUE '2_pink_e'
+136 CUE '2_boulc'
+137 EXIT 'blue_a'
+138 CUE '2_boulc'
+142 CUE '1_boulc'
+144 CUE '2_boulc'
+145 EXIT 'pink_c'
+146 CUE '2_boulc'
+150 CUE '2_bould'
+160 CUE '2_blue_b'
+161 CUE '2_boulc'
+165 CUE '2_boulc'
+167 CUE '1_bould'
+170 CUE '2_boulc'
+172 EXIT 'pink_e'
+173 LEVEL 'L'
+
+## Checkpoint M, Champion Course
+## Blocks 180 - 269
+174 LABEL '@@ckpt_0m'
+
+179 CUE '2_blue_c'
+185 CAUTION 2
+195 CUE '1_mine_a'
+203 CUE '2_mine_b'
+210 EXIT 'blue_b'
+212 CUE '1_mine_c'
+221 CUE '1_mine_c'
+230 CUE '2_mine_c'
+235 CUE '2_pink_b'
+237 CUE '1_mine_b'
+245 CUE '1_mine_c'
+251 CUE '1_mine_b'
+258 CUE '1_mine_a'
+267 LEVEL 'M'
+
+## Checkpoint N, Champion Course
+## Blocks 270 - 359
+268 LABEL '@@ckpt_0n'
+
+270 CAUTION 2
+271 CUE '2_mine_a'
+277 CUE '1_mine_a'
+280 CUE '3_blu2_c'
+284 CUE '2_mine_b'
+291 CUE '2_mine_c'
+295 CUE '1_mine_b'
+304 CUE '2_mine_d'
+310 CUE '2_mine_e'
+318 CUE '2_mine_f'
+325 CUE '2_mine_c'
+327 CUE '2_pink_d'
+330 CUE '1_pink_d'
+331 CUE '1_mine_b'
+337 CUE '1_mine_a'
+343 CUE '2_mine_a'
+348 CUE '2_mine_f'
+356 EXIT 'blue_c'
+357 EXIT 'pink_b'
+358 EXIT 'blu2_c'
+359 EXIT 'pink_d'
+360 LEVEL 'N'
+
+## Checkpoint O, Champion Course
+## Blocks 360 - 449
+361 LABEL '@@ckpt_0o'
+
+362 CAUTION 3
+371 CUE 'follower'             # follower
+376 EXIT 'flexit'             ### exit follower stage 0
+381 EXIT 'flexit'             ### exit follower stage 1
+385 CUE '2_blu2_d'
+386 EXIT 'flexit'             ### exit follower stage 2
+394 ROCK2
+406 ROCK1
+415 CUE '1_blue_a'
+417 CAUTION 3
+418 EXIT 'blu2_d'
+420 ROCK3
+427 CUE 'follower'             # follower
+429 ROCK2
+431 CUE '2_blue_b'
+435 EXIT 'flexit'             ### exit follower stage 0
+440 EXIT 'flexit'             ### exit follower stage 1
+452 EXIT 'flexit'             ### exit follower stage 2
+
+453 LEVEL 'o'                 ### END OF LEVEL - letter must be lower case

@@ -1,0 +1,120 @@
+## Note:  All cues are moved back by 22 units to account for the fact
+##        that they're processed when the world is decoded off the
+##        right-hand side of the screen.
+
+## The data segments below are named after the checkpoint they END at.
+
+## Checkpoint F, Beginner Course
+## Blocks 000 - 089
+0   LABEL '@@ckpt_0f'
+
+10  CUE 'stal_i'
+12  CUE 'stal_i'
+15  CUE 'stal_g'
+20  CUE 'stal_a'
+21  CUE '1_blu2_c'
+22  CRAT1
+30  CUE 'stal_g'
+34  ROCK1
+40  CRAT1
+42  CUE 'stal_b'
+45  CUE 'stal_a'
+56  CUE '2_bould'
+64  CRAT2
+73  CUE 'stal_h'
+76  CUE 'stal_b'
+77  EXIT 'blu2_c'
+78  CUE 'stal_c'
+80  LEVEL 'F'
+
+## Checkpoint G, Beginner Course
+## Blocks 090 - 179
+81  LABEL '@@ckpt_0g'
+
+82  ROCK3
+86  CRAT1
+90  CUE 'stal_b'
+94  CUE 'stal_h'
+100 CUE '1_blue_a'
+105 CUE 'stal_g'
+110 CUE 'stal_i'
+112 CUE 'stal_c'
+115 CUE 'stal_b'
+118 ROCK3
+120 CUE 'stal_a'
+124 CUE 'stal_i'
+128 CUE 'stal_h'
+140 EXIT 'blue_a'
+150 CRAT2
+151 CUE '1_blu2_c'
+155 CUE 'stal_b'
+165 EXIT 'blu2_c'
+173 LEVEL 'G'
+
+## Checkpoint H, Beginner Course
+## Blocks 180 - 269
+174 LABEL '@@ckpt_0h'
+
+178 CRAT3
+185 CRAT2
+194 CUE 'stal_i'
+197 CUE 'stal_h'
+198 CAUTION 3
+208 CUE 'follower'
+211 CRAT1
+225 CUE 'stal_h'
+227 CUE 'stal_g'
+228 EXIT 'flexit'             ### exit follower stage 0
+233 EXIT 'flexit'             ### exit follower stage 1
+254 CUE 'stal_b'
+255 EXIT 'flexit'             ### exit follower stage 2
+260 CUE 'stal_a'
+264 CUE 'stal_b'
+267 LEVEL 'H'
+
+## Checkpoint I, Beginner Course
+## Blocks 270 - 359
+268 LABEL '@@ckpt_0i'
+
+271 CUE '1_pin2_b'
+275 CUE '1_bould'
+285 CUE '1_bould'
+287 CUE 'stal_b'
+295 CUE '1_bould'
+302 CRAT2
+315 CAUTION 1
+316 CRAT2
+324 CUE 'stal_f'
+325 CUE '1_pin2_e'
+330 CUE '1_blue_d'
+336 CUE 'stal_i'
+356 EXIT 'blue_d'
+357 EXIT 'pin2_b'
+358 EXIT 'pin2_e'
+359 CUE 'stal_a'
+360 LEVEL 'I'
+
+## Checkpoint J, Beginner Course
+## Blocks 360 - 449
+361 LABEL '@@ckpt_0j'
+
+365 CUE '1_pin2_e'
+385 CUE '1_pin2_d'
+405 CUE '1_pin2_c'
+415 CUE '1_pink_b'
+420 CUE '1_pink_a'
+422 CUE 'stal_a'
+425 CRAT2
+426 CUE 'stal_b'
+430 CUE 'stal_a'
+434 CUE 'stal_b'
+438 CUE 'stal_f'
+440 CUE 'stal_i'
+444 EXIT 'pink_a'
+445 CUE 'stal_h'
+446 EXIT 'pink_b'
+448 EXIT 'pin2_c'
+450 EXIT 'pin2_d'
+451 CUE 'stal_h'
+452 EXIT 'pin2_e'
+453 LEVEL 'j'                 ### END OF LEVEL - letter must be lower case

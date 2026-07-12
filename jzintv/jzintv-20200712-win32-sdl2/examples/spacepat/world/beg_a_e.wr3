@@ -1,0 +1,65 @@
+## Note:  All cues are moved back by 22 units to account for the fact
+##        that they're processed when the world is decoded off the
+##        right-hand side of the screen.
+
+## The data segments below are named after the checkpoint they END at.
+
+## Checkpoint A, Beginner Course
+## Blocks 000 - 089
+0   LABEL '@@ckpt_0a'
+
+22  CRAT1
+32  CRAT1
+46  ROCK1
+55  CRAT1
+72  CAUTION 1
+73  ROCK1
+80  LEVEL 'A'
+
+## Checkpoint B, Beginner Course
+## Blocks 090 - 179
+81  LABEL '@@ckpt_0b'
+
+92  CUE '2_pink_a'             # two pink ships
+120 CUE '2_blu2_a'             # two blue ships
+137 EXIT 'pink_a'             ### exit pink
+145 ROCK1
+172 EXIT 'blu2_a'             ### exit blue
+173 LEVEL 'B'
+
+## Checkpoint C, Beginner Course
+## Blocks 180 - 269
+174 LABEL '@@ckpt_0c'
+
+176 CUE '2_pink_b'             # two pink ships
+181 ROCK1
+222 ROCK1
+232 EXIT 'pink_b'             ### exit pink
+234 CRAT1
+245 ROCK1
+257 ROCK1
+267 LEVEL 'C'
+
+## Checkpoint D, Beginner Course
+## Blocks 270 - 359
+268 LABEL '@@ckpt_0d'
+
+283 CAUTION 1
+288 CRAT1
+298 CRAT1
+303 CUE '3_blu2_c'             # two blue ships
+332 ROCK1
+356 EXIT 'blu2_c'             ### exit blue
+360 LEVEL 'D'
+
+## Checkpoint E, Beginner Course
+## Blocks 360 - 449
+361 LABEL '@@ckpt_0e'
+
+363 CUE '2_whi2_a'             # two white ships
+395 CUE '2_pink_d'             # one pink ships
+414 EXIT 'whi2_a'             ### exit white
+435 ROCK1
+438 EXIT 'pink_d'             ### exit pink
+445 CRAT1
+453 LEVEL 'e'                 ### END OF LEVEL - letter must be lower case

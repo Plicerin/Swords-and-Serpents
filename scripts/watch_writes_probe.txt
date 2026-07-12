@@ -1,0 +1,33 @@
+; Write-watch probe: catch all writes to $0325/$032D (player X/Y)
+; and reads from disc input region $01F0-$01FF
+; This reveals the exact code addresses that update player position.
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+b 5072
+r 8000000
+p 018C 0001
+g 7 56C9
+n 5072
+b 5072
+r 8000000
+r 8000000
+r 8000000
+; set write watches on player position
+w 0325
+w 032D
+; also watch reads of the disc/pad input hardware registers
+@ 01F0 01FF
+; run 3 idle frames to see what writes happen without input
+r 8000000
+r 8000000
+r 8000000
+; remove watches and check position
+w 0325
+w 032D
+@ 01F0 01FF
+m 0325 1
+m 032D 1
+q

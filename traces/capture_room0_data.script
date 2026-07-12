@@ -1,0 +1,16 @@
+; JZINTV debugger script - capture room 0 scratchpad and BACKTAB
+; Break at L_55BF (room render initialization)
+b 55BF
+r 20000000
+; Now dump scratchpad RAM $0000-$01FF
+m 0000 128
+m 0080 128
+m 0100 128
+m 0180 128
+; Dump BACKTAB $0200-$02EF
+m 0200 120
+; Dump system RAM $0300-$035F (STIC regs + system vars)
+m 0300 96
+; Continue and quit
+c 100000
+q

@@ -1,0 +1,134 @@
+; Capture L_5EC7 register values during room 0 rendering
+; Uses same boot sequence as render_room_0 script
+
+; NOP out title screen + fill routines
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+p 5318 0034
+p 5319 0034
+p 531A 0034
+p 531B 02B8
+p 531C 0001
+p 56CC 0034
+p 56CD 0034
+
+; NOP X_FILL_MEM - prevents title screen from wiping BACKTAB
+p 5638 0034
+p 5639 0034
+
+; NOP CLRR + MVO G_019C - room index written separately
+p 55C0 0034
+p 55C1 0034
+p 55C2 0034
+
+; Break after X_FILL_ZERO
+b 5038
+
+; Run through boot + X_FILL_ZERO
+r 8000000
+
+; Write G_019C=0 (room index)
+p 019C 0000
+
+; Write G_018C=1 to force past title screen
+p 018C 0001
+
+; Continue to gameplay
+r 8000000
+
+; Now break at L_5EC7 entry
+b 5EC7
+
+; Continue execution - will hit L_5EC7 on first tile render
+r 20000000
+
+; Dump registers at L_5EC7 entry
+; R1 = tile index (from caller L_5EF4)
+; R2 = pointer to tile stream
+; R3 = ?
+; R5 = return address
+
+; Dump R0-R5
+r
+
+; Single step through the function
+; PSHR R5; PSHR R3
+t
+t
+
+; MVI G_02F5, R3
+t
+; Now R3 = [02F5]
+r
+
+; SDBD
+t
+
+; MVII #$65A0, R5
+t
+; Dump R5
+r
+
+; SLR R1,2; SLR R1,2; SLR R1,1
+t
+t
+t
+
+; ADDR R1, R3
+t
+
+; ADDR R1, R5
+t
+; Dump R3, R5
+r
+
+; MVI@ R3, R1 - BYTE read (SDBD consumed)
+t
+r
+
+; SLR R1,2; SWAP R1,1
+t
+t
+r
+
+; XOR@ R3, R1 - WORD read
+t
+r
+
+; SDBD
+t
+
+; ANDI #$3607, R1 - SDBD consumed by ANDI (byte-wise)
+t
+r
+
+; MVI@ R5, R3 - WORD read (SDBD already consumed)
+t
+r
+
+; SLL R3,2; SLL R3,1
+t
+t
+r
+
+; XORR R3, R1
+t
+r
+
+; PULR R3; PULR R7
+t
+t
+
+; Dump BACKTAB at current R4
+m 0200 32
+
+; Dump scratchpad $00A0-$00C0
+m 00A0 64
+
+; Dump SYSRAM $02F4-$02F6
+m 02F4 4
+
+q

@@ -1,0 +1,29 @@
+# Swords & Serpents — project-local ignores
+# (repo root is C:/Users/vrock; this keeps the project's noise out of git status)
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Vendored third-party emulator source (re-downloadable from the jzIntv site)
+vendor/jzintv-src/
+
+# Scratch / throwaway analysis outputs
+archive/scratch/
+
+# OS cruft
+.DS_Store
+Thumbs.db
+nul
+
+# Dependencies & build output
+node_modules/
+dist/
+
+# Dev-server / scratch logs and emulator scratch dumps
+*.log
+dump.cpu
+dump.hst
+dump.mem

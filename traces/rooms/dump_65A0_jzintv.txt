@@ -1,0 +1,6 @@
+b 5E68
+r 12000000
+; Now dump the card and attribute tables that L_5EC7 uses
+m 65A0 32
+m 65C0 32
+q

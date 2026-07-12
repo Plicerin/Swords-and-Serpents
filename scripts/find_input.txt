@@ -1,0 +1,26 @@
+; Find where the game reads the hand controller. Boot stable, then set READ
+; watchpoints on the PSG controller ports $01FE/$01FF and run one frame.
+; The PCs that fire reveal the input-read code path.
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+b 5072
+r 8000000
+p 018C 0001
+n 5072
+b 56F8
+g 7 56DB
+r 8000000
+n 56F8
+g 6 02F7
+g 7 5072
+b 5072
+r 8000000
+r 8000000
+@ 01FE
+@ 01FF
+r 8000000
+r 8000000
+q

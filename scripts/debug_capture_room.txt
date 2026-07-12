@@ -1,0 +1,67 @@
+# ============================================================
+# Swords & Serpents — Room Capture Script for jzIntv
+# ============================================================
+# Usage:
+#   jzintv -d --script=scripts/debug_capture_room.txt -e exec.bin -g grom.bin "Swords and Serpents.bin"
+#
+# This script captures the first game room by:
+#   1. Breaking at the main idle loop ($506A) right after init
+#   2. Auto-patching G_018C=1 and G_018B=$0001 (single player)
+#   3. Letting the game run through title screen to first room
+#   4. Breaking at the main game loop ($5072) after room renders
+#   5. Dumping BackTab, GRAM, scratchpad RAM, and sprite tables
+#   6. Quitting
+#
+# NOTE: Memory-edit command may be 'e' or 'ew' depending on jzIntv version.
+# If 'e' fails, try 'ew' at the debugger prompt.
+#
+# Output files (saved in current directory):
+#   dump_room_backtab.bin    — $0200-$02EF (20x12 tile map)
+#   dump_room_gram.bin       — $3800-$39FF (256 bytes sprite data)
+#   dump_room_scratch.bin    — $0100-$01EF (scratchpad RAM)
+#   dump_room_stic_shadow.bin— $0325-$035F (STIC register shadows)
+#   dump_room_sprite_table.bin—$5A40-$5A9F (12 MOB definitions)
+#   dump_room_stic_a.bin     — $5BB5-$5BC0 (STIC A color regs)
+# ============================================================
+
+# Step 1: Break at the main idle loop right after init ($506A)
+# At this point the game has initialized RAM but hasn't entered
+# the title screen yet. We can patch game state here.
+b $506A
+
+# Run until the idle loop is reached
+r
+
+# Step 2: Auto-select 1 player by writing 1 to G_018C
+#         Set game mode to single player (G_018B = $0001)
+# Note: if 'e' doesn't work, use 'ew' instead
+e $018C $0001
+e $018B $0001
+
+# Step 3: Set breakpoint at the main game loop ($5072)
+# This loop runs every frame after init
+b $5072
+
+# Continue execution — game will pass through title screen
+# and initialize the first room automatically.
+# The breakpoint at $5072 fires once per frame.
+r
+
+# Step 4: Let several frames render to ensure the room is fully drawn.
+# Each 'r' advances one frame.
+r
+r
+r
+r
+r
+
+# Step 5: Dump all memory regions
+m $0200 $02EF "C:\Users\vrock\Documents\Swords and Serpents\dump_room_backtab.bin"
+m $3800 $39FF "C:\Users\vrock\Documents\Swords and Serpents\dump_room_gram.bin"
+m $0100 $01EF "C:\Users\vrock\Documents\Swords and Serpents\dump_room_scratch.bin"
+m $0325 $035F "C:\Users\vrock\Documents\Swords and Serpents\dump_room_stic_shadow.bin"
+m $5A40 $5A9F "C:\Users\vrock\Documents\Swords and Serpents\dump_room_sprite_table.bin"
+m $5BB5 $5BC0 "C:\Users\vrock\Documents\Swords and Serpents\dump_room_stic_a.bin"
+
+# Step 6: Quit the emulator
+q

@@ -1,0 +1,30 @@
+; Auto-generated clean-window script for room 0
+; Strategy: render room, then infinite-loop at $55DA (no debugger overlay)
+
+; NOP idle loops (but keep GRAM init intact!)
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+p 56CC 0034
+p 56CD 0034
+
+; NOP the CLRR R0 + MVO R0, G_019C at boot
+p 55C0 0034
+p 55C1 0034
+p 55C2 0034
+
+; Patch boot room params for room 0
+p 55CF 02B8
+p 55D0 0062
+p 55D3 02B8
+p 55D4 000B
+
+; Infinite loop at $55DA — B #$-1 (branch to self)
+; Encoding: 0000 0010 1111 1111 = 0x02FF
+p 55DA 02FF
+
+; Run until room is rendered and we hit the infinite loop
+r 12000000
+q

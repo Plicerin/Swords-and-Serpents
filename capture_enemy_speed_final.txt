@@ -1,0 +1,77 @@
+; Swords & Serpents — Capture enemy positions over multiple frames
+; Advance past boot, start game, then dump MOB Y registers frame by frame
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+b 5072
+r 8000000
+p 018C 0001
+g 7 56C9
+n 5072
+b 5072
+; Now in game loop - advance 30 frames to reach gameplay
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+; Dump MOB position registers
+m 0010 8
+m 0040 8
+; Advance 1 more frame
+r 8000000
+; Dump again
+m 0010 8
+m 0040 8
+r 8000000
+m 0010 8
+m 0040 8
+r 8000000
+m 0010 8
+m 0040 8
+r 8000000
+m 0010 8
+m 0040 8
+r 8000000
+m 0010 8
+m 0040 8
+r 8000000
+m 0010 8
+m 0040 8
+r 8000000
+m 0010 8
+m 0040 8
+r 8000000
+m 0010 8
+m 0040 8
+r 8000000
+m 0010 8
+m 0040 8
+q

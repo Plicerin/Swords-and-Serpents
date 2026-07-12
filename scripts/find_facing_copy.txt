@@ -1,0 +1,26 @@
+; Find what writes the warrior's GRAM facing sprite (card 48 = $3980) and what
+; writes the player velocity (G_0108) — reveals the facing-copy routine + the
+; direction source the movement/facing code reads.
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+b 5072
+r 8000000
+p 018C 0001
+n 5072
+b 56F8
+g 7 56DB
+r 8000000
+n 56F8
+g 6 02F7
+g 7 5072
+b 5072
+r 8000000
+r 8000000
+w 3980
+w 0108
+r 8000000
+r 8000000
+q

@@ -1,0 +1,108 @@
+; ===================================================================
+; Capture scratchpad card table at runtime during room 0 rendering
+; Goal: determine actual card table values in scratchpad $00A0-$00AF
+; ===================================================================
+
+; Skip title screen patches
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+p 5318 0034
+p 5319 0034
+p 531A 0034
+p 531B 02B8
+p 531C 0001
+p 56CC 0034
+p 56CD 0034
+
+; NOP X_FILL_MEM
+p 5638 0034
+p 5639 0034
+
+; NOP CLRR + MVO G_019C
+p 55C0 0034
+p 55C1 0034
+p 55C2 0034
+
+; Break after boot/X_FILL_ZERO
+b 5038
+
+; Run through boot
+r 8000000
+
+; Write room index = 0
+p 019C 0000
+
+; Force past title screen
+p 018C 0001
+
+; Set breakpoint at L_5EE2 (room renderer start)
+b 5EE2
+
+; Continue to room renderer
+r 12000000
+
+; Dump scratchpad $0080-$00FF
+m 0080 128
+
+; Dump 8-bit RAM $0100-$01EF
+m 0100 240
+
+; Dump SYSRAM $02F4-$02F6
+m 02F4 3
+
+; Set breakpoint at L_5EC7 (BACKTAB word builder)
+b 5EC7
+
+; Capture 40 calls to L_5EC7
+; Each call: dump R1(input) and R5(card table base)
+e 5EC7 R1,R5
+e 5EC7 R1,R5  
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+e 5EC7 R1,R5
+
+; Run to trigger breakpoints
+r 5000000
+
+; Dump BACKTAB to verify rendering
+m 0200 240
+
+q

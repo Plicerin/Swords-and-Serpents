@@ -1,0 +1,328 @@
+;; ======================================================================== ;;
+;;  Retronic USB configuration for four joysticks in 'Raw' mode.            ;;
+;; ------------------------------------------------------------------------ ;;
+;;                                                                          ;;
+;;  Retronic USB provides "raw" inputs from the controllers on "buttons"    ;;
+;;  16 through 23.  This allows jzIntv to use the controller natively,      ;;
+;;  rather than working through two layers of translation:                  ;;
+;;                                                                          ;;
+;;      Real Intellivision => generic joystick => Emulated Intellivision    ;;
+;;                                                                          ;;
+;;  By using the raw inputs, you can also invoke Easter eggs and so on      ;;
+;;  that rely on quirks of the Intellivision controller's encoding.         ;;
+;;                                                                          ;;
+;;  This technique should work with other adaptors that provide raw inputs  ;;
+;;  as "joystick buttons."  You may need to adjust the mappings, though.    ;;
+;;                                                                          ;;
+;;  vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv  ;;
+;;  Note:  Raw input support is present only in jzIntv Rev 1678 and later.  ;;
+;;  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ;;
+;;                                                                          ;;
+;;  Retronic USB maps the controller pins to buttons based on the wiring    ;;
+;;  order of the Sears / INTV II controllers.  As a result, they look       ;;
+;;  flipped compared to the bit assignments inside the machine.             ;;
+;;                                                                          ;;
+;;                        Button 16   =>    Bit 3                           ;;
+;;                        Button 17   =>    Bit 2                           ;;
+;;                        Button 18   =>    Bit 1                           ;;
+;;                        Button 19   =>    Bit 0                           ;;
+;;                        Button 20   =>    Bit 7                           ;;
+;;                        Button 21   =>    Bit 6                           ;;
+;;                        Button 22   =>    Bit 5                           ;;
+;;                        Button 23   =>    Bit 4                           ;;
+;;                                                                          ;;
+;;  This example file only sets up map 0.  You may wish to extend this to   ;;
+;;  define maps 1, 2, and/or 3.                                             ;;
+;;                                                                          ;;
+;; ------------------------------------------------------------------------ ;;
+;;  This file is dedicated to the public domain via the Creative Commons    ;;
+;;  CC0 v1.0 licence by its author, Joseph Zbiciak.                         ;;
+;;                                                                          ;;
+;;          https://creativecommons.org/publicdomain/zero/1.0               ;;
+;; ======================================================================== ;;
+
+
+MAP 0
+
+;; ======================================================================== ;;
+;;  Left Controller on Master Component                                     ;;
+;; ======================================================================== ;;
+
+;; ------------------------------------------------------------------------ ;;
+;;  Disable all "decoded" inputs from the controller. This is not specific  ;;
+;;  to the Retronic USB; rather, it disables every button and DISC input.   ;;
+;; ------------------------------------------------------------------------ ;;
+JS0_BTN_00 NA       ;; NA means "no action"
+JS0_BTN_01 NA
+JS0_BTN_02 NA
+JS0_BTN_03 NA
+JS0_BTN_04 NA
+JS0_BTN_05 NA
+JS0_BTN_06 NA
+JS0_BTN_07 NA
+JS0_BTN_08 NA
+JS0_BTN_09 NA
+JS0_BTN_10 NA
+JS0_BTN_11 NA
+JS0_BTN_12 NA
+JS0_BTN_13 NA
+JS0_BTN_14 NA
+JS0_BTN_15 NA
+JS0_BTN_16 NA
+JS0_BTN_17 NA
+JS0_BTN_18 NA
+JS0_BTN_19 NA
+JS0_BTN_20 NA
+JS0_BTN_21 NA
+JS0_BTN_22 NA
+JS0_BTN_23 NA
+JS0_BTN_24 NA
+JS0_BTN_25 NA
+JS0_BTN_26 NA
+JS0_BTN_27 NA
+JS0_BTN_28 NA
+JS0_BTN_29 NA
+JS0_BTN_30 NA
+JS0_BTN_31 NA
+
+JS0A_E   NA
+JS0A_ENE NA
+JS0A_NE  NA
+JS0A_NNE NA
+JS0A_N   NA
+JS0A_NNW NA
+JS0A_NW  NA
+JS0A_WNW NA
+JS0A_W   NA
+JS0A_WSW NA
+JS0A_SW  NA
+JS0A_SSW NA
+JS0A_S   NA
+JS0A_SSE NA
+JS0A_SE  NA
+JS0A_ESE NA
+
+;; ------------------------------------------------------------------------ ;;
+;;  Now map the raw inputs from Retronic USB to the raw bit inputs.         ;;
+;; ------------------------------------------------------------------------ ;;
+JS0_BTN_16  PD0L_BIT_3
+JS0_BTN_17  PD0L_BIT_2
+JS0_BTN_18  PD0L_BIT_1
+JS0_BTN_19  PD0L_BIT_0
+JS0_BTN_20  PD0L_BIT_7
+JS0_BTN_21  PD0L_BIT_6
+JS0_BTN_22  PD0L_BIT_5
+JS0_BTN_23  PD0L_BIT_4
+
+
+;; ======================================================================== ;;
+;;  Right Controller on Master Component                                    ;;
+;; ======================================================================== ;;
+
+;; ------------------------------------------------------------------------ ;;
+;;  Disable all "decoded" inputs from the controller. This is not specific  ;;
+;;  to the Retronic USB; rather, it disables every button and DISC input.   ;;
+;; ------------------------------------------------------------------------ ;;
+JS1_BTN_00 NA
+JS1_BTN_01 NA
+JS1_BTN_02 NA
+JS1_BTN_03 NA
+JS1_BTN_04 NA
+JS1_BTN_05 NA
+JS1_BTN_06 NA
+JS1_BTN_07 NA
+JS1_BTN_08 NA
+JS1_BTN_09 NA
+JS1_BTN_10 NA
+JS1_BTN_11 NA
+JS1_BTN_12 NA
+JS1_BTN_13 NA
+JS1_BTN_14 NA
+JS1_BTN_15 NA
+JS1_BTN_16 NA
+JS1_BTN_17 NA
+JS1_BTN_18 NA
+JS1_BTN_19 NA
+JS1_BTN_20 NA
+JS1_BTN_21 NA
+JS1_BTN_22 NA
+JS1_BTN_23 NA
+JS1_BTN_24 NA
+JS1_BTN_25 NA
+JS1_BTN_26 NA
+JS1_BTN_27 NA
+JS1_BTN_28 NA
+JS1_BTN_29 NA
+JS1_BTN_30 NA
+JS1_BTN_31 NA
+
+JS1A_E   NA
+JS1A_ENE NA
+JS1A_NE  NA
+JS1A_NNE NA
+JS1A_N   NA
+JS1A_NNW NA
+JS1A_NW  NA
+JS1A_WNW NA
+JS1A_W   NA
+JS1A_WSW NA
+JS1A_SW  NA
+JS1A_SSW NA
+JS1A_S   NA
+JS1A_SSE NA
+JS1A_SE  NA
+JS1A_ESE NA
+
+;; ------------------------------------------------------------------------ ;;
+;;  Now map the raw inputs from Retronic USB to the raw bit inputs.         ;;
+;; ------------------------------------------------------------------------ ;;
+JS1_BTN_16  PD0R_BIT_3
+JS1_BTN_17  PD0R_BIT_2
+JS1_BTN_18  PD0R_BIT_1
+JS1_BTN_19  PD0R_BIT_0
+JS1_BTN_20  PD0R_BIT_7
+JS1_BTN_21  PD0R_BIT_6
+JS1_BTN_22  PD0R_BIT_5
+JS1_BTN_23  PD0R_BIT_4
+
+
+;; ======================================================================== ;;
+;;  Left Controller on ECS unit                                             ;;
+;; ======================================================================== ;;
+
+;; ------------------------------------------------------------------------ ;;
+;;  Disable all "decoded" inputs from the controller. This is not specific  ;;
+;;  to the Retronic USB; rather, it disables every button and DISC input.   ;;
+;; ------------------------------------------------------------------------ ;;
+JS2_BTN_00 NA
+JS2_BTN_01 NA
+JS2_BTN_02 NA
+JS2_BTN_03 NA
+JS2_BTN_04 NA
+JS2_BTN_05 NA
+JS2_BTN_06 NA
+JS2_BTN_07 NA
+JS2_BTN_08 NA
+JS2_BTN_09 NA
+JS2_BTN_10 NA
+JS2_BTN_11 NA
+JS2_BTN_12 NA
+JS2_BTN_13 NA
+JS2_BTN_14 NA
+JS2_BTN_15 NA
+JS2_BTN_16 NA
+JS2_BTN_17 NA
+JS2_BTN_18 NA
+JS2_BTN_19 NA
+JS2_BTN_20 NA
+JS2_BTN_21 NA
+JS2_BTN_22 NA
+JS2_BTN_23 NA
+JS2_BTN_24 NA
+JS2_BTN_25 NA
+JS2_BTN_26 NA
+JS2_BTN_27 NA
+JS2_BTN_28 NA
+JS2_BTN_29 NA
+JS2_BTN_30 NA
+JS2_BTN_31 NA
+
+JS2A_E   NA
+JS2A_ENE NA
+JS2A_NE  NA
+JS2A_NNE NA
+JS2A_N   NA
+JS2A_NNW NA
+JS2A_NW  NA
+JS2A_WNW NA
+JS2A_W   NA
+JS2A_WSW NA
+JS2A_SW  NA
+JS2A_SSW NA
+JS2A_S   NA
+JS2A_SSE NA
+JS2A_SE  NA
+JS2A_ESE NA
+
+;; ------------------------------------------------------------------------ ;;
+;;  Now map the raw inputs from Retronic USB to the raw bit inputs.         ;;
+;; ------------------------------------------------------------------------ ;;
+JS2_BTN_16  PD1L_BIT_3
+JS2_BTN_17  PD1L_BIT_2
+JS2_BTN_18  PD1L_BIT_1
+JS2_BTN_19  PD1L_BIT_0
+JS2_BTN_20  PD1L_BIT_7
+JS2_BTN_21  PD1L_BIT_6
+JS2_BTN_22  PD1L_BIT_5
+JS2_BTN_23  PD1L_BIT_4
+
+
+;; ======================================================================== ;;
+;;  Right Controller on ECS unit                                            ;;
+;; ======================================================================== ;;
+
+;; ------------------------------------------------------------------------ ;;
+;;  Disable all "decoded" inputs from the controller. This is not specific  ;;
+;;  to the Retronic USB; rather, it disables every button and DISC input.   ;;
+;; ------------------------------------------------------------------------ ;;
+JS3_BTN_00 NA
+JS3_BTN_01 NA
+JS3_BTN_02 NA
+JS3_BTN_03 NA
+JS3_BTN_04 NA
+JS3_BTN_05 NA
+JS3_BTN_06 NA
+JS3_BTN_07 NA
+JS3_BTN_08 NA
+JS3_BTN_09 NA
+JS3_BTN_10 NA
+JS3_BTN_11 NA
+JS3_BTN_12 NA
+JS3_BTN_13 NA
+JS3_BTN_14 NA
+JS3_BTN_15 NA
+JS3_BTN_16 NA
+JS3_BTN_17 NA
+JS3_BTN_18 NA
+JS3_BTN_19 NA
+JS3_BTN_20 NA
+JS3_BTN_21 NA
+JS3_BTN_22 NA
+JS3_BTN_23 NA
+JS3_BTN_24 NA
+JS3_BTN_25 NA
+JS3_BTN_26 NA
+JS3_BTN_27 NA
+JS3_BTN_28 NA
+JS3_BTN_29 NA
+JS3_BTN_30 NA
+JS3_BTN_31 NA
+
+JS3A_E   NA
+JS3A_ENE NA
+JS3A_NE  NA
+JS3A_NNE NA
+JS3A_N   NA
+JS3A_NNW NA
+JS3A_NW  NA
+JS3A_WNW NA
+JS3A_W   NA
+JS3A_WSW NA
+JS3A_SW  NA
+JS3A_SSW NA
+JS3A_S   NA
+JS3A_SSE NA
+JS3A_SE  NA
+JS3A_ESE NA
+
+;; ------------------------------------------------------------------------ ;;
+;;  Now map the raw inputs from Retronic USB to the raw bit inputs.         ;;
+;; ------------------------------------------------------------------------ ;;
+JS3_BTN_16  PD1R_BIT_3
+JS3_BTN_17  PD1R_BIT_2
+JS3_BTN_18  PD1R_BIT_1
+JS3_BTN_19  PD1R_BIT_0
+JS3_BTN_20  PD1R_BIT_7
+JS3_BTN_21  PD1R_BIT_6
+JS3_BTN_22  PD1R_BIT_5
+JS3_BTN_23  PD1R_BIT_4

@@ -1,0 +1,104 @@
+The INITMEM routines formalize the concept of variable initialization
+by allowing the programmer to specify lists of variables and the values
+that should be placed in them.  The INITMEM routines allow encoding 8
+or 16 bit constants, and variable addresses in the range $00F0 through
+$35F. 
+
+The initialization records directly encode constants in the range $00
+- $1F.  Constants outside that range are stored in one of two tables,
+or as escapes directly in the initializer stream.  The CST8 table holds
+constants in the range $20 - $11F, and the CST16 table holds constants
+of any value.  The CST8 table has room for 16 constants (stored packed
+in up to 8 words), and the CST16 table has room for 15 constants.
+
+To use:
+
+        CALL    INITMEM.0
+        INIT    variable, value
+        INIT    variable, value
+        ; . . .
+        INIT_DONE
+
+Or:
+
+        CALL    INITMEM.1
+        DECLE   label
+
+Or:
+        MVII    #label,   R4
+        CALL    INITMEM.2
+
+...and elsewhere
+
+label:  INIT    variable, value
+        INIT    variable, value
+        ; . . .
+        INIT_DONE
+
+At some point after all INIT lists have appeared in the program, you
+must output the CST8 and CST16 tables.  The following macros do just that:
+
+        EMIT_CST8
+        EMIT_CST16
+
+Due to assembler limitations, you can only use a label in an INIT
+macro expansion if it's been seen prior to the INIT macro.  This can be
+annoying.  The easiest way to work around this is to use the INITMEM.1
+form and putting all the initializer blocks at the end of the program
+(not necessarily the end of the memory map), even though it ends up being
+slightly larger.  For example, this won't work:
+
+        CALL    INITMEM.0
+        INIT    tblptr, MYTBL  
+        INIT_DONE
+
+        ;...
+
+MYTBL   DECLE   1,2,3,4,5
+
+This, however, will:
+
+
+MYTBL   DECLE   1,2,3,4,5
+
+        ;...
+
+        CALL    INITMEM.0
+        INIT    tblptr, MYTBL  
+        INIT_DONE
+
+
+So will this:
+
+        CALL    INITMEM.1
+        DECLE   ILIST
+
+        ;...
+
+MYTBL   DECLE   1,2,3,4,5
+
+ILIST   INIT    tblptr, MYTBL  
+        INIT_DONE
+
+
+If you have to reinitialize subsets of variables (say, when restarting a
+phase of your game), you can order your initializer records appropriately
+so that you can overlap their records.  (This is similar to spawning
+sets and subsets.)  Example:
+
+label1: INIT    var_a, val
+        INIT    var_b, val
+label2: INIT    var_c, val
+label3: INIT    var_d, val
+        INIT    var_e, val
+        INIT_DONE
+
+Now you can call INITMEM.1 with either label1, label2 or label3,
+depending on whether you want to initialize all of var_a through var_e,
+var_c through var_e, or just var_d and var_e.  This allows for significant
+space optimizations.
+
+Future directions:  The current INITMEM code does not allow initializing
+8-bit variables with 16-bit data in SDBD format.  It is easy to add,
+and if/when I do it will be with a macro named INITD.
+

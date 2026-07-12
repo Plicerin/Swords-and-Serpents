@@ -1,0 +1,23 @@
+;* ======================================================================== *;
+;*  The routines and data in this file (default.mac) are dedicated to the   *;
+;*  public domain via the Creative Commons CC0 v1.0 license by its author,  *;
+;*  Joseph Zbiciak.                                                         *;
+;*                                                                          *;
+;*          https://creativecommons.org/publicdomain/zero/1.0/              *;
+;* ======================================================================== *;
+
+;; ======================================================================== ;;
+;;  DEFAULT.MAC                                         Default Macro Set   ;;
+;;  Joseph Zbiciak <intvnut AT gmail.com>                                   ;;
+;; ======================================================================== ;;
+
+    IF (DEFINED _DEFAULT_MAC) = 0
+
+_DEFAULT_MAC EQU 1
+
+        INCLUDE "stic.mac"
+        INCLUDE "psg.mac"
+        INCLUDE "util.mac"
+        INCLUDE "print.mac"
+
+    ENDI

@@ -1,0 +1,17 @@
+=== STDOUT ===
+AVI: 1.000 1.000 1.000
+
+=== STDERR ===
+
+Could not find any of these candidate files:
+  traces\rooms\dump_scratchpad_script.txt.rom
+  traces\rooms\dump_scratchpad_script.txt.cc3
+  traces\rooms\dump_scratchpad_script.txt.bin
+  traces\rooms\dump_scratchpad_script.txt.int
+  traces\rooms\dump_scratchpad_script.txt.itv
+
+Search path:
+  .
+  C:\Users\vrock\Documents\Swords and Serpents\jzintv-20200712-win32-sdl2\bin\..\rom
+
+ERROR:  Failed to initialize game

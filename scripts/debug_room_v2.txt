@@ -1,0 +1,64 @@
+# ============================================================
+# Swords & Serpents — Room Capture (fixed)
+# Strategy: Break during main game loop ($5072), patch memory
+# each frame until the game transitions past title screen,
+# then dump BackTab.
+# ============================================================
+
+# Break at main game loop (runs every frame including title screen)
+b $5072
+
+# Run to first hit (game is initializing)
+r
+
+# Patch 1-player mode on every frame until game starts
+e $018C $0001
+e $018B $0001
+
+# Advance one frame
+r
+e $018C $0001
+e $018B $0001
+r
+e $018C $0001
+e $018B $0001
+r
+e $018C $0001
+e $018B $0001
+r
+e $018C $0001
+e $018B $0001
+r
+e $018C $0001
+e $018B $0001
+r
+e $018C $0001
+e $018B $0001
+r
+e $018C $0001
+e $018B $0001
+r
+e $018C $0001
+e $018B $0001
+r
+e $018C $0001
+e $018B $0001
+r
+e $018C $0001
+e $018B $0001
+
+# By now the game should be in the first room
+# Run a few more frames for the room to fully render
+r
+r
+r
+r
+r
+
+# Dump BackTab
+m $0200 $02EF
+
+# Also dump GRAM to verify card data
+m $3800 $39FF
+
+q

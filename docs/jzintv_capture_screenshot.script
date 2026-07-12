@@ -1,0 +1,54 @@
+; Get to room 0 gameplay then capture screenshot
+; NOP key patches to skip title screen
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+p 56CC 0034
+p 56CD 0034
+
+; NOP X_FILL_MEM
+p 5638 0034
+p 5639 0034
+
+; NOP CLRR + MVO G_019C
+p 55C0 0034
+p 55C1 0034
+p 55C2 0034
+
+; Break after X_FILL_ZERO
+b 5038
+
+; Run through boot
+r 8000000
+
+; Set room 0 and force gameplay
+p 019C 0000
+p 018C 0001
+
+; Run to gameplay
+r 8000000
+
+; Now dump everything we need
+e "=== STIC REGISTERS ==="
+m 0000 64
+
+e "=== BACKTAB ==="
+m 0200 240
+
+e "=== GRAM ==="
+m 3800 512
+
+e "=== SYSRAM MOB SHADOW ==="
+m 0325 32
+
+e "=== KEY RAM ==="
+m 0175 8
+m 019C 4
+m 018C 2
+
+; Try screenshot command
+gs
+
+q

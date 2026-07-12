@@ -1,0 +1,23 @@
+; Breakpoint approach — capture dungeon at 5DA (right after L_5EE2 returns)
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+p 5318 0034
+p 5319 0034
+p 531A 0034
+p 531B 02B8
+p 531C 0001
+p 56CC 0034
+p 56CD 0034
+
+; Set breakpoint right after renderer returns
+b 55DA
+
+; Run until breakpoint
+r 15000000
+
+; Dump clean BACKTAB
+m 0200 240
+q

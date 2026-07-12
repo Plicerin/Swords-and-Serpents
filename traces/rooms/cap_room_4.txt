@@ -1,0 +1,41 @@
+; Auto-generated script for room 4
+; Strategy: break after X_FILL_ZERO, write G_019C+G_018C,
+;           run long enough to get past title into gameplay,
+;           then take a clean 'vs' screenshot.
+
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+p 5318 0034
+p 5319 0034
+p 531A 0034
+p 531B 02B8
+p 531C 0001
+p 56CC 0034
+p 56CD 0034
+p 5638 0034
+p 5639 0034
+
+p 55C0 0034
+p 55C1 0034
+p 55C2 0034
+
+b 5038
+r 8000000
+
+; Room index = 4, force past title screen
+p 019C 0004
+p 018C 0001
+
+; Run 15000000 cycles to let game settle
+r 15000000
+
+; Capture frame-buffer screenshot
+vs
+
+; Dump BACKTAB + GRAM for verification
+m 0200 240
+m 3800 512
+q

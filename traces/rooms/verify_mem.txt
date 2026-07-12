@@ -1,0 +1,11 @@
+
+b 5E68
+r 12000000
+; At breakpoint, R4 = 65D2 (table base + tile_index)
+; Read directly from 5CE + known offsets
+m 65CE 16
+; Now read where the pointers go (we know index 8 points to 600)
+; But what is 600 in jzIntv's address space?
+m 6600 8
+m 6800 8
+q

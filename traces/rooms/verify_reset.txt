@@ -1,0 +1,6 @@
+b 1000
+r 1
+; PC=1000 is the EXEC reset. Read memory immediately
+m 65CE 32
+m 5000 16
+q

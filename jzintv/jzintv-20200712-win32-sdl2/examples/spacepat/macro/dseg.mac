@@ -1,0 +1,25 @@
+
+
+.SCRMEM     SET     $102
+.SYSMEM     SET     $2F0
+
+MACRO       SCRATCH l
+            EQU     .SCRMEM
+            LISTING "off"
+.SCRMEM     SET     .SCRMEM + %l%
+            IF      .SCRMEM > $1F0
+                ERR     "Scratch Memory Overflow"
+            ENDI
+            LISTING "prev"
+ENDM
+
+MACRO       SYSTEM  l
+            EQU     .SYSMEM
+            LISTING "off"
+.SYSMEM     SET     .SYSMEM + %l%
+            IF      .SYSMEM > $360
+                ERR     "System Memory Overflow"
+            ENDI
+            LISTING "prev"
+ENDM
+

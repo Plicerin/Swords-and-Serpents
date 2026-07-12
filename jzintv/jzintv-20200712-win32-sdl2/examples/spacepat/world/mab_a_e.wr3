@@ -1,0 +1,72 @@
+## Note:  All cues are moved back by 22 units to account for the fact
+##        that they're processed when the world is decoded off the
+##        right-hand side of the screen.
+
+## The data segments below are named after the checkpoint they END at.
+
+## Checkpoint A, Beginner Course
+## Blocks 000 - 089
+0   LABEL '@@ckpt_0a'
+
+22  CRAT3
+34  CRAT2
+43  CRAT1
+55  ROCK2
+62  CRAT1
+70  ROCK1
+76  ROCK1
+80  LEVEL 'A'
+
+## Checkpoint B, Beginner Course
+## Blocks 090 - 179
+81  LABEL '@@ckpt_0b'
+
+85  CAUTION 1
+95  CUE '1_pin2_a'
+130 CUE '2_pin2_a'
+150 EXIT 'pin2_a'
+172 EXIT 'pin2_a'
+173 LEVEL 'B'
+
+## Checkpoint C, Beginner Course
+## Blocks 180 - 269
+174 LABEL '@@ckpt_0c'
+
+180 ROCK2
+185 CAUTION 3
+204 CUE 'minelyr2'             # Mine-laying follower
+220 EXIT 'flexit'             ### exit follower stage 0
+225 EXIT 'flexit'             ### exit follower stage 1
+239 EXIT 'flexit'             ### mine 1
+250 EXIT 'flexit'             ### mine 2
+255 EXIT 'flexit'             ### exit follower stage 2
+265 ROCK3
+267 LEVEL 'C'
+
+## Checkpoint D, Beginner Course
+## Blocks 270 - 359
+268 LABEL '@@ckpt_0d'
+
+278 CAUTION 1
+288 CUE '1_blu2_c'
+305 CUE '2_blu2_b'
+320 EXIT 'blu2_c'
+325 CUE '1_blu2_a'
+335 EXIT 'blu2_b'
+345 CUE '2_blu2_d'
+358 EXIT 'blu2_a'
+359 EXIT 'blu2_d'
+360 LEVEL 'D'
+
+## Checkpoint E, Beginner Course
+## Blocks 360 - 449
+361 LABEL '@@ckpt_0e'
+
+363 CUE '1_whit_e'
+374 CRAT1
+380 CUE '2_whit_a'
+410 CRAT1
+437 CRAT1
+453 LEVEL 'e'                 ### END OF LEVEL - letter must be lower case
+459 EXIT 'whit_a'
+460 EXIT 'whit_e'

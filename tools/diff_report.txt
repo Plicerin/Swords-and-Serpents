@@ -1,0 +1,8 @@
+room 0: room0_js_render.png vs room_0_authoritative.png  mean_diff=  0.00  max=  0  exact_pixels=100.00%  tiles_with_diff=0/240
+room 1: room1_js_render.png vs room_1_authoritative.png  mean_diff=  0.00  max=  0  exact_pixels=100.00%  tiles_with_diff=0/240
+room 2: room2_js_render.png vs room_2_authoritative.png  mean_diff=  0.00  max=  0  exact_pixels=100.00%  tiles_with_diff=0/240
+room 3: room3_js_render.png vs room_3_authoritative.png  mean_diff=  0.00  max=  0  exact_pixels=100.00%  tiles_with_diff=0/240
+room 4: room4_js_render.png vs room_4_authoritative.png  mean_diff= 51.30  max=255  exact_pixels=59.97%  tiles_with_diff=100/240
+room 5: room5_js_render.png vs room_5_authoritative.png  mean_diff= 44.15  max=255  exact_pixels=64.73%  tiles_with_diff=90/240
+
+OVERALL exact pixel match: 87.45% across 1,843,200 pixels

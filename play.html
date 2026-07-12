@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Swords &amp; Serpents — Playable Prototype</title>
+<style>
+  body { margin:0; background:#0c0e08; color:#cfe0a8;
+         font:14px/1.5 system-ui,Segoe UI,sans-serif;
+         display:flex; flex-direction:column; align-items:center; min-height:100vh; }
+  h1 { font-size:18px; margin:18px 0 2px; letter-spacing:.5px; }
+  p.sub { margin:0 0 12px; color:#8a9b6a; }
+  canvas { image-rendering:pixelated; border:2px solid #34401f; border-radius:6px;
+           background:#000; box-shadow:0 0 24px #0008; }
+  .hud { margin:10px 0 2px; color:#e8f3c8; font-variant-numeric:tabular-nums; font-size:15px; }
+  .hud b { color:#f4e06a; }
+  .keys { color:#6f7f52; font-size:13px; }
+  a { color:#a9c46a; }
+  #win { color:#f4e06a; font-weight:700; min-height:20px; }
+</style>
+</head>
+<body>
+  <h1>Swords &amp; Serpents — Level 1 (Prototype)</h1>
+  <p class="sub">Explore the real decoded maze and collect every treasure. <a href="/">← gallery</a></p>
+  <canvas id="g" width="480" height="288" style="width:720px;height:432px"></canvas>
+  <div class="hud" id="hud">loading…</div>
+  <div id="win"></div>
+  <div class="keys">Arrow keys / WASD to move · the maze scrolls and wraps · gold markers are treasures</div>
+<script>
+const TS = 24, VIEW_W = 480, VIEW_H = 288;
+const cv = document.getElementById('g'), ctx = cv.getContext('2d');
+const hud = document.getElementById('hud'), winEl = document.getElementById('win');
+ctx.imageSmoothingEnabled = false;
+
+const world = new Image();
+let COLL=null, ITEMS=null, ITEMAP=null, W=0,H=0, worldW=0, worldH=0, total=0, got=0;
+
+Promise.all([
+  new Promise(res => { world.onload = res; world.src = 'level0_world.png'; }),
+  fetch('level0_items.json').then(r => r.json())
+]).then(([_, d]) => {
+  COLL=d.coll; ITEMS=d.items.map(i=>({...i, got:false}));
+  W=d.w; H=d.h; worldW=W*TS; worldH=H*TS; total=ITEMS.length;
+  ITEMAP=new Map(); ITEMS.forEach((it,idx)=>ITEMAP.set(it.r*W+it.c, idx));
+  start();
+});
+
+const keys={};
+addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;
+  if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(e.key.toLowerCase()))e.preventDefault();});
+addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
+
+const wrap=(v,m)=>((v%m)+m)%m;
+function isWall(wx,wy){const c=wrap(Math.floor(wx/TS),W),r=wrap(Math.floor(wy/TS),H);return COLL[r][c]===1;}
+const HB=7;
+function free(nx,ny){for(const[ox,oy]of[[-HB,-HB],[HB,-HB],[-HB,HB],[HB,HB]])if(isWall(nx+ox,ny+oy))return false;return true;}
+function nearestFloor(c0,r0){for(let rad=0;rad<24;rad++)for(let dr=-rad;dr<=rad;dr++)for(let dc=-rad;dc<=rad;dc++){
+  const c=wrap(c0+dc,W),r=wrap(r0+dr,H); if(COLL[r][c]===0&&!ITEMAP.has(r*W+c))return[c*TS+TS/2,r*TS+TS/2];}return[c0*TS,r0*TS];}
+
+let px,py,dir={x:0,y:1};
+function start(){[px,py]=nearestFloor(16,32);requestAnimationFrame(loop);}
+
+const SPD=1.6;
+function step(){
+  let mx=0,my=0;
+  if(keys['arrowleft']||keys['a'])mx-=1;
+  if(keys['arrowright']||keys['d'])mx+=1;
+  if(keys['arrowup']||keys['w'])my-=1;
+  if(keys['arrowdown']||keys['s'])my+=1;
+  if(mx||my)dir={x:mx,y:my};
+  let nx=wrap(px+mx*SPD,worldW); if(free(nx,py))px=nx;
+  let ny=wrap(py+my*SPD,worldH); if(free(px,ny))py=ny;
+  // pickup: item tile under the player
+  const c=wrap(Math.floor(px/TS),W), r=wrap(Math.floor(py/TS),H);
+  const idx=ITEMAP.get(r*W+c);
+  if(idx!=null && !ITEMS[idx].got){ ITEMS[idx].got=true; got++;
+    if(got===total) winEl.textContent='✦ Level cleared — every treasure collected! ✦'; }
+}
+
+function drawWorldWrapped(camX,camY){
+  for(let ox=-1;ox<=1;ox++)for(let oy=-1;oy<=1;oy++)ctx.drawImage(world,ox*worldW-camX,oy*worldH-camY);
+}
+function drawItems(camX,camY,t){
+  for(const it of ITEMS){
+    // draw the item tile at each wrapped copy that lands in view
+    for(let ox=-1;ox<=1;ox++)for(let oy=-1;oy<=1;oy++){
+      const sx=it.c*TS+ox*worldW-camX, sy=it.r*TS+oy*worldH-camY;
+      if(sx<-TS||sx>VIEW_W||sy<-TS||sy>VIEW_H)continue;
+      if(it.got){ ctx.fillStyle='#546e00'; ctx.fillRect(sx,sy,TS,TS); }   // collected -> floor
+      else{ // pulsing gold diamond marker
+        const a=0.5+0.5*Math.sin(t/250); ctx.fillStyle=`rgba(244,224,106,${0.45+0.35*a})`;
+        ctx.beginPath(); const m=sx+TS/2, n=sy+TS/2, s=5+a*2;
+        ctx.moveTo(m,n-s);ctx.lineTo(m+s,n);ctx.lineTo(m,n+s);ctx.lineTo(m-s,n);ctx.closePath();ctx.fill();
+      }
+    }
+  }
+}
+function drawPrince(){
+  const cx=VIEW_W/2,cy=VIEW_H/2,len=16,dx=dir.x,dy=dir.y,nrm=Math.hypot(dx,dy)||1;
+  ctx.strokeStyle='#fffcff';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+dx/nrm*len,cy+dy/nrm*len);ctx.stroke();
+  ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(cx,cy,6,8,0,0,Math.PI*2);ctx.stroke();
+}
+function loop(t){
+  step();
+  const camX=px-VIEW_W/2, camY=py-VIEW_H/2;
+  ctx.fillStyle='#000';ctx.fillRect(0,0,VIEW_W,VIEW_H);
+  drawWorldWrapped(camX,camY); drawItems(camX,camY,t); drawPrince();
+  hud.innerHTML=`Treasures <b>${got} / ${total}</b> &nbsp;·&nbsp; tile (${Math.floor(px/TS)}, ${Math.floor(py/TS)}) &nbsp;·&nbsp; maze ${W}×${H} (~8.5 screens)`;
+  requestAnimationFrame(loop);
+}
+</script>
+</body>
+</html>

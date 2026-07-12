@@ -1,0 +1,75 @@
+AVI: 1.000 1.000 1.000
+Loading:
+  C:\Users\vrock\Documents\Swords and Serpents\Swords and Serpents.bin
+Name                     Swords and Serpents
+Short Name               Swords and Serpents
+Release date             1982
+Compatibility:
+  ECS                    Tolerates
+  Intellivoice           Tolerates
+  Intellivision II       Tolerates
+  Keyboard Component     Tolerates
+  TutorVision            Tolerates
+JLP Support:
+  JLP Accel              Disabled
+  JLP Flash Sectors      0
+jzintv:  Initializing Master Component and peripherals...
+ay8910:  Automatic sliding-window setting: 9
+CP-1610          [0x0000...0x0000]
+PSG0 AY8914      [0x01F0...0x01FF]
+[Graphics]       [0x0000...0x0000]
+[Sound]          [0x0000...0x0000]
+Scratch RAM      [0x0100...0x01EF]
+System RAM       [0x0200...0x035F]
+EXEC ROM         [0x1000...0x1FFF]
+Pad Pair 0       [0x01F0...0x01FF]
+STIC             [0x0000...0x007F]
+STIC (alias)     [0x4000...0x403F]
+STIC (alias)     [0x8000...0x803F]
+STIC (alias)     [0xC000...0xC03F]
+STIC (BTAB)      [0x0200...0x02EF]
+GROM/GRAM        [0x3000...0x3FFF]
+GRAM (alias)     [0x7800...0x7FFF]
+GRAM (alias)     [0xB800...0xBFFF]
+GRAM (alias)     [0xF800...0xFFFF]
+[Event]          [0x0000...0x0000]
+Legacy BIN+CFG   [0x5000...0x6FFF]
+CP-1610 Snoop    [0x0200...0x035F]
+[Debugger]       [0x0000...0xFFFF]
+Starting jzIntv...
+ 0000 0000 0000 0000 0000 0000 0000 1000 --------  JSRD R5,$1026            0
+> b 506a
+Set breakpoint at $506A
+> r
+Hit breakpoint at $506A
+ 09F0 0000 0000 8007 0172 033D 02F7 506A -Z--I-i-  MVI  $0119,R0        70186
+> w 0104 0001
+Now watching writes to $0001 through $0104
+> w 0119 0000
+Now watching writes to $0000 through $0000
+No longer watching writes to $0001 through $0104
+Now watching writes to $0105 through $0119
+> p 5318 0034
+> p 5319 0034
+> p 531A 0034
+> p 531B 0034
+> p 531C 0034
+> p 531D 0034
+> p 531E 0034
+> s 3
+ 0002 0000 0000 8007 0172 033D 02F7 506C -Z--I-i-  TSTR R0         70196
+ 0002 0000 0000 8007 0172 033D 02F7 506D ----I-i-  BNEQ $506A         70202
+ 0002 0000 0000 8007 0172 033D 02F7 506A ----I-i-  MVI  $0119,R0        70211
+> r 5000000
+Hit breakpoint at $506A
+ 0002 0000 0000 8007 0172 033D 02F7 506A ----I-i-  MVI  $0119,R0        70211
+> m 10 8
+0010:  3FFF* 3FFF  3FFF  3FFF   3FFF  3FFF  3FFF  3FFF    # ................
+> m 18 8
+0018:  3FFE* 3FFD  3FFB  3FF7   3FEF  3FDF  3FBF  3F7F    # ................
+> m 0 8
+0000:  380B* 380B  380B  380B   380B  380B  380B  380B    # 8.8.8.8.8.8.8.8.
+> m 8 8
+0008:  3FFF* 3FFF  3FFF  3FFF   3FFF  3FFF  3FFF  3FFF    # ................
+> q
+Exited on user request.

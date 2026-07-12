@@ -1,0 +1,279 @@
+================================================================================
+ SWORDS AND SERPENTS - TRACE SUMMARY
+ File: ss_trace_out.txt (12,048 lines)
+ Emulator: jzIntv CP-1610
+ ROM Layout: EXEC ROM $1000-$1FFF, Game ROM $5000-$6FFF
+ Trace captured with: s 12000 (run 12000 cycles)
+
+================================================================================
+ 6. TOTAL CYCLE COUNT AND END ADDRESS
+================================================================================
+
+Total cycles executed: 96,299 (last full instruction at line 12046)
+Execution ended at: $51F7 (line 12047 was user-initiated quit >q)
+Last instruction: BNEQ $51EC at cycle 96245, which branched (line 12043 at $51EC)
+
+Final state:
+  Line 12038: 000C 000C 001C 0359 0004 0000 0308 51F4   INCR R2        96172
+  Line 12039: 000C 000C 001D 0359 0004 0000 0308 51F5   INCR R3        96178
+  Line 12040: 000C 000C 001D 035A 0004 0000 0308 51F6   DECR R4        96184
+  Line 12041: 000C 000C 001D 035A 0004 0000 0308 51F6B  DECR R4        96239
+  Line 12042: 000C 000C 001D 035A 0003 0000 0308 51F7   BNEQ $51EC     96245
+  Line 12043: 000C 000C 001D 035A 0003 0000 0308 51EC   MVI@ R2,R0    96114
+  ...
+  Line 12047: > q  (user quit)
+  Line 12048: Exited on user request.
+
+The trace was mid-execution inside a game loop at $51EC-$51F7 (a memcpy-style 
+loop copying from (R2) to (R3) decremented by R4).
+
+================================================================================
+ 1. STIC REGISTER WRITES - MVO targeting $0000-$003F
+================================================================================
+
+The trace contains ~1,712 STIC register writes. Here are the notable direct
+MVO instructions to STIC registers:
+
+VBLANK WAIT LOOP STIC WRITES (game code, line ~47830+):
+  Line 5848: MVO R0,$0028  cycle 47830  (Display Enable register)
+  Line 5849: MVO R0,$002C  cycle 47841  (Border color register)
+
+  Line 6626: MVO R0,$0020  cycle 53877  (Mode Select / color stack reg)
+
+GAME LOOP STIC WRITES:
+  Line 9549: MVO R0,$0030  cycle 77616  (Color Stack 0 boundary)
+  Line 9550: MVO R0,$0031  cycle 77627  (Color Stack 1 boundary)
+  Line 9587: MVO R0,$0032  cycle 77930  (Color Stack 2 boundary)
+
+VBLANK STIC WRITE:
+  Line 11913: MVO R0,$0020  cycle 95194  (Mode Select register - end of frame)
+
+Key direct-mode register usage observed:
+  $0020 - Mode Select / Display Enable
+  $0028 - Display Enable
+  $002C - Border Color
+  $0030 - Color Stack 0
+  $0031 - Color Stack 1
+  $0032 - Color Stack 2
+
+(Note: The trace format uses jzIntv's internal cycle counter. The vast 
+majority of STIC writes occur through MVO@ (indirect) targeting the BTAB area 
+$0200-$02EF, which serves as the STIC's BackTab memory.)
+
+================================================================================
+ 2. KEY GAME CODE ENTRY POINTS ($5000-$6FFF)
+================================================================================
+
+The game ROM at $5000-$6FFF is accessed in several distinct entry points:
+
+(a) DISPATCH TABLE at $5000-$5014 (data, not code):
+  Data values read by EXEC dispatch:
+  $5000: value $0092 read (line 3578, from $36DF-$3719 ROM data)
+  $5001: value $0050 read
+  $5002: value $0012 read
+  $5003: value $0062 read
+  ...
+  $5014: stored as dispatch base address at $02F0 (line 108)
+
+(b) $10AB - EXEC Dispatch Jumper (in EXEC ROM, but reads from game ROM):
+  Line 2072: MVI@ R5,R4       reads dispatch #
+  Line 2076: ADD  $02F0,R4    add $5014 base
+  Line 2077: SUBI #$0014,R4   adjust
+  Line 2079: SDBD; MVI@ R4,R5 reads game subroutine address from table at $5000+
+  Line 2080: PULR R7          jumps to the game routine
+
+(c) FIRST GAME SUBROUTINE - $1F2F (card decompress/gram load in EXEC ROM):
+  Entry via JSRD at line 2069
+  This is THE card loading routine - decompresses card data from $36DF-$3801
+  into BackTab ($0200-$02EF), writing 4 bytes per card.
+
+(d) $51EC-$51F7 - Active game loop (memcpy/OR variant):
+  Last executed code in trace. A tight loop:
+  Line 12030: MVI@ R2,R0    load from source
+  Line 12031: MVO@ R5,R2    (debug no-op?)
+  Line 12032: MVI@ R3,R1    load from dest
+  Line 12033: COMR R0       complement
+  Line 12034: ANDR R0,R1    AND with complemented value
+  Line 12035: COMR R0       complement back
+  Line 12036: XORR R0,R1    XOR result
+  Line 12037: MVO@ R1,R3    store modified
+  Line 12041: DECR R4       decrement counter (double-dec: line 12040-12041)
+  Line 12042: BNEQ $51EC    loop
+
+  This is a background/foreground merge or collision check loop operating
+  on data in System RAM ($0308 area).
+
+(e) $53AA-$53F8 - Another game routine for screen setup:
+  Line 9549+: MVO R0,$0030   STIC Color Stack writes
+  Line 9587:  MVO R0,$0032
+
+(f) $1E73-$1E75 - Character processing loop:
+  Line 6788: MVI@ R4,R0     read character data
+  Line 6789-6793: process
+
+================================================================================
+ 3. MEMORY INITIALIZATION SEQUENCES
+================================================================================
+
+(A) PAD/PSG REGISTERS ($01F0-$01FE) - Line 42-101:
+  EXEC startup zeros PSG registers and pad decoder:
+  Line 42:   MVII #$02F1,R6      set stack pointer
+  Line 43:   JSR  R5,$1A83       call init subroutine
+  Line 47:   MVII #$01F0,R4      target: pad interface
+  Line 48:   MVII #$000E,R0      14 registers
+  Line 49:   JSR  R5,$1738       call fill-with-R5 (R5=$0000)
+  Line 53-95: MVO@ R5,R4 (loop)  writes 0 to $01F0-$01FE
+  Line 97:   MVO  R0,$01F8        write $0038 to PSG register $01F8
+  Line 103:  MVO  R0,$0100        write $0026 to Scratch $0100
+  Line 105:  MVO  R0,$0101        write $0011 to Scratch $0101
+  Line 108:  MVO  R0,$02F0        write $5014 (game dispatch base) to System RAM
+
+(B) SCRATCH RAM ZERO ($0100-$0200) - Line 126-894:
+  Zeroes $0102-$01FF (254 bytes) via fill subroutine at $1738:
+  Line 126: MVII #$0102,R4
+  Line 127: JSR  R5,$1738
+  Line 128: PSHR R5              R5=$0000 (zero fill value)
+  ...
+  Line 131: MVO@ R5,R4           start writing zeros from $0102
+  ... (254 iterations of MVO@ R5,R4 / DECR R0 / BNEQ) ...
+  Line 891: DECR R0              last decrement, R0 becomes $0000
+  Line 892: BNEQ $173B           (not taken)
+  Line 893: PULR R0              return count $00FE
+  Line 894: PULR R7              return to caller at $1048
+
+(C) SYSTEM RAM ($02F0-$035F) Initialization - Line 895-943:
+  After scratch RAM zeroed, init System RAM via inline data at $105E-$1064:
+  Line 896: MVI@ R5,R1           reads data (pointed to by dispatch table)
+  Line 897: TSTR R1              test for zero (sentinel)
+  This loop at $105E-$1064 reads pairs of (address, value) from inline data
+  after the JSR and writes them to system RAM:
+    $035E <- $03FF  (line 900)
+    $0147 <- $0001  (line 905)
+    $0115 <- $000C  (line 910)
+    $0116 <- $00A0  (line 915)
+    $0117 <- $0008  (line 920)
+    $0118 <- $0060  (line 925)
+    $0119 <- $0008  (line 930)
+    $0104 <- $0008  (line 935)
+    $0102 <- $0084  (line 940)
+  Terminated by sentinel value $0000 (line 942-943)
+
+(D) BTAB ($0200-$02EF) via Card Data Loading - Line 2084-4698:
+  See Section 4 below for full details. BTAB is initialized through the
+  card decompression loop writing 4-byte card patterns from compressed
+  ROM data at $36DF-$3801.
+
+================================================================================
+ 4. GRAM CARD DATA LOADING ($1F2F-$1F53)
+================================================================================
+
+Entry via JSRD at $1103 (line 2069), called from EXEC's dispatch handler.
+The routine decompresses card graphics data from ROM ($36DF-$3801) into
+BackTab ($0200-$02E8), 4 bytes (one card) at a time.
+
+Setup (lines 2069-2089):
+  Line 2069: JSRD R5,$1F2F        enter card loader
+  Line 2070: PSHR R5              save return
+  Line 2071: JSR  R5,$10AB         get dispatch address (reads game ROM table)
+  Line 2072: MVI@ R5,R4           R4 = dispatch index ($0008)
+  Line 2074: CMPI #$000C,R4       if < 12, adjust
+  Line 2076: ADD  $02F0,R4          R4 += $5014 -> $501C
+  Line 2077: SUBI #$0014,R4         R4 -= $0014 -> $5008
+  Line 2079: SDBD; MVI@ R4,R5      read game subroutine addr from $5008 -> $500D
+  Line 2080: PULR R7               jump to $500D
+  Line 2082: PSHR R5              (at $1F36 after 2nd call)
+  Line 2084: MVII #$36DF,R3       source: compressed card data
+  Line 2085: MOVR R3,R4            copy to R4
+  Line 2086: ADDI #$003A,R4        R4 = $3719 (card attribute table, 58 bytes away)
+  Line 2087: MVII #$0200,R5        dest: BTAB start
+
+Loop body ($1F40-$1F51) - per-card processing (iterates ~58 times):
+  Line 2088: MVI@ R3,R0            read source byte
+  Line 2089: INCR R3               advance source
+  Line 2090: MVII #$0004,R2        4 bytes per card
+  Inner loop ($1F44-$1F4D):
+  Line 2091: MVI@ R4,R1            read attribute byte from $3719+
+  Line 2092: SWAP R1               byte-swap (attribute in lsb)
+  Lines 2093-2097: SARC/RRC/SLR shift the card data bit by bit
+            This is the decompression: attribute bits select foreground/background
+  Line 2098: MVO@ R1,R5            write decompressed card byte to BTAB
+  Line 2099: DECR R2
+  Line 2100: BNEQ $1F44            loop for 4 bytes
+  Line 2131: CMPI #$02E7,R5        reached end of BTAB (minus final row)?
+  Line 2132: BLT  $1F40            if not, process next card
+
+Sample decompressed values written (first card, lines 2088-2098):
+  Source byte: $0024  Attribute: $004A  -> writes: $004A, $01D1, $02B8, $0004
+
+Source data read (R3=ROM compressed data, $36DF-$3800):
+  Card 1:  $0024, $0082, $00AE, $0008, $00C9, $0010, $0014, $0088, $0091, ...
+  Card 2:  $0020, $008A, $0008, ...
+
+Attribute table ($3719+): values like $004A, $00D1, $00B8, $0004, $0051, $0072,
+  $006A, $0010, $002C, $0005, $0042, $0062, $007C, $00F0, $002C, $000E,
+  $0000, $0034, $0004, $0000, $00C3, $0098, $00B8, $0004, $00C0, $00C3,
+  $0042, $004D, $00D1, $00C0, $0014, ...
+
+Full range covered: R3 from $36DF to $3801 (290 bytes compressed data)
+BTAB destination: $0200 through $02E8 (232 bytes = 58 cards with final row
+likely zeroed/empty)
+
+================================================================================
+ 5. EXEC TO GAME TRANSITION
+================================================================================
+
+(A) EXEC startup sequence:
+  Line 40:   0000 0000 0000 0000 0000 0000 1000  JSRD R5,$1026    0
+  Line 42:   MVII #$02F1,R6                             set stack
+  Line 43:   JSR  R5,$1A83                               init PSG
+  ... (PSG zero, scratch RAM zero, system RAM init) ...
+  Line 944:  EIS                                        enable interrupts
+
+(B) VBLANK wait loop (spin-waiting for display):
+  Lines 945-2043: CMP $0102,R0 / BEQ $1065
+  This is the EXEC waiting for VBLANK by polling $0102 (which changes to match
+  the display handshake). ~1100 iterations (lines 945-2043).
+
+(C) VBLANK ISR dispatch / EXEC-to-GAME handoff:
+  Line 2044: PSHR R0                                   save regs
+  Line 2045: GSWD R0                                   save flags
+  Line 2046: PSHR R0
+  Line 2047: PSHR R1
+  Line 2048: PSHR R2
+  Line 2050: PSHR R3
+  Line 2051: PSHR R4
+  Line 2052: PSHR R5
+  Line 2053: MOVR R7,R5                                save return address
+  Line 2054: ADDI #$0006,R5                             adjust for dispatch table
+  Line 2055: MVII #$0100,R4                             dispatch vector at $0100
+  Line 2056: SDBD                                       read 10-bit address
+  Line 2057: MVI@ R4,R7                                 jump to game code at $0102
+
+(D) FIRST GAME CODE at $1126 (EXEC ROM, game library):
+  Line 2058: PSHR R5          (at $1126)                save dispatch linkage
+  Line 2059: MVI  $0102,R1                               read next dispatch #
+  Line 2060: SWAP R1                                     byte-swap
+  Line 2061: SWAP R1                                     swap back
+  Line 2062: BMI  $10BE                                   if bit 7 set, handle
+  Line 2063-2067: SARC/BC/BOV/SARC/BC                   process dispatch flags
+  Line 2068: MVO  R1,$0102                               store updated dispatch
+  Line 2069: JSRD R5,$1F2F                               CALL CARD LOADER
+  ... (card decompression runs from line 2070-4698) ...
+  After card loading completes and BLT $1F40 exits (line 4697-4698):
+  Line 4698: PULR R5                                     return from $1F2F
+  (control returns to $1106, which continues game lib dispatch)
+
+(E) Eventual entry into $5xxx game code:
+  The game code at $5000+ is called via the dispatch table mechanism.
+  Values read during card loading (line 3578-3579) show $5000 range data
+  being accessed through the indirect dispatch system (SDBD double-byte
+  reads at $1000+ with MVI@ R4,R7 jumps).
+
+(F) Main game loop seen in trace ($51EC-$51F7):
+  The trace ends mid-execution in a game loop at $51EC-$51F7 performing
+  what appears to be a background/foreground sprite merge operation on
+  system RAM data at $0308-$035A area.
+
+================================================================================
+ END OF SUMMARY
+================================================================================

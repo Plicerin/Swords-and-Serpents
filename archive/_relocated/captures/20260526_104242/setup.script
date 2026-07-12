@@ -1,0 +1,40 @@
+; Auto-generated interactive setup script
+
+; --- Skip title screen idle loops ---
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+p 5318 0034
+p 5319 0034
+p 531A 0034
+p 531B 02B8
+p 531C 0001
+p 56CC 0034
+p 56CD 0034
+
+; --- NOP CLRR + MVO G_019C at boot ---
+p 55C0 0034
+p 55C1 0034
+p 55C2 0034
+
+; --- NOP X_FILL_MEM (prevents title screen from wiping BACKTAB) ---
+p 5638 0034
+p 5639 0034
+
+; --- Break after X_FILL_ZERO ($5038) ---
+b 5038
+
+; --- Boot through initialization ---
+r 8000000
+
+; --- Set room index + force 1-player game start ---
+p 019C 0000
+p 018C 0001
+
+; --- Run into first room ---
+r 8000000
+
+; --- Continue (game runs; press F4 for debugger) ---
+c

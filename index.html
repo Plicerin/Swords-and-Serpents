@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Swords and Serpents</title>
+  <style>
+    body {
+      margin: 0;
+      background: #111;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      flex-direction: column;
+      font-family: monospace;
+      color: #ccc;
+    }
+    canvas {
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      border: 2px solid #333;
+      margin: 10px;
+    }
+    h1 {
+      margin: 10px 0;
+      font-size: 18px;
+      color: #888;
+    }
+    h2 {
+      margin: 10px 0;
+      font-size: 14px;
+      color: #666;
+    }
+    .room-label {
+      color: #888;
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+    .room-container {
+      display: inline-block;
+      text-align: center;
+      margin: 10px;
+    }
+    #rooms {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 1400px;
+    }
+    .controls {
+      color: #666;
+      font-size: 11px;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Swords and Serpents</h1>
+  <div class="controls">
+    <b>Move/Face:</b> Arrows or WASD &nbsp;·&nbsp;
+    <b>Back up:</b> B &nbsp;·&nbsp;
+    <b>Pick up/Open:</b> Space &nbsp;·&nbsp;
+    <b>Stairs/Lantern:</b> F &nbsp;·&nbsp;
+    <b>Read Scroll:</b> R &nbsp;·&nbsp;
+    <b>Status:</b> Tab &nbsp;·&nbsp;
+    <b>Select game:</b> 1/2/3, Enter
+    <br><small>(Combat: walk into an enemy to strike — no attack button, per the manual)</small>
+  </div>
+  <canvas id="game"></canvas>
+  <div id="debug" style="font: 11px monospace; color: #9f9; background:#111; padding:6px; border:1px solid #333; max-width: 640px; margin: 6px 0; white-space: pre;">debug: (loading)</div>
+  <h2>All Rooms (Debug View)</h2>
+  <div id="rooms"></div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+; Test screenshot in headless mode
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+p 5318 0034
+p 5319 0034
+p 531A 0034
+p 531B 02B8
+p 531C 0001
+p 56CC 0034
+p 56CD 0034
+p 5638 0034
+p 5639 0034
+; Patch G_02F4 for room 0
+p 55C5 DC
+p 55C6 65
+; Force past title screen
+w 018C 0001
+; Run enough cycles to render room
+r 8000000
+; Take screenshot
+vs
+; Dump some memory to verify we're in-game
+m 0200 10
+; Quit
+q

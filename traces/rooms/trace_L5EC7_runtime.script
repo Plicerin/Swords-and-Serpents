@@ -1,0 +1,161 @@
+; JZINTV debug script: trace L_5EC7 at room 0 render time
+; Captures R1 (tile descriptor input), R3 (attr table ptr), R5 (card table ptr),
+; memory at card table, and output R1 (BACKTAB word)
+
+; NOP out title screen / mem clears
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+p 5318 0034
+p 5319 0034
+p 531A 0034
+p 531B 02B8
+p 531C 0001
+p 56CC 0034
+p 56CD 0034
+
+p 5638 0034
+p 5639 0034
+
+p 55C0 0034
+p 55C1 0034
+p 55C2 0034
+
+; Break after X_FILL_ZERO
+b 5038
+r 8000000
+
+; Set room 0, force into gameplay
+p 019C 0000
+p 018C 0001
+r 8000000
+
+; Now break at L_5EC7 entry (first tile of room 0 render)
+b 5EC7
+
+; Trace 20 L_5EC7 calls (a full row of 20 tiles)
+; At each call, read R1(input), R3, R5, and the final output R1
+
+r 8000000
+; Call 1
+e R1
+e R3
+e R5
+; Dump card table at R5 (16 bytes)
+m R5 16
+; Step through to end of L_5EC7 (ret addr is 5EE1)
+b 5EE1
+r 8000000
+e R1
+; Remove ret break, re-break at entry for next call
+d 5EE1
+b 5EC7
+
+r 8000000
+; Call 2
+e R1
+e R3
+e R5
+m R5 16
+b 5EE1
+r 8000000
+e R1
+d 5EE1
+b 5EC7
+
+r 8000000
+; Call 3
+e R1
+e R3
+e R5
+m R5 16
+b 5EE1
+r 8000000
+e R1
+d 5EE1
+b 5EC7
+
+r 8000000
+; Call 4
+e R1
+e R3
+e R5
+m R5 16
+b 5EE1
+r 8000000
+e R1
+d 5EE1
+b 5EC7
+
+r 8000000
+; Call 5
+e R1
+e R3
+e R5
+m R5 16
+b 5EE1
+r 8000000
+e R1
+d 5EE1
+b 5EC7
+
+r 8000000
+; Call 6
+e R1
+e R3
+e R5
+b 5EE1
+r 8000000
+e R1
+d 5EE1
+b 5EC7
+
+r 8000000
+; Call 7
+e R1
+e R3
+e R5
+b 5EE1
+r 8000000
+e R1
+d 5EE1
+b 5EC7
+
+r 8000000
+; Call 8
+e R1
+e R3
+e R5
+b 5EE1
+r 8000000
+e R1
+d 5EE1
+b 5EC7
+
+r 8000000
+; Call 9
+e R1
+e R3
+e R5
+b 5EE1
+r 8000000
+e R1
+d 5EE1
+b 5EC7
+
+r 8000000
+; Call 10
+e R1
+e R3
+e R5
+b 5EE1
+r 8000000
+e R1
+d 5EE1
+
+; Dump full BACKTAB row 0
+m 0200 20
+
+q

@@ -1,0 +1,95 @@
+## Note:  All cues are moved back by 22 units to account for the fact
+##        that they're processed when the world is decoded off the
+##        right-hand side of the screen.
+
+## The data segments below are named after the checkpoint they END at.
+
+## Checkpoint F, Champion Course
+## Blocks 000 - 089
+0   LABEL '@@ckpt_0f'
+
+10  CUE '2_whi2_a'             # two white ships
+15  CUE '3_whi2_b'             # two white ships
+80  LEVEL 'F'
+
+## Checkpoint G, Champion Course
+## Blocks 090 - 179
+81  LABEL '@@ckpt_0g'
+
+82  EXIT 'whi2_a'             ### exit white
+84  EXIT 'whi2_b'             ### exit white
+85  ROCK3
+88  CRAT3
+97  ROCK2
+110 CRAT2
+113 ROCK2
+122 CRAT2
+132 CRAT2
+140 ROCK2
+143 CRAT3
+153 CRAT2
+156 CAUTION 1
+162 ROCK1
+173 LEVEL 'G'
+
+## Checkpoint H, Champion Course
+## Blocks 180 - 269
+174 LABEL '@@ckpt_0h'
+
+176 CUE '2_whi2_d'             # two white ships
+180 CUE '2_whi2_e'             # two white ships
+200 CUE '2_pin2_d'             # two pink ships
+210 CUE '2_pink_c'             # two pink ships
+232 EXIT 'pin2_d'             ### exit pink
+233 CRAT3
+237 EXIT 'pink_c'             ### exit pink
+239 EXIT 'whi2_d'             ### exit white
+243 EXIT 'whi2_e'             ### exit white
+252 CUE '1_plant'
+253 CRAT1
+261 ROCK2
+263 CUE '1_plant'
+264 CRAT1
+265 CAUTION 1
+267 LEVEL 'H'
+
+## Checkpoint I, Champion Course
+## Blocks 270 - 359
+268 LABEL '@@ckpt_0i'
+
+285 CUE '3_blu2_b'             # one blue ships
+300 CUE '2_pink_a'             # two pink ships
+301 CRAT3
+310 CUE '1_pink_b'             # one pink ships
+313 CRAT2                      # crat2
+341 EXIT 'blu2_b'             ### exit blue
+342 ROCK2
+344 CRAT3
+355 CRAT4
+360 LEVEL 'I'
+
+## Checkpoint J, Champion Course
+## Blocks 360 - 449
+361 LABEL '@@ckpt_0j'
+
+364 CUE '2_whit_b'             # two white ships
+366 CUE '2_whi2_c'             # two white ships
+369 EXIT 'pink_a'             ### exit pink
+370 EXIT 'pink_b'             ### exit pink
+378 CRAT2                      # crat2
+388 ROCK2
+398 EXIT 'whit_b'             ### exit white
+402 EXIT 'whi2_c'             ### exit white
+406 CRAT2                      # crat2
+416 ROCK2
+419 ROCK2
+421 CUE '1_plant'
+422 CRAT1
+430 CUE '1_plant'
+431 CRAT1
+439 CUE '1_plant'
+440 CRAT1
+448 CUE '1_plant'
+449 CRAT1
+451 ROCK2
+453 LEVEL 'j'                 ### END OF LEVEL - letter must be lower case

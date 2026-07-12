@@ -1,0 +1,51 @@
+; Swords & Serpents — INPUT DRIVER: captures player state
+; Bypasses menu/title, advances frames, dumps player state.
+;
+; Run: jzintv -d --script=tools/capture/walk_test.txt -e exec.bin -g grom.bin "Swords and Serpents.bin"
+
+; --- BOOT: NOP idle loops, break at main loop ---
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+b 5072
+r 8000000
+
+; --- FORCE SINGLE PLAYER ---
+p 018C 0001
+g 7 56C9
+n 5072
+b 5072
+
+; --- ADVANCE 20 FRAMES (same as debug_capture_gameplay.txt) ---
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+
+; --- DUMP PLAYER STATE ---
+; $0325 = player X (16-bit), $032D = player Y (16-bit)
+; $019C = current level, $02F4 = data pointer
+m 0325 2
+m 032D 2
+m 019C 1
+m 02F4 2
+
+q

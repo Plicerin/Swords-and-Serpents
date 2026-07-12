@@ -1,0 +1,33 @@
+; --- start at reset ---
+reset
+
+; --- log basic info ---
+log regs
+log mem
+
+; --- dump full system RAM (16-bit address space example) ---
+savebin "ram_dump.bin", $0000, $1000
+
+; --- dump GRAM (graphics RAM, 8x8 tiles, typical range) ---
+savebin "gram_dump.bin", $3000, $0100
+
+; --- dump EXEC / ROM area (example range, adjust if needed) ---
+savebin "exec_dump.bin", $5000, $2000
+
+; --- disassemble key ranges (you can add more) ---
+disasm $0000, $03FF
+disasm $0400, $07FF
+disasm $0800, $0BFF
+disasm $0C00, $0FFF
+
+; --- enable CPU trace (can get huge) ---
+trace on
+
+; --- run the game for a while ---
+g
+
+; --- optional: break after some cycles or at an address ---
+; break $1234
+
+; when it hits a breakpoint or exits, trace stays in log
+

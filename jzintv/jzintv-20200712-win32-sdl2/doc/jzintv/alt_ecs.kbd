@@ -1,0 +1,75 @@
+;; ======================================================================== ;;
+;;  Alternate ECS keyboard mappings to make typing friendlier.              ;;
+;; ------------------------------------------------------------------------ ;;
+;;                                                                          ;;
+;;  jzIntv's default ECS keyboard map tries to be faithful to the original  ;;
+;;  ECS keyboard, including quirky layout choices such as Shift-5 to press  ;;
+;;  "+".  While that's accurate from an emulation standpoint, it can be     ;;
+;;  frustrating when typing on a modern keyboard.                           ;;
+;;                                                                          ;;
+;;  The following bindings make typing a bit more natural on a modern US    ;;
+;;  keyboard layout, by tweaking some of the default bindings.              ;;
+;;                                                                          ;;
+;; ------------------------------------------------------------------------ ;;
+;;  This file is dedicated to the public domain via the Creative Commons    ;;
+;;  CC0 v1.0 licence by its author, Joseph Zbiciak.                         ;;
+;;                                                                          ;;
+;;          https://creativecommons.org/publicdomain/zero/1.0               ;;
+;; ======================================================================== ;;
+
+MAP 2
+
+;; ======================================================================== ;;
+;;  Make PC's [=] press ECS' [Shift]-[1].                                   ;;
+;;  Make PC's [Shift]+[=] press ECS' [Shift]-[5].                           ;;
+;; ======================================================================== ;;
+EQUALS KEYB_EQUAL
+ADD_COMBO 0 LSHIFT EQUALS
+ADD_COMBO 1 RSHIFT EQUALS
+COMBO0 KEYB_PLUS
+COMBO1 KEYB_PLUS
+
+;; ======================================================================== ;;
+;;  Make PC's ['] press ECS' [Shift]-[->].                                  ;;
+;;  Make PC's [Shift]+['] press ECS' [Shift]-[2].                           ;;
+;; ======================================================================== ;;
+QUOTE KEYB_SQUOTE
+ADD_COMBO 2 LSHIFT QUOTE
+ADD_COMBO 3 RSHIFT QUOTE
+COMBO2 KEYB_QUOTE
+COMBO3 KEYB_QUOTE
+QUOTEDBL KEYB_QUOTE
+
+;; ======================================================================== ;;
+;;  Make PC's [-] press ECS' [Shift]-[6].                                   ;;
+;; ======================================================================== ;;
+MINUS KEYB_MINUS
+
+;; ======================================================================== ;;
+;;  Make PC's [Shift]-[5] press ECS' [Shift]-[<-].                          ;;
+;; ======================================================================== ;;
+ADD_COMBO 4 LSHIFT 5
+ADD_COMBO 5 RSHIFT 5
+COMBO4 KEYB_PCT
+COMBO5 KEYB_PCT
+
+;; ======================================================================== ;;
+;;  Make PC's [/] press ECS' [Shift]-[7].                                   ;;
+;;  Make PC's [Shift]-[/] press ECS' [Shift]-[DnArrow].                     ;;
+;; ======================================================================== ;;
+SLASH KEYB_SLASH
+ADD_COMBO 6 LSHIFT /
+ADD_COMBO 7 RSHIFT /
+COMBO6 KEYB_QUEST
+COMBO7 KEYB_QUEST
+
+;; ======================================================================== ;;
+;;  Make PC's [^] press ECS' [Shift]-[UpArrow].                             ;;
+;;  Make PC's [Shift]-[6] press ECS' [Shift]-[UpArrow].                     ;;
+;; ======================================================================== ;;
+CARET KEYB_CARET
+ADD_COMBO 8 LSHIFT 6
+ADD_COMBO 9 RSHIFT 6
+COMBO8 KEYB_CARET
+COMBO9 KEYB_CARET
+

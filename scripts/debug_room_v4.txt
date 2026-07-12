@@ -1,0 +1,77 @@
+# Debug script v4: Inject game start by jumping directly to L_56DB
+# After ROM init, we set up registers and jump to the game entry point
+
+# Disable speed throttling
+e 1 0
+
+# Break at L_506A (post-init idle)
+b 506A
+c
+
+# Remove that breakpoint
+b -506A
+
+# Now we're past ROM init. We need to:
+# 1. Set G_018C = 1 (1-player game)
+# 2. Set up for game entry at L_56DB
+# L_56DB does: 
+#   XORI #$0080, R0   - R0 should be 1
+#   MVO R0, G_018B     - stores $0081 to G_018B
+#   sets G_035D, etc.
+#   JSR R5, L_5F5B
+#   sets various game vars
+#   JSR R5, L_557B     - game/room init
+
+# Set G_018C = 1
+p 018C 0001
+
+# Set R0 = 1 (player count, gets XORed with $80 → $81)
+g R0 0001
+
+# Set R5 = some valid return address (e.g., $5072 which is main loop top)
+g R5 5072
+
+# Jump to L_56DB 
+r 56DB
+
+# Now single-step or continue? Let's continue and break at top of main loop
+b 5072
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+
+# Now dump BackTab and state
+b -5072
+m 0200 02EF
+m 0184 0186
+m 02F2 02F3
+m 3800 39FF
+
+q

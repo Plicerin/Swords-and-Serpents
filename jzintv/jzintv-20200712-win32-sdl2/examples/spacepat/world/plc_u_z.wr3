@@ -1,0 +1,137 @@
+## Note:  All cues are moved back by 22 units to account for the fact
+##        that they're processed when the world is decoded off the
+##        right-hand side of the screen.
+
+## The data segments below are named after the checkpoint they END at.
+
+## Checkpoint U, Champion Course
+## Blocks 000 - 089
+0   LABEL '@@ckpt_0u'
+
+5   CAUTION 3
+12  CUE 'charger'             # Reverse-flying follower
+17  ROCK3
+20  EXIT 'flexit'             ### bullet 1
+22  ROCK1
+28  ROCK2
+42  EXIT 'flexit'             ### bullet 2
+52  CRAT4
+67  EXIT 'flexit'             ### bullet 3
+78  ROCK3
+80  LEVEL 'U'
+
+## Checkpoint V, Champion Course
+## Blocks 090 - 179
+81  LABEL '@@ckpt_0v'
+
+92  EXIT 'flexit'             ### exit follower stage
+95  CUE '2_bould'
+102 CUE '2_bould'
+108 CUE '2_boulc'
+116 CUE '3_blu2_c'
+127 CUE '1_plbig'
+128 CRAT2
+139 CUE '3_pin2_c'
+148 CUE '2_boulc'
+154 CUE '2_boulc'
+165 CUE '2_boulc'
+166 EXIT 'blu2_c'
+170 ROCK3
+172 EXIT 'pin2_c'
+173 LEVEL 'V'
+
+## Checkpoint W, Champion Course
+## Blocks 180 - 269
+174 LABEL '@@ckpt_0w'
+
+179 CUE 'charger7'             # Reverse-flying follower
+190 EXIT 'flexit'             ### bullet 1
+195 ROCK1
+199 CUE '1_turret'
+201 ROCK3
+209 EXIT 'flexit'             ### bullet 2
+214 ROCK3
+219 EXIT 'flexit'             ### bullet 3
+221 CRAT3
+229 ROCK1
+238 EXIT 'flexit'             ### bullet 4
+250 ROCK3
+255 CUE '1_turret'
+257 ROCK1
+259 EXIT 'flexit'             ### bullet 5
+267 LEVEL 'W'
+
+## Checkpoint X, Champion Course
+## Blocks 270 - 359
+268 LABEL '@@ckpt_0x'
+
+274 EXIT 'flexit'             ### bullet 6
+277 EXIT 'flexit'             ### bullet 7
+279 ROCK1
+285 EXIT 'flexit'             ### exit follower stage
+291 CUE '1_turret'
+295 CUE '2_pin2_d'
+298 CUE '1_turret'
+310 CUE '2_boulc'
+315 CUE '2_boulc'
+319 CUE '2_boulc'
+320 CUE '2_blu2_d'
+326 CUE '1_plbig'
+327 CRAT2
+339 CRAT3
+348 CRAT4
+356 CRAT2
+360 LEVEL 'X'
+
+## Checkpoint Y, Champion Course
+## Blocks 360 - 449
+361 LABEL '@@ckpt_0y'
+
+369 CUE '1_mine_a'
+374 CUE '2_mine_a'
+380 CAUTION 1
+381 CUE '2_mine_b'
+390 CUE '2_pink_a'
+393 CUE '2_mine_c'
+400 CUE '2_mine_e'
+405 CUE '3_blu2_e'
+406 CUE '2_mine_d'
+412 CUE '1_mine_c'
+425 CUE '3_whi2_d'
+453 LEVEL 'Y'
+
+## Checkpoint Z, Champion Course
+## Blocks 450 - 539
+454 LABEL '@@ckpt_0z'
+
+463 CRAT2
+465 CUE '1_plbig'
+466 CRAT2
+470 EXIT 'pin2_d'
+474 EXIT 'blu2_d'
+478 EXIT 'whi2_e'
+480 CRAT3
+482 EXIT 'blu2_e'
+484 EXIT 'pink_a'
+486 EXIT 'pin2_e'
+490 CRAT4
+
+510 CUE 'charger'             # Reverse-flying follower
+519 EXIT 'flexit'             ### bullet 1
+520 EXIT 'flexit'             ### bullet 2
+521 EXIT 'flexit'             ### bullet 3
+524 CRAT3
+525 EXIT 'flexit'             ### exit follower stage
+533 CUE '1_plbig'
+534 CRAT2
+
+541 LABEL '@@crat6'
+542 CRAT2
+543 CUE 'crat6'
+545 CRAT2
+
+547 LEVEL 'z'
+549 CRAT4
+550 CUE 'crat6'
+552 CRAT2
+600 CRAT1

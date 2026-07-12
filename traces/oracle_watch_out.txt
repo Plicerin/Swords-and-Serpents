@@ -1,0 +1,104 @@
+AVI: 1.000 1.000 1.000
+Loading:
+  .\Swords and Serpents.bin
+Name                     Swords and Serpents
+Short Name               Swords and Serpents
+Release date             1982
+Compatibility:
+  ECS                    Tolerates
+  Intellivoice           Tolerates
+  Intellivision II       Tolerates
+  Keyboard Component     Tolerates
+  TutorVision            Tolerates
+JLP Support:
+  JLP Accel              Disabled
+  JLP Flash Sectors      0
+jzintv:  Initializing Master Component and peripherals...
+active x: 0, 159, 8 active y: 4 195, 16
+gfx:  Window pix format: SDL_PIXELFORMAT_RGB888
+gfx: Could not create renderer with requested flags: Couldn't find matching render driver
+     Trying again with software renderer, no VSync.
+snd:  Requested 1 chan @ 48000Hz, Signed 16-bit (native), bufsize  2048
+snd:        Got 2 chan @ 48000Hz, Unknown, bufsize   528
+snd:  Increasing bufcnt from 2 to 8 based on bufsize 528
+snd:  Using SDL_AudioCVT
+ay8910:  Automatic sliding-window setting: 9
+CP-1610          [0x0000...0x0000]
+PSG0 AY8914      [0x01F0...0x01FF]
+[Graphics]       [0x0000...0x0000]
+[Sound]          [0x0000...0x0000]
+Scratch RAM      [0x0100...0x01EF]
+System RAM       [0x0200...0x035F]
+EXEC ROM         [0x1000...0x1FFF]
+Pad Pair 0       [0x01F0...0x01FF]
+STIC             [0x0000...0x007F]
+STIC (alias)     [0x4000...0x403F]
+STIC (alias)     [0x8000...0x803F]
+STIC (alias)     [0xC000...0xC03F]
+STIC (BTAB)      [0x0200...0x02EF]
+GROM/GRAM        [0x3000...0x3FFF]
+GRAM (alias)     [0x7800...0x7FFF]
+GRAM (alias)     [0xB800...0xBFFF]
+GRAM (alias)     [0xF800...0xFFFF]
+[Event]          [0x0000...0x0000]
+[Rate Ctrl]      [0x0000...0x0000]
+Legacy BIN+CFG   [0x5000...0x6FFF]
+CP-1610 Snoop    [0x0200...0x035F]
+[Debugger]       [0x0000...0xFFFF]
+Starting jzIntv...
+ 0000 0000 0000 0000 0000 0000 0000 1000 --------  JSRD R5,$1026            0
+> ; Watch every WRITE to MOB-0 X shadow ($0000) and player X ($0325) for a couple
+> ; of frames in dungeon gameplay. Reveals who writes the warrior's on-screen X and
+> ; with what value -> proves pinned-at-centre (always 88) vs tracks-player-position.
+> p 506A 0034
+> p 506B 0034
+> p 506C 0034
+> p 506D 0034
+> p 506E 0034
+> b 5072
+Set breakpoint at $5072
+> r 8000000
+Hit breakpoint at $5072
+ 0000 1603 0166 1603 02C8 5682 02F7 5072 ----I-i-  JSR  R5,$5086       159114
+> p 018C 0001
+> g 7 56C9
+ 0000 1603 0166 1603 02C8 5682 02F7 56C9 ----I-i-  MVI  $018C,R0       159114
+> n 5072
+Unset breakpoint at $5072
+> b 5072
+Set breakpoint at $5072
+> r 8000000
+
+HALT!
+PC: $0000   Instr count: 60392   Cycles: 507932
+
+HLT instruction reached.
+ 0000 FFFF 0166 0327 02F4 55BE 02F6 0000 ----I---  CMPR R3,R0       508151
+> r 8000000
+
+HALT!
+PC: $0000   Instr count: 60420   Cycles: 507932
+
+HLT instruction reached.
+ 0000 FFFF 0166 0327 02F4 55BE 02F6 0000 ----I---  CMPR R3,R0       508155
+> w 0000
+Now watching writes to $0000
+> w 0325
+Now watching writes to $0325
+> r 8000000
+
+HALT!
+PC: $0000   Instr count: 60421   Cycles: 507932
+
+HLT instruction reached.
+ 0000 FFFF 0166 0327 02F4 55BE 02F6 0000 ----I---  CMPR R3,R0       508159
+> r 8000000
+
+HALT!
+PC: $0000   Instr count: 60422   Cycles: 507932
+
+HLT instruction reached.
+ 0000 FFFF 0166 0327 02F4 55BE 02F6 0000 ----I---  CMPR R3,R0       508163
+> q
+
+Exited on user request.

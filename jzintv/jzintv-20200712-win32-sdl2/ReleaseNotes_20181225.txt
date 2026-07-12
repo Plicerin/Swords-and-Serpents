@@ -1,0 +1,90 @@
+Release notes for 2018-12-25.
+Updates since 2018-05-09.
+
+---------------
+ New features:
+---------------
+
+*  Added Carl Mueller's IDIV, JDIV, ISQRT.  This was an oversight from long
+   ago, and now these are added under jzintv/examples/library/.
+
+*  Raw-bits mode for controller adaptors such as Retronic that can provide
+   raw input bits from native controllers.  See PDxx_BIT_x in 
+   jzintv/doc/jzintv/kbdhackfile.txt & jzintv/doc/jzintv/retronic-usb-raw.kbd.
+
+*  Debugger features:  (see jzintv/doc/debugger.txt for updated docs)
+
+   b?     lists active breakpoints
+   t?     lists active tracepoints
+   w?     lists active write-watches
+   @?     lists active read-watches
+   ??     outputs the debugger's current status
+
+*  Add "button" mode to support analog joysticks that have analog buttons
+   that report themselves as analog axes.
+
+*  Add support for saving/loading ECS cassettes and printing to the ECS printer.
+
+----------
+ Changes:
+----------
+
+*  Updated the NTSC and PAL palettes based on experiments with TV capture
+   cards and eyeballing several games.  (Congo Bongo is a tough one to nail.)
+   Also, NTSC and PAL now have different palettes.
+
+*  macOS builds are now 64-bit only, driven by recent changes in macOS.
+   jzIntv should still run with OSX 10.7.x or later.
+
+*  A raw semicolon ';' in a kbdhackfile now introduces a comment.  To bind
+   the semicolon event, use the word SEMICOLON.
+
+-------------------------
+ Cleanups and bug fixes:
+-------------------------
+
+*  Fix "voice_compat" in internal ROM database.  It accidentally requested
+   ECS rather than Intellivoice for known voice games.
+
+*  Myriad fixes to allow compiling with MSVC, along with an MSVC Makefile.
+
+*  Myriad fixes to allow compiling with Clang from Xcode.
+
+*  Many waves of 'const' correctness, and occasional 'restrict' qualifiers.
+
+*  Many 'sanitizer' directed fixes.
+
+*  Many minor memory leaks cleaned up.
+
+*  Fix event scanning to actually allow <5ms granularity.  Deepened the
+   event queue as well.
+
+*  Fix JSx_BTN_28, which has been b0rken for almost 20 years.
+
+*  Fix the spelling of ecs_compat, version, publisher in metadata code.
+
+*  Improve handling of build/release dates in metadata.
+
+*  Fix HH:MM parsing for UTC offsets in metadata.
+
+*  Remove C++14-isms; restrict to C++11 as baseline.
+
+*  Use modern C++ style casts and 'nullptr' rather than 0/NULL in C++ code.
+
+*  Fix include guards to not use _CAPS, but rather CAPS_.
+
+*  Fall back to ECS-disabled if game sets ecs_compat to "enhanced" but no
+   ecs.bin is available.
+
+*  Fix documentation for -J flag in --help info.
+
+*  Only print "diagonal bias" for 4diag mode in joystick status output.
+
+
+-------
+ Misc:
+-------
+
+*  Experimental Emscripten build.
+
+*  Experimental Termux build.

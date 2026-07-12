@@ -1,0 +1,106 @@
+## Note:  All cues are moved back by 22 units to account for the fact
+##        that they're processed when the world is decoded off the
+##        right-hand side of the screen.
+
+## The data segments below are named after the checkpoint they END at.
+
+## Checkpoint P, Beginner Course
+## Blocks 000 - 089
+0   LABEL '@@ckpt_0p'
+
+11  ROCK3
+15  CUE 'stal_i'
+30  ROCK2
+32  CUE 'stal_g'
+40  ROCK1
+47  ROCK1
+49  CUE 'stal_h'
+54  ROCK1
+56  CUE 'stal_a'
+62  CUE 'stal_b'
+67  ROCK3
+71  CUE 'stal_i'
+75  CRAT4
+77  CUE 'stal_b'
+80  LEVEL 'P'
+
+## Checkpoint Q, Beginner Course
+## Blocks 090 - 179
+81  LABEL '@@ckpt_0q'
+
+83  CUE '2_mine_f'
+88  CUE '1_blue_c'
+96  CUE 'stal_e'
+98  CUE 'stal_i'
+110 CUE '2_mine_e'
+118 CUE 'stal_f'
+122 CUE 'stal_g'
+127 CUE 'stal_e'
+130 CUE '1_pin2_c'
+139 CUE 'stal_b'
+140 CUE '1_mine_a'
+144 CUE 'stal_c'
+164 CUE '2_mine_d'
+170 CUE '1_pin2_e'
+173 LEVEL 'Q'
+
+## Checkpoint R, Beginner Course
+## Blocks 180 - 269
+174 LABEL '@@ckpt_0r'
+
+179 CRAT2
+180 CUE 'stal_a'
+187 CUE '2_mine_a'
+199 CUE 'stal_b'
+200 CUE '2_bould'
+207 CUE '2_bould'
+223 CAUTION 3
+226 CUE 'stal_b'
+227 CRAT2
+233 CUE 'follower'
+235 CUE 'stal_d'
+250 CUE '1_pin2_a'
+255 CUE 'stal_g'
+267 LEVEL 'R'
+
+## Checkpoint S, Beginner Course
+## Blocks 270 - 359
+268 LABEL '@@ckpt_0s'
+
+270 CUE 'stal_f'
+280 EXIT 'flexit'             ### exit follower stage 0
+285 EXIT 'flexit'             ### exit follower stage 1
+295 CUE '1_blu2_d'
+307 CUE 'stal_i'
+312 CUE 'stal_d'
+315 EXIT 'flexit'             ### exit follower stage 2
+338 CUE '2_bould'
+350 CAUTION 3
+358 CUE '2_mine_a'
+360 LEVEL 'S'
+
+## Checkpoint T, Beginner Course
+## Blocks 360 - 449
+361 LABEL '@@ckpt_0t'
+
+366 CUE '1_pin2_a'
+370 CUE 'stal_a'
+372 CUE 'stal_b'
+380 CUE 'stal_g'
+392 CUE 'stal_a'
+395 CUE '2_pin2_b'
+398 CUE 'stal_i'
+402 CUE 'stal_g'
+409 CUE 'stal_h'
+410 CUE 'stal_b'
+412 CUE 'stal_i'
+415 CUE 'stal_a'
+418 CUE 'stal_b'
+424 CUE 'stal_f'
+427 CUE 'stal_h'
+430 CUE '2_pink_c'
+431 CUE 'stal_a'
+435 CRAT3
+443 CUE 'stal_g'
+450 CUE 'stal_d'
+453 LEVEL 't'                 ### END OF LEVEL - letter must be lower case

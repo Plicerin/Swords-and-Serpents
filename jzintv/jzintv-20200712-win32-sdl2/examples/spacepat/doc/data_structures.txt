@@ -1,0 +1,300 @@
+;; ======================================================================== ;;
+;;  Space Patrol Data Structures                                            ;;
+;; ======================================================================== ;;
+
+Space Patrol uses a wide array of data structures to keep track of its
+"universe."  To understand these data structures, it's useful to know
+Space Patrol's nomenclature.
+
+
+MOB         One of the STIC's 8 hardware "Movable OBjects."
+Sprite      One of 12 objects that SP tracks and maps onto the STIC's MOBs.
+Bad Guy     One of the sprite-based enemies in the game.  Abbreviated "BG"
+BG Bullet   One of the bullets fired by a Bad Guy.  Abbreviated "BGB"
+Good Guy    The player.  Abbrev. "GG," but usu. referred to as "tank"/"buggy"
+GG Bullet   The player's bullets.  Abbreviated "GGB."
+Buggy       The player's vehicle.
+Tank        A synonym for buggy.
+Course      One of the 8 A-Z worlds the player gets to play
+BGMP        Bad Guy Motion Program
+Spawn       A record describing how to place a BG on the screen
+Cue         A record in the world indicating a set of spawns
+Exit        A record in the world cueing BGs to leave or change behavior
+BG Tag      Tags associating spawns and courses with sprite attributes
+Exit Tag    Tags allowing different subsets of BGs to be exit-cued separately
+
+
+Sprites and sprite motion
+-------------------------
+
+Space Patrol keeps track of sprites with four separate tables in RAM,
+and a fifth table in ROM.  These are:
+
+    SPAT    SPrite ATtribute         (8-bit)
+    SPXYP   SPrite X/Y Position      (16-bit)
+    SPXYV   SPrite X/Y Velocity      (16-bit)
+    SPHSCR  SPrite Horizontal Scroll (8-bit)
+    SPATBL  SPrite Attribute TaBLe   (in ROM)
+
+These tables hold one entry for each of the 12 sprites.  These tables 
+are notionally divided into two subtables each, with indices 0-4 always
+referring to BGs, and indices 5-11 referring to BGBs and GGBs.  These
+two groupings are referred to as "Group 1" and "Group 2" in the source
+code.  Group 2 is further subdivided:  BGBs are always at indices 5-9
+and GGBs are always at indices 10 and 11.  (It bears noting here that
+only 2 of the 3 GGBs are sprites.)
+
+The SPAT table holds a single byte for each active sprite.  This byte
+indicates which entry in the SPATBL should be used for rendering that
+sprite.  The SPATBL contains a 4-word entry for each sprite image.
+The first 3 words indicate the STIC programming for the X, Y and A
+registers when the sprite gets mapped onto a MOB.  The fourth word
+indicates the bounding box for that sprite.
+
+The SPXYP and SPXYV tables store 16-bit values that represent the 
+fractional position and velocity of the 12 sprites.  Space Patrol uses
+an unusual representation for these values.  Rather than a traditional
+"integer/fraction" 2s complement fixed point representation, Space 
+Patrol uses a 1s complement representation that places the fractional
+portion in the 8 MSBs and the integer portion in the 8 LSBs.  
+
+SP uses 1s complement because 1s complement arithmetic is commutative
+with respect to rotation.  This allows us to put the integer portion of
+the word in the lower byte.  This further allows us to read the integer
+portions of both X and Y into a single 16-bit word with "SDBD ; MVI@",
+and it eliminates a SWAP when copying out X/Y values from SPXYP to
+actual MOB registers.  All in all, rather useful.
+
+
+Mapping Sprites to MOBs
+-----------------------
+
+Space Patrol treats MOBs separately of sprites.  This allows SP to
+track more objects than the hardware can display, with the game logic
+multiplexing as needed to show this larger set of objects on screen.
+SP uses an aggressive multiplexing technique intended to minimize 
+flicker as much as possible.
+
+SP divides the MOBs into 4 groups:
+
+   MOBs 0 and 1:  Dedicated to displaying the tank.
+   MOB 7:         Dedicated to displaying level-marker, if visible.
+   Group 1:       Sprites from sprite group 1.  Minimum of 3 MOBs.
+   Group 2:       Sprites from sprite group 2.  Minimum of 2 or 3 MOBs.
+
+The player's tank never participates in multiplexing.  It is the "star"
+of the game and gets top priority for display.  There's an additional
+technical reason for this:  SP relies on hardware collision to detect
+sprite collisions with the tank.  It's easier to track this when the
+tank-to-MOB mapping is fixed, even when the enemy-to-MOB mapping is not.
+
+Group 1 and Group 2 both start with 3 MOBs allocated to them.  Then,
+the partitions between Group 1 and Group 2 get shifted as follows:
+
+ -- If a Level Marker is visible, deduct 1 from group 2.
+ -- If group 1 has fewer than 3 sprites, add the extra to group 2.
+ -- If group 2 has fewer sprites than its allocation, add them to
+    group 1 if it needs them.
+
+SP tracks this allocation in the variables GP1ACT and GP2ACT.  The
+multiplexing logic uses this allocation information to guide the
+sprite-to-MOB rendering code.
+
+Sprites are active if their entry in SPAT is non-zero.  To disable a
+sprite (e.g. "kill a bad guy"), all the game must do is zero out its
+SPAT entry.
+
+Each group keeps a separate "multiplex counter" to handle multiplexing.
+The code in UPMUX steps through the sprites in group 1 and group 2,
+allocating sprites to MOBs, starting at the sprite number indicated by
+that group's multiplex counter.  The allocator wraps the counter around
+automatically.  When the number of active sprites is less than or equal
+to the number of MOBs allocated to that group, all sprites get displayed.
+If the number of sprites is larger, the multiplex counter is left pointing
+at the first not-displayed sprite in the group, thus ensuring display
+allocation begins with that sprite during the next display frame.
+
+As the MOBs get generated, the engine writes the MOB register image to a
+table named SDAT in 16-bit memory.  The ENGINE1 interrupt service routine
+(ISR) then copies these 24 words directly into the STIC registers.  This
+allows the MOB generation/update to occur outside interrupt context.
+
+
+Updating Sprite Positions
+-------------------------
+
+The sprite position update is a fixed activity.  SP merely steps through
+the SPXYP and SPXYV tables, adding the current velocity to the current
+position.  It performs this update blindly--that is, it computes new
+X/Y positions for all 12 sprites, regardless of whether they're actually
+active.  This reduces peak loading at the expense of average loading.
+
+The first 5 sprites (corresponding to group 1) can also have an
+additional "horizontal scroll" flag bit set in the table SPHSCR.
+When set, this flag enables a further update to the sprite position
+for the corresponding sprite.  Whenever the foreground scrolling pane
+scrolls left one pixel, SP will scroll sprites flagged by SPHSCR left
+by 1 pixel as well.  This pegs their motion to the motion of the screen.
+
+Some objects, such as the rolling boulders, have both a horizontal peg
+via SPHSCR as well as a non-zero horizontal velocity.  The engine adds
+both of these velocities into these objects' positions.
+
+
+Manual Collision Detection
+--------------------------
+
+Space Patrol only uses hardware collision detection to determine
+whether BGs or BGBs hit the tank.  For everything else, it uses
+software based manual collision detection.  It dects two sets of
+collisions manually:  GGB vs. BG/BGBs, and tank vs. rock/crater.
+
+For GGB vs. BG/BGB collisions, the engine consults the following:
+
+    GGBx        GGB positions, derived from SPXYP and HBCOL.
+    SPATBL      Bounding box information for each of the sprites.
+    SPXYP       Position information for the bad guys.
+
+The code extracts the X/Y position of the 3 GGBs and then compares
+that against the bounding box for each of the active BGs and BGBs.
+When it finds a collision, it kills the offending BG/BGB.
+
+For the tank vs. rock/crater, the engine consults four separate
+sets of data:
+
+    JHGT        The current jump-height of the tank.
+    MJHIDX      Minimum Jump Height InDeX.
+    MJHTBL      Minimum Jump Height TaBLe.
+    BACKTAB     The actual pattern of rocks/craters around the tank.
+
+The code looks at the current tank horizontal position, and uses
+that to derive a neighborhood of cards that the tank overlaps.  
+The code then looks to see if any of those cards have their MSB 
+set, and if they do, whether they correspond to a rock or a crater.
+
+For cards that correspond to rocks and craters, the code looks up
+which sub-table of MJHTBL to consult in the MJHIDX table.  Based
+on the relative position of the tank and the display scroll, the
+code looks up the required minimum jump height required between
+the tank and whatever object it needs to jump.  If the tank's jump 
+height is too low, the game registers a collision.
+
+
+
+Updating Bad Guys
+-----------------
+
+Bad guys are tracked with a set of parallel tables in 8-bit memory,
+and a lookup table in ROM:
+
+    BGMPTBL     Bad Guy Motion Program TaBLe
+    BGEXIT      Bad Guy Exit programming
+    BGMPIND     Bad Guy Motion Program INDirect (ROM)
+
+The BGMPTBL contains a series of 4-byte records.  The first byte is an
+indirect pointer to the "thinker" function for each bad guy.  A zero in
+this byte indicates a dead bad-guy.  The second byte is the "thinker
+delay," which counts down 30Hz ticks between calls to the thinker.
+The remaining two bytes are status bytes that each BG can use as it sees
+fit to track its status.
+
+The main BGMP update engine simply steps through the BGMPTBL, counting
+down the sleep-delay for each of the non-dead BGs and invoking the
+thinker for each BG when its sleep delay expires.  Some thinkers are
+very simple: For example, boulders have a null thinker most of the time,
+and mines have a simple "blink randomly" thinker.
+
+Others have more involved thinkers.  Saucers have a somewhat elaborate
+control scheme described in bg/bgsaucer.asm.  The Follower actually must
+coordinate the actions of two BG entries, as described in bg/bgfollow.asm.
+
+Thinkers control both the steady state action of a BG as well as how
+it exits.  The BGEXIT table binds an Exit Tag to a BG.  The course can
+cue sets of BGs to exit at various times using one of several tag values.
+The BGEXIT table indicates which tag each BG responds to, as well as the
+thinker that BG should switch to when it's time to exit.
+
+The BGMPIND table maps thinker programs to small integer indices.
+This allows us to store the thinker function pointers in 8 bit memory
+efficiently.  Furthermore, by ensuring all exit thinkers are near the
+beginning of the table (currently, indices smaller than 8), Space Patrol
+is able to pack the exit tag with the exit thinker number.  This allows
+storing both sets of information in the same byte of RAM.  
+
+
+Building the world
+------------------
+
+The world is factored into several pieces:  Course data, rock/crater
+placement data, bad guy cues, bad guy exit cues, caution cues and
+checkpoints.
+
+Course data consists of a set of run-length encoded records.  These
+records can indicate which of the above elements needs to be emitted
+next, followed by the number of blank locations that exist between
+the requested element and the next one.
+
+Rocks and craters trigger a second sub-engine that copies out the specific
+set of cards for the rock/crater image.  The structures "RCS1" and "RCS2"
+contain the BACKTAB words describing the various rocks and craters.
+Bit 15 of each word indicates whether a card is within the object.  The
+subengine uses this information to know when it's done outputting a 
+rock or crater.  The collision logic uses this to determine whether it
+needs to evaluate a tank/rock or tank/crater collision for that card.
+
+Bad guys are cued onto the screen using "CUE" records.  These CUE 
+records are mapped to a series of SPAWNs defined in world/spawn.asm.
+A SPAWN record indicates the following about the requested bad guy:
+
+1.  The BGTAG being spawned.
+2.  Its initial BGMP 
+3.  Its exit BGMP
+4.  Its exit tag, or 0 for none
+5.  Its initial X and Y positions
+6.  Its initial values for its two state bytes
+7.  A flag indicating whether the SPAWN chains to the next SPAWN.
+
+BGTAGs add a layer of indirection between the BG being spawned and the
+actual SPAT associated with the SPAWN.  BGSTBL (Bad Guy Spawn TaBLe) maps
+a small-integer BGTAG to an actual SPAT value.  The BGTAG gets augmented
+with the upper 2 bits of the course number, thereby giving each pair of
+courses a different mapping of BGTAGs to SPATs.  This makes it cheap to
+give the Moon, Mars, Pluto and Mercury course-pairs their own unique look
+while reusing the same SPAWN records.
+
+SPAWNs can be chained together so that a single CUE brings more than one
+BG onscreen at a time.  This provides useful compression for level data,
+as only a single record in the world can refer to several creeps.  When a
+SPAWN is CUEd, the engine populates the BGMPTBL, BGEXIT, SPAT and SPXYP
+tables with the data from the SPAWN record.  If all 5 BGs are taken when
+the engine attempts to spawn a new BG, the additional BG gets dropped.
+
+Exit cues are somewhat simpler than spawn cues.  Exit cues specify an
+exit tag number.  Upon decoding an exit cue, the engine steps through
+the BGEXIT array looking for matching tags.  Wherever a match is found,
+the engine sets the thinker function to the recorded exit BGMP for
+that object.
+
+Note that the object isn't required to exit in response to an exit
+request.  For example, the Follower uses the exit tag to indicate when to
+move to the next stage of movement.  The first stage has it hover behind
+the tank.  The second stage has it move in front of the tank.  The final
+stage has it exit.  So, to get a Follower to exit, one must cue it to
+exit twice.  The Follower achieves this by recording its current state in
+its status byte, and resetting its BGMP number in the BGMPTBL as needed.
+
+Caution cues are quite simple.  They simply tell the engine to blink the
+"caution" light on the game dash board.  The caution cue specifies one
+of four caution light colors to flash.
+
+Checkpoints are similarly simple.  They cue a level-marker character
+to scroll by.  The engine treats these specially, dedicating a MOB to
+them and scrolling them with the screen.  That way, they do not detract
+from the 12 available sprites.  Level markers are specified in upper or
+lower case.  Lower case indicates checkpoints associated with summary
+screens, such as those that appear at E, J, and so on.
+
+
+
+
+

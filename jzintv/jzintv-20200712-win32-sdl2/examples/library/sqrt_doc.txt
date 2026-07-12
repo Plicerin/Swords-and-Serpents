@@ -1,0 +1,151 @@
+This document describes the algorithm in sqrt.asm.  The code in
+sqrt.asm is based loosely on the following C code algorithm by Paul
+Hseih and Mark Borgerding:
+
+    unsigned int mborg_isqrt2(unsigned int val) 
+    {
+        unsigned int g, g2, b, b2, gxb;
+ 
+        g   = 0;                // guess            
+        g2  = 0;                // guess^2      
+        b   = 1 << 15;          // bit      
+        b2  = 1 << 31;          // 2*bit^2
+        gxb = 1 << 30;          // bit*(2*guess+bit)
+ 
+        do 
+        {
+            if (g2 + gxb <= val)    // (guess+bit)^2 <= val?
+            {
+                 g  ^= b;           // guess += bit     
+                 g2  += gxb;        // (g + b)^2 = g^2+gxb
+                 gxb += b2;         // b(2(g+b)+b) = b(2g+b)+b^2
+            }
+ 
+            b   >>= 1;              // bit >>= 1
+            b2  >>= 2;              // 2(b/2)^2 = 2b^2/4
+            gxb = (gxb - b2) >> 1;  // b(2g+b/2)/2 = (b(2g+b)-2b^2/4)/2
+        } while (b != 0);
+ 
+        return g;
+    }
+
+The comments are very terse, so you may wonder:  How does it work?
+
+The algorithm successively approximates the square root by attempting
+to set bits in the "guess", starting at the top and working its
+way down.  It will set a bit in the "guess" if doing so will keep
+"guess*guess" smaller than the target value.
+
+It relies on the following relationship:
+
+    (x + y)^2 = x^2 + 2*x*y + y^2
+
+In the context of this algorithm, 'x' is the guess, and 'y' is the
+bit it's considering to add to the guess.  So, if 'g' is the guess
+and 'b' is the bit, the relationship of interest is:
+
+    (g + b)^2 = g^2 + 2*g*b + b^2
+
+At a high level, here's what the code does:
+
+ -- Is (g + b)^2 bigger than val?
+     -- No:   Update 'g' by adding 'b'
+     -- Yes:  Do not update g
+
+ -- Right shift 'b' by one to test the next bit position.
+
+Rather than find (g + b)^2 directly, it instead keeps a variable,
+g2, that holds the square of the current guess.  The variable 'gxb'
+represents "2*g*b + b^2".  Thus, it's simple to find (g + b)^2 
+by simply adding g2 and gxb.
+
+------------------------------------------------------------------------------
+
+/* Note: The code below assumes 16-bit ints.  
+   It's easily generalized to 32 bits. */
+
+unsigned int joe_isqrt(unsigned int val, unsigned int qpt)
+{
+    unsigned int rslt = 0;      /* result word                              */
+    unsigned int sqtb = 0x4000; /* 1/2 of square of test bit                */
+    unsigned int updt = sqtb;   /* bit * (2*guess + bit)                    */
+    unsigned int iters;
+    unsigned int remd = val;    /* What remains of the value we're rooting  */
+
+    /* If Q-point is odd, force it to even.  This loses 1 bit of precision. */
+    if ((qpt & 1) == 1)
+        val >>= 1;
+
+    qpt = (qpt + 1) >> 1;
+
+    /* Iterate 8 times for integer part, plus qpt/2 times for fraction bits */
+    iters = qpt + 8;
+
+    while (iters--)
+    {
+        /* ---------------------------------------------------------------- */
+        /*  The 'guess update' relies on the following relationship, where  */
+        /*  'g' is our current guess, and 'b' is the bit we wish to add.    */
+        /*                                                                  */
+        /*      (g + b)^2 = g^2 + 2*g*b + b^2                               */
+        /*                                                                  */
+        /*  The 'guess update' corresponds to "2*g*b + b^2" portion.  If    */
+        /*  (g + b)^2 remains smaller than the original value, we can add   */
+        /*  the guess bit to the root.                                      */
+        /*                                                                  */
+        /*  One transformation this algorithm makes is to subtract the      */
+        /*  value of the guessed bit from the original value, rather than   */
+        /*  add it to our successive guesses.  Thus, we compare the guess   */
+        /*  update to the "remaining value" as opposed to our cumulative    */
+        /*  squared guess.                                                  */
+        /*                                                                  */
+        /*  The "obvious" implementation shifts the guess bit right every   */
+        /*  iteration, with the squared guess bit shifting right by 2.      */
+        /*  To keep everything fitting in 16 bits, and to support fixed     */
+        /*  point square roots, we instead shift the remainder left 1 bit   */
+        /*  every iteration, and shift our squared guess bit right one bit. */
+        /*  This also means we never need to refer to the guess directly,   */
+        /*  only the squared guess bit.                                     */
+        /*                                                                  */
+        /*  The transformation is legal because we're guaranteed to         */
+        /*  eliminate at least one bit of the remainder every iteration.    */
+        /*                                                                  */
+        /*  The 'guess update' computation requires some explanation.  If   */
+        /*  we guess '1', then we only need to add "2*g*(b/2) + (b/2)^2"    */
+        /*  to the guess for the next guess.  If we guess '0', then we      */
+        /*  first need to subtract "2*g*b + b^2" from the guess, and        */
+        /*  then add "2*g*(b/2) + (b/2)^2" to the guess.                    */
+        /*                                                                  */
+        /*                                                                  */
+        /*                                                                  */
+        /* ---------------------------------------------------------------- */
+        
+        /* ---------------------------------------------------------------- */
+        /*  The main test:                                                  */
+        /*                                                                  */
+        /*  If the 'guess update' is not larger than the remainder, or if   */
+        /*  the remainder was bigger than 0x7FFF, then we guess '1' into    */
+        /*  the square root.  Otherwise, we guess '0'.                      */
+        /* ---------------------------------------------------------------- */
+        int big = 0;
+
+        if (big || remd >= updt)
+        {
+            rslt = (rslt << 1) | 1;     /* Set bit in result                */
+            remd -= updt;               /* Subtract update from remainder   */
+
+            updt += sqtb + (sqtb >> 1); 
+            sqtb >>= 1;                 /* Update squared guess bit         */
+        } else
+        {
+            rslt = (rslt << 1);         /* Clear bit in result              */
+            sqtb >>= 1;                 /* Update squared guess bit         */
+            updt -= sqtb;   
+        }
+
+        big = remd >= 0x8000;
+        remd <<= 1;
+    }
+
+    return rslt;
+}

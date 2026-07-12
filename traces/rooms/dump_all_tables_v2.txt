@@ -1,0 +1,9 @@
+b 5E68
+r 12000000
+; At breakpoint - read the full table
+m 65CE 32
+; Read a few words after the table start
+m 65D0 4
+; Check file offset 15CE area echo
+m 65E0 16
+q

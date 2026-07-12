@@ -1,0 +1,32 @@
+
+; Speed patches
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+p 5318 0034
+p 5319 0034
+p 531A 0034
+p 531B 02B8
+p 531C 0001
+p 56CC 0034
+p 56CD 0034
+; NOP X_FILL_MEM
+p 5638 0034
+p 5639 0034
+; Force past title screen
+w 018C 0001
+; Watch writes to STIC CS0 (/usr/bin/bash028) and CS1 (/usr/bin/bash029)
+; The STIC registers are at STIC base + offset
+; Wait, jzIntv might use logical addresses for STIC
+; Let me check: in jzIntv debugger, STIC is at some base
+; Actually, let me just watch /usr/bin/bash028 which should be the STIC CS0
+wn 0028
+wn 0029
+wn 002A
+wn 002B
+; Run to gameplay
+r 8000000
+m 0100 128
+q

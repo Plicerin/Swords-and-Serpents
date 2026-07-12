@@ -1,0 +1,48 @@
+; capture_backtab_writes.script
+; Break at L_63EC (the object table → BACKTAB write), capture values
+
+; Idle patches for speed
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+p 56CC 0034
+p 56CD 0034
+
+; Set breakpoint at L_63EC - where object table word is read and written to BACKTAB
+; L_63EC: SDBD / ADDI #$655E,R4 / SDBD / MVI@ R4,R0 / MVO@ R0,R5
+b 63EC
+
+; Also break at L_5EC7 (tile stream → BACKTAB word)
+b 5EC7
+
+; And break at L_63F2 (MVO@ R0,R5 - the actual BACKTAB write)
+b 63F2
+
+; Run to start (let title screen play)
+r 50000000
+
+; Press keys to start game: press '1' or Enter
+; Actually the game starts with any key. Let's use space.
+; Send keypresses with delays
+k 20
+r 2000000
+k 20
+r 2000000
+k 20
+r 2000000
+k 0D
+r 3000000
+
+; Now we should be in the first room
+; Dump BACKTAB to see current state
+e "=== BACKTAB before object rendering ==="
+m 0200 f0
+
+; Continue until we hit a breakpoint (should be L_5EC7 tile stream first)
+r 10000000
+
+e "=== Hit breakpoint ==="
+; Show registers
+r

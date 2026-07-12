@@ -1,0 +1,109 @@
+## Note:  All cues are moved back by 22 units to account for the fact
+##        that they're processed when the world is decoded off the
+##        right-hand side of the screen.
+
+## The data segments below are named after the checkpoint they END at.
+
+## Checkpoint F, Champion Course
+## Blocks 000 - 089
+0   LABEL '@@ckpt_0f'
+
+11  CUE '1_plant'
+12  CRAT1
+13  CUE '2_whit_d'
+19  CRAT2
+31  CRAT1
+44  CRAT1
+52  CUE '2_whit_e'
+60  CRAT1
+75  CRAT4
+77  EXIT 'whit_d'
+79  EXIT 'whit_e'
+80  LEVEL 'F'
+
+## Checkpoint G, Champion Course
+## Blocks 090 - 179
+81  LABEL '@@ckpt_0g'
+
+85  CAUTION 2
+86  CRAT2
+90  CUE '2_blue_d'
+94  CUE '1_mine_a'
+100 CRAT1
+107 CUE '2_mine_b'
+113 CUE '2_mine_c'
+119 CUE '2_mine_d'
+126 CUE '1_mine_b'
+129 CUE '2_blue_e'
+133 CUE '2_mine_a'
+141 CUE '2_mine_f'
+147 CUE '1_mine_b'
+154 CUE '2_mine_b'
+163 CRAT4
+170 EXIT 'blue_d'
+171 CUE '2_mine_d'
+172 EXIT 'blue_e'
+173 LEVEL 'G'
+
+## Checkpoint H, Champion Course
+## Blocks 180 - 269
+174 LABEL '@@ckpt_0h'
+
+180 CUE '1_mine_a'
+188 CUE '1_plant'
+189 CRAT1
+197 CUE '2_mine_c'
+200 CAUTION 1
+204 CUE '1_plant'
+205 CRAT1
+210 CUE '2_pink_c'
+214 CUE '2_mine_c'
+220 CUE '1_pink_d'
+227 CUE '1_plant'
+228 CRAT1
+241 CUE '2_mine_c'
+249 CUE '1_plant'
+250 CRAT1
+255 CUE '2_pink_e'
+260 EXIT 'pink_c'
+265 EXIT 'pink_d'
+267 LEVEL 'H'
+
+## Checkpoint I, Champion Course
+## Blocks 270 - 359
+268 LABEL '@@ckpt_0i'
+
+273 ROCK1
+284 ROCK2
+290 ROCK3
+291 CAUTION 1
+295 ROCK3
+300 CUE '2_blu2_a'
+308 ROCK2
+315 ROCK3
+319 ROCK1
+325 CUE '2_pin2_a'
+335 ROCK2
+345 CUE '2_pin2_b'
+358 EXIT 'blu2_a'
+359 EXIT 'pin2_a'
+360 LEVEL 'I'
+
+## Checkpoint J, Champion Course
+## Blocks 360 - 449
+361 LABEL '@@ckpt_0j'
+
+370 CUE '1_bould'              # one boulder
+378 CUE '1_bould'              # one boulder
+388 CUE '2_bould'              # one boulder
+398 CUE '2_boulc'              # one boulder
+405 CAUTION 1
+406 CUE '2_boulc'              # one boulder
+410 CUE '2_boulc'              # one boulder
+415 CUE '3_whi2_a'
+420 CUE '2_blu2_b'
+435 CUE '1_whi2_b'
+453 LEVEL 'j'                 ### END OF LEVEL - letter must be lower case
+455 EXIT 'whi2_a'
+456 EXIT 'blu2_b'
+457 EXIT 'whi2_b'

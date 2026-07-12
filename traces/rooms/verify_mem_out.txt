@@ -1,0 +1,67 @@
+AVI: 1.000 1.000 1.000
+Loading:
+  .\Swords and Serpents.bin
+Name                     Swords and Serpents
+Short Name               Swords and Serpents
+Release date             1982
+Compatibility:
+  ECS                    Tolerates
+  Intellivoice           Tolerates
+  Intellivision II       Tolerates
+  Keyboard Component     Tolerates
+  TutorVision            Tolerates
+JLP Support:
+  JLP Accel              Disabled
+  JLP Flash Sectors      0
+jzintv:  Initializing Master Component and peripherals...
+active x: 0, 159, 8 active y: 4 195, 16
+gfx:  Window pix format: SDL_PIXELFORMAT_RGB888
+gfx: Could not create renderer with requested flags: Couldn't find matching render driver
+     Trying again with software renderer, no VSync.
+ay8910:  Automatic sliding-window setting: 9
+CP-1610          [0x0000...0x0000]
+PSG0 AY8914      [0x01F0...0x01FF]
+[Graphics]       [0x0000...0x0000]
+[Sound]          [0x0000...0x0000]
+Scratch RAM      [0x0100...0x01EF]
+System RAM       [0x0200...0x035F]
+EXEC ROM         [0x1000...0x1FFF]
+Pad Pair 0       [0x01F0...0x01FF]
+STIC             [0x0000...0x007F]
+STIC (alias)     [0x4000...0x403F]
+STIC (alias)     [0x8000...0x803F]
+STIC (alias)     [0xC000...0xC03F]
+STIC (BTAB)      [0x0200...0x02EF]
+GROM/GRAM        [0x3000...0x3FFF]
+GRAM (alias)     [0x7800...0x7FFF]
+GRAM (alias)     [0xB800...0xBFFF]
+GRAM (alias)     [0xF800...0xFFFF]
+[Event]          [0x0000...0x0000]
+[Rate Ctrl]      [0x0000...0x0000]
+Legacy BIN+CFG   [0x5000...0x6FFF]
+CP-1610 Snoop    [0x0200...0x035F]
+[Debugger]       [0x0000...0xFFFF]
+Starting jzIntv...
+ 0000 0000 0000 0000 0000 0000 0000 1000 --------  JSRD R5,$1026            0
+> 
+> b 5E68
+Set breakpoint at $5E68
+> r 12000000
+Hit breakpoint at $5E68
+ 0004 FFFF 0000 65DE 65D2 5EEE 02FF 5E68 -----Diq  MVI@ R4,R2       107890
+> ; At breakpoint, R4 = 65D2 (table base + tile_index)
+> ; Read directly from 5CE + known offsets
+> m 65CE 16
+65C8:  005D  005D  005D  0058   0058  0058  0098* 006C    # .......X.X.X...l
+65D0:  0011  006D  0086  006D   0013  006E  009E  006E    # ...m...m...n...n
+65D8:  0020  006F  009E  006F   0042  006A  0084  0020    # ...o...o.B.j....
+65E0:  0006  00A6  00AA  0002   0080  0040  002A  0086    # ................
+> ; Now read where the pointers go (we know index 8 points to 600)
+> ; But what is 600 in jzIntv's address space?
+> m 6600 8
+6600:  0054* 0001  02B8  002A   0066  01C9  0001  02BA    # .T.......f......
+> m 6800 8
+6800:  0204* 0007  02FB  0126   0004  0160  003F  0200    # ................
+> q
+
+Exited on user request.

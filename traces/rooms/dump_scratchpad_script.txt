@@ -1,0 +1,24 @@
+; Dump scratchpad and key memory after title screen bypass
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+p 5318 0034
+p 5319 0034
+p 531A 0034
+p 531B 02B8
+p 531C 0001
+p 55C0 0034
+p 55C1 0034
+p 55C2 0034
+b 5038
+r 8000000
+p 018C 0001
+r 50000000
+m 0000 256
+m 0200 240
+m 3800 512
+m 0325 64
+m 0160 32
+q

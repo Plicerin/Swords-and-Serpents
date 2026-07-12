@@ -1,0 +1,59 @@
+;; ======================================================================== ;;
+;;  S16:    Macros for packing strings into 16-bit decles.                  ;;
+;;          Strings start with a length indicator.  Strings can be up to    ;;
+;;          256 characters long.                                            ;;
+;;                                                                          ;;
+;;  S16B    Same as S16, but omits the length byte.  Strings are not        ;;
+;;          terminated by anything.                                         ;;
+;; ======================================================================== ;;
+MACRO   s16_pushc(p)
+        IF _s16o = 0
+_s16o   SET     1
+_s16p   SET     (%p%) SHL 3
+        ELSE
+_s16o   SET     0
+_s16t   SET     (%p%)
+_s16p   SET     _s16p OR ($F800 AND (_s16t SHL 11)) OR (_s16t SHR 5)
+        DECLE   _s16p
+        ENDI
+ENDM
+
+MACRO   s16_flush
+        IF _s16o = 1
+        DECLE   _s16p
+_s16o   SET     0
+        ENDI
+ENDM
+
+MACRO   S16     s
+
+        LISTING "code"
+_s16o   SET     0
+_s16p   SET     0
+_s16i   SET     0
+
+        s16_pushc(STRLEN(%s%)-1)
+        RPT     STRLEN(%s%)
+        s16_pushc($FF AND (ASC(%s%,_s16i) - $20))
+_s16i   SET     _s16i + 1
+        ENDR
+
+        s16_flush
+        LISTING "prev"
+ENDM
+
+MACRO   S16B    s
+
+        LISTING "code"
+_s16o   SET     0
+_s16p   SET     0
+_s16i   SET     0
+
+        RPT     STRLEN(%s%)
+        s16_pushc($FF AND (ASC(%s%,_s16i) - $20))
+_s16i   SET     _s16i + 1
+        ENDR
+
+        s16_flush
+        LISTING "prev"
+ENDM

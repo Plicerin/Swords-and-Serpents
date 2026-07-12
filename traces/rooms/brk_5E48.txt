@@ -1,0 +1,18 @@
+
+; First verify what's at E64 (the immediate value)
+m 5E64 2
+
+; Set breakpoint at the start of the room drawing loop (L_5E03)
+; This is called every frame when drawing the room
+b 5E03
+
+; Run through init
+r 12000000
+
+; When we break, single step or check regs
+; Actually let's use a simpler approach - break at L_5E48 entry
+b 5E48
+
+r 500000
+
+q

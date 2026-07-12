@@ -1,0 +1,115 @@
+Release notes for 2020-06-07.  (SVN r1996)
+Updates since 2018-12-25.
+
+---------------
+ New features:
+---------------
+
+*   SDL2 support!  Thanks to Daniele Moglia for nudging me to get this done.
+    *   New SDL2-specific keyboard events.  See doc/kbdhackfile.txt.
+
+*   CHEAT support (thanks to Patrick Nadeau).  These allow you to bind keys
+    to trigger "pokes" that change values in memory.  This is useful for,
+    say, adding lives, becoming invincible, etc.  (TODO: document in
+    doc/jzintv/cheat.txt).
+
+*   Other kbdhackfile updates:
+    *   Added new pause-related actions:
+        *   PAUSE_ON always pauses; PAUSE_OFF always unpauses.
+        *   PAUSE_HOLD pauses only while the input key is "down."
+            Useful to tie to the HIDE event to auto-pause when minimized.
+    *   WINDOW / FULLSC actions:
+        *   WINDOW forces windowed mode.  Useful with SDL2 FOCUS_LOST event.
+        *   FULLSC forces full-screen mode.
+    *   SETMAPx, NEXTMAP, PREVMAP as clearer-named aliases for KBDx/KBDN/KBDP
+    *   Added an example kbdhackfile with an alternate ECS keyboard map that's
+        more useful on modern computer keyboards.
+
+*   UTF-8 support in game metadata (ROM and BIN+CFG).
+
+*   P macro in .CFG files can now poke paged ROM.
+
+*   Added support for manipulating processor flags to 'g' debugger command.
+    Registers numbers 8 - 13 manipulate the flags S, Z, O, C, I, D according to
+    the LSB of value.
+
+*   CP-1600X:
+    *   Added examples/macro/cp1600x.mac.
+    *   Added CP-1600X version of TagAlong Todd 2v.
+
+----------
+ Changes:
+----------
+
+*   AS1600
+    *   Do not sign-extend characters >= 0x80 in STRING/DECLE declarations.
+    *   Raise macro expansion limits by 10x.
+
+*   Windows
+    *   SDL1: The environment variable SDL_STDIO_REDIRECT controls whether
+        jzIntv redirects stdout/stderr to files.  Set it to 0 to send these
+        to "stdout.txt", "stderr.txt".
+    *   Makefile.stdout is gone.  Use Makefile.w32_sdl1 or Makefile.w32_sdl2
+        to build jzIntv.
+
+*   MacOS:
+    *   Builds are now 64-bit.
+    *   Cmd-F toggles fullscreen/windowed mode.
+    *   Cmd-W now closes the program on SDL2.  (Enforced by SDL2.)  Still
+        toggles windowed mode on SDL1.
+
+-------------------------
+ Cleanups and bug fixes:
+-------------------------
+
+*   ROM / BIN handling:
+    *   Better .ROM format detection in the presence of metadata tags.
+    *   Improved string-quoting rules when generating CFG files.
+    *   Use a common unquoter for CFG file parser and everywhere else.
+
+*   Example/library code:
+    *   cart.mac: Use EQU, not ORG to declare BYTEVAR/BYTEARRAY.
+    *   Add missing library/jlp_accel.asm.
+    *   Add macro/cp1600x.mac.
+
+*   jzIntv general:
+    *   You can power jzIntv off like an Intellivision II again.
+    *   Hack to allow jzIntv SDL1 port to work on OS X Mojave and newer.
+    *   Fix INTRQ regression (assert() failure).
+    *   Restore JLP accelerator enable state across reset.
+    *   Use <stdint.h> types rather than home-grown type aliases.
+    *   Lots of type / const / restrict cleanups.
+    *   Move color palettes out to their own file, and start to convert
+        the rest of jzIntv to use the central infrastructure.
+    *   Remove some moribund ports, such as MacOS Classic.
+    *   Refactor event subsystem to have a common core, and an SDL-specific
+        portion.  EVENT_xx enumeration no longer depends on SDL keycode values.
+    *   Re-arm SIGWINCH signal handler in the right place.
+    *   Add missing entries to joystick button and hat event tables for
+        joysticks 4 through 9.
+    *   Fixed some ECS key mappings for certain keys when shift is pressed.
+    *   More robust paged-ROM loader in bincfg/legacy.c to handle paged RAM,
+        and paged ROM segments that are declared piecemeal.
+    *   Begin cleaning up all the global variables and narrowing module
+        interfaces.
+    *   Clean up stray debug printfs in bincfg_lexer ("BAD2", "BAD3").
+    *   More MSVC compatibility fixes.
+    *   Correctly map between voice/voice_compat in CFG metadata.
+    *   Remove unnecessary uses of 'volatile'.
+
+*   JzIntv debugger:
+    *   Pokes to paged-ROMs now work correctly.
+    *   Fix cycle skid on reaching a HLT instruction.
+
+*   jzIntv CPU instruction decode cache invalidation fixes:
+    *   Invalidate 2K of address space on Intellicart bankswitch.
+    *   Invalidate paged-ROM flips correctly.
+
+*   Minor bugfix encoding LUIGI files with paged memory that overlaps JLP
+    accelerator memory.
+
+-------
+ Misc:
+-------
+*   Updated Emscripten to build with either SDL1 or SDL2.  Untested.
+

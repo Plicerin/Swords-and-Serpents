@@ -1,0 +1,5 @@
+# Swords & Serpents: Memory dump of animation ROM data at 5B2A
+c
+d 5B20 20
+d 5B30 20
+q

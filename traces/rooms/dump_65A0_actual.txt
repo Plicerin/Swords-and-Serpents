@@ -1,0 +1,8 @@
+b 55D7
+r 9000000
+; At $55D7 is JSR R5, L_5EE2 (initial room render)
+; By this point $65A0-$65CF are loaded
+d 65A0 65AF
+d 65B0 65BF
+d 65C0 65CF
+q

@@ -1,0 +1,50 @@
+; Use 'g' command to run until hitting specific addresses
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+p 5318 0034
+p 5319 0034
+p 531A 0034
+p 531B 02B8
+p 531C 0001
+p 56CC 0034
+p 56CD 0034
+p 55C0 0034
+p 55C1 0034
+p 55C2 0034
+p 55CF 02B8
+p 55D0 0000
+p 55D3 02B8
+p 55D4 0000
+; Break at title check
+b 5038
+r 8000000
+; Set single player and room
+p 019C 0000
+p 02F4 65DC
+; Now set breakpoint at room init finish
+b 55DA
+r 8000000
+; Room loaded. Now set breakpoint at main loop AND run to it
+b 5072
+; Use g0 to jump to 5072 - skip any HLT
+g 0 5072
+; We hit 5072! Now measure MOB positions
+m 0010 10
+m 0020 10
+; Advance one frame
+g 0 5072
+m 0010 10
+m 0020 10
+g 0 5072
+m 0010 10
+m 0020 10
+g 0 5072
+m 0010 10
+m 0020 10
+g 0 5072
+m 0010 10
+m 0020 10
+q

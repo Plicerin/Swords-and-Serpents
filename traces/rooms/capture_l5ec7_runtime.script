@@ -1,0 +1,329 @@
+; Capture L_5EC7 runtime values - tile descriptors and BACKTAB outputs
+; Strategy: break at $5EF6 (JSR L_5EC7) to capture input tile descriptor
+; Then step to $5EF9 (MVO@ R1,R4) to capture output BACKTAB word
+
+; Speed patches (same as render_all_rooms.py)
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+p 5318 0034
+p 5319 0034
+p 531A 0034
+p 531B 02B8
+p 531C 0001
+p 56CC 0034
+p 56CD 0034
+
+; NOP X_FILL_MEM - prevent title screen from wiping BACKTAB
+p 5638 0034
+p 5639 0034
+
+; NOP CLRR + MVO G_019C
+p 55C0 0034
+p 55C1 0034
+p 55C2 0034
+
+; Break after X_FILL_ZERO
+b 5038
+
+; Run through boot
+r 8000000
+
+; Write room index 0 and force gameplay
+p 019C 0000
+p 018C 0001
+
+; Continue past boot + title screen
+r 8000000
+
+; Now break at L_5EE2 (render start) to verify game state
+b 5EE2
+r 400000
+
+; Dump SYSRAM state at render start
+echo "=== RENDER START ==="
+print "G_0175",0175
+print "G_0176",0176
+print "G_02F4",02F4
+print "G_02F5",02F5
+
+; Now capture L_5EC7 calls - break at $5EF6 (JSR L_5EC7 with R1=tile descriptor)
+; We'll trace 40 calls (2 full rows of 20 columns)
+b 5EF6
+echo "=== L_5EC7 TRACE START ==="
+
+; Trace 40 L_5EC7 calls
+; At $5EF6: R1 = tile descriptor (input), R4 = BACKTAB position
+; We step to $5EF9 to get R1 = BACKTAB (output)
+
+r 100  ; run to first break at $5EF6
+
+echo "--- Call 0 ---"
+print "R1_in",0001
+print "R4_BTaddr",0004
+print "R2_stream",0002
+print "R3_count",0003
+; Step over JSR to $5EF9
+t
+t
+t
+t
+t
+t
+t
+print "R1_out",0001
+
+r 100
+echo "--- Call 1 ---"
+print "R1_in",0001
+print "R4_BTaddr",0004
+t
+t
+t
+t
+t
+t
+t
+print "R1_out",0001
+
+r 100
+echo "--- Call 2 ---"
+print "R1_in",0001
+print "R4_BTaddr",0004
+t
+t
+t
+t
+t
+t
+t
+print "R1_out",0001
+
+r 100
+echo "--- Call 3 ---"
+print "R1_in",0001
+print "R4_BTaddr",0004
+t
+t
+t
+t
+t
+t
+t
+print "R1_out",0001
+
+r 100
+echo "--- Call 4 ---"
+print "R1_in",0001
+print "R4_BTaddr",0004
+t
+t
+t
+t
+t
+t
+t
+print "R1_out",0001
+
+r 100
+echo "--- Call 5 ---"
+print "R1_in",0001
+print "R4_BTaddr",0004
+t
+t
+t
+t
+t
+t
+t
+print "R1_out",0001
+
+r 100
+echo "--- Call 6 ---"
+print "R1_in",0001
+print "R4_BTaddr",0004
+t
+t
+t
+t
+t
+t
+t
+print "R1_out",0001
+
+r 100
+echo "--- Call 7 ---"
+print "R1_in",0001
+print "R4_BTaddr",0004
+t
+t
+t
+t
+t
+t
+t
+print "R1_out",0001
+
+r 100
+echo "--- Call 8 ---"
+print "R1_in",0001
+print "R4_BTaddr",0004
+t
+t
+t
+t
+t
+t
+t
+print "R1_out",0001
+
+r 100
+echo "--- Call 9 ---"
+print "R1_in",0001
+print "R4_BTaddr",0004
+t
+t
+t
+t
+t
+t
+t
+print "R1_out",0001
+
+r 100
+echo "--- Call 10 ---"
+print "R1_in",0001
+print "R4_BTaddr",0004
+t
+t
+t
+t
+t
+t
+t
+print "R1_out",0001
+
+r 100
+echo "--- Call 11 ---"
+print "R1_in",0001
+print "R4_BTaddr",0004
+t
+t
+t
+t
+t
+t
+t
+print "R1_out",0001
+
+r 100
+echo "--- Call 12 ---"
+print "R1_in",0001
+print "R4_BTaddr",0004
+t
+t
+t
+t
+t
+t
+t
+print "R1_out",0001
+
+r 100
+echo "--- Call 13 ---"
+print "R1_in",0001
+print "R4_BTaddr",0004
+t
+t
+t
+t
+t
+t
+t
+print "R1_out",0001
+
+r 100
+echo "--- Call 14 ---"
+print "R1_in",0001
+print "R4_BTaddr",0004
+t
+t
+t
+t
+t
+t
+t
+print "R1_out",0001
+
+r 100
+echo "--- Call 15 ---"
+print "R1_in",0001
+print "R4_BTaddr",0004
+t
+t
+t
+t
+t
+t
+t
+print "R1_out",0001
+
+r 100
+echo "--- Call 16 ---"
+print "R1_in",0001
+print "R4_BTaddr",0004
+t
+t
+t
+t
+t
+t
+t
+print "R1_out",0001
+
+r 100
+echo "--- Call 17 ---"
+print "R1_in",0001
+print "R4_BTaddr",0004
+t
+t
+t
+t
+t
+t
+t
+print "R1_out",0001
+
+r 100
+echo "--- Call 18 ---"
+print "R1_in",0001
+print "R4_BTaddr",0004
+t
+t
+t
+t
+t
+t
+t
+print "R1_out",0001
+
+r 100
+echo "--- Call 19 ---"
+print "R1_in",0001
+print "R4_BTaddr",0004
+t
+t
+t
+t
+t
+t
+t
+print "R1_out",0001
+
+; Also dump BACKTAB to verify
+echo "=== BACKTAB DUMP ==="
+m 0200 240
+
+q

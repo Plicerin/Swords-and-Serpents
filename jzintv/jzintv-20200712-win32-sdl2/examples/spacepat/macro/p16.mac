@@ -1,0 +1,56 @@
+;; ======================================================================== ;;
+;;  P16.MAC                                                                 ;;
+;;  Macros that simplify printing.                                          ;;
+;;  Joseph Zbiciak <intvnut AT gmail DOT com>                               ;;
+;;  These macros are hereby released into the Public Domain.                ;;
+;; ======================================================================== ;; 
+
+    IF (DEFINED _P16_MAC) = 0
+
+_P16_MAC EQU 1
+
+;; ======================================================================== ;;
+;;  P16_CSTK r, c, fg, s                                                    ;;
+;;  Prints a string at r, c, in foreground color 'fg', using P16.FLS.       ;;
+;;  This macro is intended for use in color-stack mode.                     ;;
+;;                                                                          ;;
+;;  ARGUMENTS                                                               ;;
+;;      r   Row to print string at                                          ;;
+;;      c   Column to print string at                                       ;;
+;;      fg  Color to print string in                                        ;;
+;;      s   String to print.                                                ;;
+;;                                                                          ;;
+;;  EXAMPLE                                                                 ;;
+;;      P16_CSTK 10, 5, Yellow, "Hello World!"                              ;;
+;; ======================================================================== ;;
+MACRO   P16_CSTK r, c, fg, s
+        CALL    P16.FLS
+        DECLE   gen_cstk_card(0, GROM, %fg%, NoAdvance)
+        DECLE   disp_ptr(%r%, %c%)
+        S16     %s%
+ENDM
+
+;; ======================================================================== ;;
+;;  P16_FGBG r, c, fg, bg, s                                                ;;
+;;  Prints a string at r, c, in foreground color 'fg' and background color  ;;
+;;  'bg', using P16.FLS.  This macro is intended for use in                 ;;
+;;  Foreground/Background mode.                                             ;;
+;;                                                                          ;;
+;;  ARGUMENTS                                                               ;;
+;;      r   Row to print string at                                          ;;
+;;      c   Column to print string at                                       ;;
+;;      fg  Foreground color for string                                     ;;
+;;      bg  Background color for string                                     ;;
+;;      s   String to print.                                                ;;
+;;                                                                          ;;
+;;  EXAMPLE                                                                 ;;
+;;      P16_FGBG 10, 5, Yellow, Blue, "Hello World!"                        ;;
+;; ======================================================================== ;;
+MACRO   P16_FGBG r, c, fg, bg, s
+        CALL    P16.FLS
+        DECLE   gen_fgbg_card(0, GROM, %fg%, %bg%)
+        DECLE   disp_ptr(%r%, %c%)
+        S16     %s%
+ENDM
+
+    ENDI

@@ -1,0 +1,18 @@
+; DIAGNOSE the HLT crash: stop the instant PC derails to $0000, then dump the
+; register-history trace so we can see the instruction that jumped/returned to 0.
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+b 5072
+r 8000000
+p 018C 0001
+g 7 56C9
+n 5072
+b 0000
+h
+r 8000000
+d
+m 0000 24
+q

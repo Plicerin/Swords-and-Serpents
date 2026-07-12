@@ -1,0 +1,107 @@
+Release notes for 2020-07-12.  (SVN r2110)
+Updates since 2020-06-07.  See ReleaseNotes_20200607.txt for earlier updates.
+
+---------------
+ New features:
+---------------
+
+*   jzIntv
+    *   Debugger improvements:
+        *   GNU Readline support!
+            *   Available on Windows, Linux, Mac by default.
+            *   Readline-enabled builds pump event-loop in background,
+                improving window behavior / interaction w/ the OS.
+        *   New commands:
+            *   rs now resets the Intellivision.
+            *   va now toggles AVI generation.
+            *   vm now toggles movie (MVI) generation.
+            *   vs now takes a screen shot.
+        *   Ctrl-C at console halts the game and drops to debugger when the
+            debugger is enabled, rather than killing jzIntv.
+        *   Treat "off-in-the-weeds" and HLT cleanly.
+        *   Improved history logging around reset, in-the-weeds, and HLT.
+        *   Emulator now starts before the first command, not after.
+        *   Debugger requests clean exit from main loop, rather than just
+            exiting the emulator entirely.
+    * Added documentation on the Cheat facility.
+        *   You may provide up to 8 cheats (CHEAT0 through CHEAT7).
+        *   See doc/jzintv/cheat.txt for more details.
+
+----------
+ Changes:
+----------
+
+*   jzIntv
+    *   Batch mode:
+        *   Defaults to rate-control off.
+        *   AVI recording defaults to 1x time scale when in batch mode with
+            rate control disabled.
+    *   Improved reset emulation:
+        *   --rand-mem now randomizes CPU registers at reset.
+        *   CPU registers and flags no longer reset when resetting mid-game.
+
+*   Documentation:
+    *   Documented how to manipulate CPU flags with the 'g' debugger command.
+    *   Documented the (already present) 'v' debugger command.
+
+-------------------------
+ Cleanups and bug fixes:
+-------------------------
+
+*   Improvements:
+    *   Removed various unused/defunct files from source tree.
+    *   Lazier controller pad / ECS keyboard updates.
+    *   Allow quoted strings in CFG file macros that take string arguments.
+    *   Optimized transposed-keyboard code in ECS keyboard scanner.
+    *   Scale audio buffer depth based on SDL's reported buffer size.
+    *   Flush and close CSAV, CLOD when returning to ECS BASIC prompt, rather
+        than the next ECS BASIC command.
+    *   Cleaner handling of momentary pause when toggling full-screen,
+        as well as the initial pause at emulator startup.
+    *   Retire -Dlinux, -DPLAT_MACOS from Makefiles. Set PLAT_LINUX, PLAT_MACOS
+        in config.h.
+    *   Add new buildcfg/ directory to clean up how Makefiles are configured:
+        *   MacOS X and Linux Makefiles now have sane out-of-the-box defaults
+            that don't tie to a specific compiler version.  More to come.
+        *   SVN version detection fails cleanly when not in an SVN working
+            directory.  Also fully avoids network access.
+        *   R-Pi builds now use the main Linux Makefile.
+    *   Move OS/X SDLmain.* to plat/SDL_osx_main.*.
+    *   Add new POP_UP action that pops the keyboard map stack on key release.
+    *   Use POP_UP when releasing WIN/CMD/META to leave Map 3.  Avoids 
+        edge conditions where we sometimes get stuck in Map 3.
+    *   Add Clang pragmas to not complain about unreachable code in generated
+        Bison and Flex output.  Allows enabling -Werror for Clang builds.
+    *   Slightly more conservative CPU instruction cache invalidation.
+    *   Add additional error checking to cart.mac ROMSETUP.
+    *   Begin refactoring GFX module so less code is in SDL backends.  This
+        is just the tip of the iceberg.
+    *   Use -flto=auto w/ GCC to scale to the actual number of cores.
+    *   Print messages from JLP savegame emulation for read, write, and erase
+        commands, rather than just read.
+    *   Spelling and typo fixes in intro_to_cp1600.txt.
+    *   Remove -Dtermux, relying on __TERMUX__ instead.
+    *   Prep work to decommission Makefile.termux_* in favor of just using the
+        main Makefile.linux_*; however, it's not removed yet.
+    *   Updated the FSF's address in files under src/., and in the various
+        license files.
+    *   Convert some source files to DOS text format rather than UNIX.
+
+*   Fixed bugs:
+    *   Intellivoice min tick too high; deadlocks with small audio buffers.
+    *   PREVMAP accidentally did NEXTMAP, not PREVMAP.
+    *   Restore console output on Windows.
+    *   Restore window decorations when toggling fullscreen back to windowed
+        on Windows.
+    *   Use C99-friendly forward declarations for palette_t in avi.h.
+    *   Missing top-level const on prototypes causes warnings in MSVC.
+    *   Crash when using --rand-mem and .ROM files.
+    *   Explicitly mute audio when there's no sound (e.g. when stopped at a
+        breakpoint).  Fixes looping noise in SDL2 builds.
+    *   Pause when auto-toggling to full screen when resuming in debugger.
+    *   Explicitly set sRGB colorspace on Mac w/ SDL2 to get correctly
+        managed color on multi-monitor systems.
+    *   Add missing periph_reset() call in one of the reset paths.
+    *   Update comment in mapping.c to correctly describe what the four
+        default maps are.
+    *   Fix examples/kbd_test so it assembles properly.

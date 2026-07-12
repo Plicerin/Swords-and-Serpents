@@ -1,0 +1,58 @@
+; Auto-generated script for room 0
+;   Strategy: break at $55DA after L_5EE2 room renderer
+;   GRAM init preserved (custom tiles will render)
+
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+p 56CC 0034
+p 56CD 0034
+
+; NOP CLRR + MVO G_019C at boot
+p 55C0 0034
+p 55C1 0034
+p 55C2 0034
+
+; Patch boot room params for room 0
+;   G_0175=$0062, G_0176=$000B
+p 55CF 02B8
+p 55D0 0062
+p 55D3 02B8
+p 55D4 000B
+
+; Break after X_FILL_ZERO
+b 5038
+
+; Run through boot + X_FILL_ZERO
+r 8000000
+
+; Write G_019C=0 (room index for consistency)
+p 019C 0000
+
+; Break after L_5EE2 room renderer returns (before title screen)
+b 55DA
+
+; Run until room renderer finishes
+r 8000000
+
+; Dump BACKTAB
+m 0200 240
+
+; Dump GRAM
+m 3800 512
+
+; Dump STIC color stack
+m 0028 4
+
+; Dump STIC MOB registers
+m 0000 32
+
+; Dump SYSRAM MOB shadow
+m 0300 96
+
+; Dump 8-bit RAM (game state)
+m 0100 256
+
+q

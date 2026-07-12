@@ -1,0 +1,330 @@
+AVI: 1.000 1.000 1.000
+Loading:
+  C:\Users\vrock\Documents\Swords and Serpents\Swords and Serpents.bin
+Name                     Swords and Serpents
+Short Name               Swords and Serpents
+Release date             1982
+Compatibility:
+  ECS                    Tolerates
+  Intellivoice           Tolerates
+  Intellivision II       Tolerates
+  Keyboard Component     Tolerates
+  TutorVision            Tolerates
+JLP Support:
+  JLP Accel              Disabled
+  JLP Flash Sectors      0
+jzintv:  Initializing Master Component and peripherals...
+active x: 0, 159, 8 active y: 4 195, 16
+gfx:  Window pix format: SDL_PIXELFORMAT_RGB888
+ay8910:  Automatic sliding-window setting: 9
+CP-1610          [0x0000...0x0000]
+PSG0 AY8914      [0x01F0...0x01FF]
+[Graphics]       [0x0000...0x0000]
+[Sound]          [0x0000...0x0000]
+Scratch RAM      [0x0100...0x01EF]
+System RAM       [0x0200...0x035F]
+EXEC ROM         [0x1000...0x1FFF]
+Pad Pair 0       [0x01F0...0x01FF]
+STIC             [0x0000...0x007F]
+STIC (alias)     [0x4000...0x403F]
+STIC (alias)     [0x8000...0x803F]
+STIC (alias)     [0xC000...0xC03F]
+STIC (BTAB)      [0x0200...0x02EF]
+GROM/GRAM        [0x3000...0x3FFF]
+GRAM (alias)     [0x7800...0x7FFF]
+GRAM (alias)     [0xB800...0xBFFF]
+GRAM (alias)     [0xF800...0xFFFF]
+[Event]          [0x0000...0x0000]
+[Rate Ctrl]      [0x0000...0x0000]
+Legacy BIN+CFG   [0x5000...0x6FFF]
+CP-1610 Snoop    [0x0200...0x035F]
+[Debugger]       [0x0000...0xFFFF]
+Starting jzIntv...
+ 0000 0000 0000 0000 0000 0000 0000 1000 --------  JSRD R5,$1026            0
+> ; Room 0 capture — clear_backtab=True
+> 
+> p 506A 0034
+> p 506B 0034
+> p 506C 0034
+> p 506D 0034
+> p 506E 0034
+> p 56CC 0034
+> p 56CD 0034
+> 
+> p 55C0 0034
+> p 55C1 0034
+> p 55C2 0034
+> 
+> p 55CF 02B8
+> p 55D0 0062
+> p 55D3 02B8
+> p 55D4 000B
+> 
+> p 5638 0034
+> p 5639 0034
+> 
+> b 5038
+Set breakpoint at $5038
+> r 8000000
+Hit breakpoint at $5038
+ 00EE 8080 0293 8007 01F0 0000 02F7 5038 -Z----i-  SDBD          69640
+> 
+> p 019C 0000
+> 
+> b 55DA
+Set breakpoint at $55DA
+> r 8000000
+Hit breakpoint at $55DA
+ FFFF 000E 000E 0000 64FE 638A 02FA 55DA -Z-C--i-  PULR R7        145567
+> 
+> ; Clear BACKTAB to zeros
+> p 0200 0000
+> p 0201 0000
+> p 0202 0000
+> p 0203 0000
+> p 0204 0000
+> p 0205 0000
+> p 0206 0000
+> p 0207 0000
+> p 0208 0000
+> p 0209 0000
+> p 020A 0000
+> p 020B 0000
+> p 020C 0000
+> p 020D 0000
+> p 020E 0000
+> p 020F 0000
+> p 0210 0000
+> p 0211 0000
+> p 0212 0000
+> p 0213 0000
+> p 0214 0000
+> p 0215 0000
+> p 0216 0000
+> p 0217 0000
+> p 0218 0000
+> p 0219 0000
+> p 021A 0000
+> p 021B 0000
+> p 021C 0000
+> p 021D 0000
+> p 021E 0000
+> p 021F 0000
+> p 0220 0000
+> p 0221 0000
+> p 0222 0000
+> p 0223 0000
+> p 0224 0000
+> p 0225 0000
+> p 0226 0000
+> p 0227 0000
+> p 0228 0000
+> p 0229 0000
+> p 022A 0000
+> p 022B 0000
+> p 022C 0000
+> p 022D 0000
+> p 022E 0000
+> p 022F 0000
+> p 0230 0000
+> p 0231 0000
+> p 0232 0000
+> p 0233 0000
+> p 0234 0000
+> p 0235 0000
+> p 0236 0000
+> p 0237 0000
+> p 0238 0000
+> p 0239 0000
+> p 023A 0000
+> p 023B 0000
+> p 023C 0000
+> p 023D 0000
+> p 023E 0000
+> p 023F 0000
+> p 0240 0000
+> p 0241 0000
+> p 0242 0000
+> p 0243 0000
+> p 0244 0000
+> p 0245 0000
+> p 0246 0000
+> p 0247 0000
+> p 0248 0000
+> p 0249 0000
+> p 024A 0000
+> p 024B 0000
+> p 024C 0000
+> p 024D 0000
+> p 024E 0000
+> p 024F 0000
+> p 0250 0000
+> p 0251 0000
+> p 0252 0000
+> p 0253 0000
+> p 0254 0000
+> p 0255 0000
+> p 0256 0000
+> p 0257 0000
+> p 0258 0000
+> p 0259 0000
+> p 025A 0000
+> p 025B 0000
+> p 025C 0000
+> p 025D 0000
+> p 025E 0000
+> p 025F 0000
+> p 0260 0000
+> p 0261 0000
+> p 0262 0000
+> p 0263 0000
+> p 0264 0000
+> p 0265 0000
+> p 0266 0000
+> p 0267 0000
+> p 0268 0000
+> p 0269 0000
+> p 026A 0000
+> p 026B 0000
+> p 026C 0000
+> p 026D 0000
+> p 026E 0000
+> p 026F 0000
+> p 0270 0000
+> p 0271 0000
+> p 0272 0000
+> p 0273 0000
+> p 0274 0000
+> p 0275 0000
+> p 0276 0000
+> p 0277 0000
+> p 0278 0000
+> p 0279 0000
+> p 027A 0000
+> p 027B 0000
+> p 027C 0000
+> p 027D 0000
+> p 027E 0000
+> p 027F 0000
+> p 0280 0000
+> p 0281 0000
+> p 0282 0000
+> p 0283 0000
+> p 0284 0000
+> p 0285 0000
+> p 0286 0000
+> p 0287 0000
+> p 0288 0000
+> p 0289 0000
+> p 028A 0000
+> p 028B 0000
+> p 028C 0000
+> p 028D 0000
+> p 028E 0000
+> p 028F 0000
+> p 0290 0000
+> p 0291 0000
+> p 0292 0000
+> p 0293 0000
+> p 0294 0000
+> p 0295 0000
+> p 0296 0000
+> p 0297 0000
+> p 0298 0000
+> p 0299 0000
+> p 029A 0000
+> p 029B 0000
+> p 029C 0000
+> p 029D 0000
+> p 029E 0000
+> p 029F 0000
+> p 02A0 0000
+> p 02A1 0000
+> p 02A2 0000
+> p 02A3 0000
+> p 02A4 0000
+> p 02A5 0000
+> p 02A6 0000
+> p 02A7 0000
+> p 02A8 0000
+> p 02A9 0000
+> p 02AA 0000
+> p 02AB 0000
+> p 02AC 0000
+> p 02AD 0000
+> p 02AE 0000
+> p 02AF 0000
+> p 02B0 0000
+> p 02B1 0000
+> p 02B2 0000
+> p 02B3 0000
+> p 02B4 0000
+> p 02B5 0000
+> p 02B6 0000
+> p 02B7 0000
+> p 02B8 0000
+> p 02B9 0000
+> p 02BA 0000
+> p 02BB 0000
+> p 02BC 0000
+> p 02BD 0000
+> p 02BE 0000
+> p 02BF 0000
+> p 02C0 0000
+> p 02C1 0000
+> p 02C2 0000
+> p 02C3 0000
+> p 02C4 0000
+> p 02C5 0000
+> p 02C6 0000
+> p 02C7 0000
+> p 02C8 0000
+> p 02C9 0000
+> p 02CA 0000
+> p 02CB 0000
+> p 02CC 0000
+> p 02CD 0000
+> p 02CE 0000
+> p 02CF 0000
+> p 02D0 0000
+> p 02D1 0000
+> p 02D2 0000
+> p 02D3 0000
+> p 02D4 0000
+> p 02D5 0000
+> p 02D6 0000
+> p 02D7 0000
+> p 02D8 0000
+> p 02D9 0000
+> p 02DA 0000
+> p 02DB 0000
+> p 02DC 0000
+> p 02DD 0000
+> p 02DE 0000
+> p 02DF 0000
+> p 02E0 0000
+> p 02E1 0000
+> p 02E2 0000
+> p 02E3 0000
+> p 02E4 0000
+> p 02E5 0000
+> p 02E6 0000
+> p 02E7 0000
+> p 02E8 0000
+> p 02E9 0000
+> p 02EA 0000
+> p 02EB 0000
+> p 02EC 0000
+> p 02ED 0000
+> p 02EE 0000
+> p 02EF 0000
+> 
+> r 15000
+ 0002 0000 0000 033D 0000 5078 02F8 50DC -Z--I-i-  INCR R3        270633
+> 
+> vs
+
+Wrote screen shot to 'shot0001.gif', 1681 bytes
+> 
+> q
+Exited on user request.

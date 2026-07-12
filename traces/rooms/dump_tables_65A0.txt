@@ -1,0 +1,9 @@
+b 5E68
+r 12000000
+; Dump the lookup tables used by L_5EC7
+; $65A0 = card table (SDBD+MVII in L_5EC7)
+; $65B7 = attribute table (G_02F5)
+m 65A0 40
+; Also dump G_02F5 to confirm
+m 02F5 1
+q

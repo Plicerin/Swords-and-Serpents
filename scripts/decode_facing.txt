@@ -1,0 +1,35 @@
+; Capture the warrior's ACTUAL displayed sprite from GRAM (card 16 = $3880),
+; plus the per-MOB facing-descriptor array ($033D-$0344). Then poke the player's
+; descriptor ($033D) to other facing-script addresses and re-dump GRAM to see
+; which sprite each facing loads.
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+b 5072
+r 8000000
+p 018C 0001
+n 5072
+b 56F8
+g 7 56DB
+r 8000000
+n 56F8
+g 6 02F7
+g 7 5072
+b 5072
+r 8000000
+r 8000000
+r 8000000
+m 033D 8
+m 0010 8
+m 3880 16
+p 033D 5B5E
+r 8000000
+r 8000000
+m 3880 16
+p 033D 5B9A
+r 8000000
+r 8000000
+m 3880 16
+q

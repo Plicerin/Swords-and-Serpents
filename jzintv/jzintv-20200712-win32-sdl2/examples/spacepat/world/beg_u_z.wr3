@@ -1,0 +1,93 @@
+## Note:  All cues are moved back by 22 units to account for the fact
+##        that they're processed when the world is decoded off the
+##        right-hand side of the screen.
+
+## The data segments below are named after the checkpoint they END at.
+
+## Checkpoint U, Beginner Course
+## Blocks 000 - 089
+0   LABEL '@@ckpt_0u'
+
+11  ROCK3
+18  CRAT2
+28  CRAT1
+40  ROCK1
+44  CRAT2
+53  CRAT1
+65  ROCK3
+68  CRAT1
+70  CRAT2
+75  CRAT2
+80  LEVEL 'U'
+
+## Checkpoint V, Beginner Course
+## Blocks 090 - 179
+81  LABEL '@@ckpt_0v'
+
+89  ROCK2
+91  ROCK2
+94  CRAT2
+106 CUE '1_turret'             # turret
+116 CUE '1_turret'             # turret
+126 CUE '1_turret'             # turret
+130 CRAT4
+144 CUE '1_turret'             # turret
+153 CUE '1_turret'             # turret
+162 CUE '1_turret'             # turret
+169 CUE '1_turret'             # turret
+173 LEVEL 'V'
+
+## Checkpoint W, Beginner Course
+## Blocks 180 - 269
+174 LABEL '@@ckpt_0w'
+
+177 CRAT4
+187 CRAT3
+195 CRAT4
+204 CRAT3
+220 CUE '1_bould'              # one boulder
+226 CUE '2_bould'              # two boulders
+236 CUE '1_bould'              # one boulder
+248 CUE '1_bould'              # one boulder
+259 CUE '2_bould'              # two boulders
+262 CAUTION 1
+267 LEVEL 'W'
+
+## Checkpoint X, Beginner Course
+## Blocks 270 - 359
+268 LABEL '@@ckpt_0x'
+
+282 CUE '2_pink_e'             # two pink ships
+285 CUE '2_pink_d'             # two pink ships
+305 CUE '3_blue_e'             # two blue ships
+342 EXIT 'pink_e'             ### exit pink
+344 EXIT 'pink_d'             ### exit pink
+350 EXIT 'blue_e'             ### exit blue
+360 LEVEL 'X'
+
+## Checkpoint Y, Beginner Course
+## Blocks 360 - 449
+361 LABEL '@@ckpt_0y'
+
+364 CUE '2_pink_c'             # two pink ships
+370 CUE '2_pink_b'             # two pink ships
+380 CUE '3_whit_d'             # one white ships
+400 EXIT 'pink_c'             ### exit pink
+410 EXIT 'pink_b'             ### exit pink
+453 LEVEL 'Y'
+
+## Checkpoint Z, Beginner Course
+## Blocks 450 - 539
+454 LABEL '@@ckpt_0z'
+
+460 CUE '2_whit_c'             # two white ships
+470 CUE '3_blue_d'             # one blue ships
+505 ROCK2
+515 EXIT 'whit_d'             ### exit white
+517 CRAT2
+519 EXIT 'whit_c'             ### exit white
+527 CRAT2
+539 ROCK3
+540 EXIT 'blue_d'             ### exit blue
+
+547 LEVEL 'z'                 ### END OF LEVEL - letter must be lower case

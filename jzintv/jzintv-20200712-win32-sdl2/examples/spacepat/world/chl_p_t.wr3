@@ -1,0 +1,117 @@
+## Note:  All cues are moved back by 22 units to account for the fact
+##        that they're processed when the world is decoded off the
+##        right-hand side of the screen.
+
+## The data segments below are named after the checkpoint they END at.
+
+## Checkpoint P, Champion Course
+## Blocks 000 - 089
+0   LABEL '@@ckpt_0p'
+
+10  CUE '2_blue_c'             # two blue ships
+15  CUE '2_pink_d'             # two pink ships
+20  CUE '1_pin2_e'             # two pink ships
+30  CUE '2_blue_d'             # one blue ships
+40  CUE '2_blue_e'             # two blue ships
+46  EXIT 'blue_c'             ### exit blue
+47  EXIT 'pink_d'             ### exit pink
+48  EXIT 'blue_d'             ### exit blue
+49  ROCK3
+50  EXIT 'pin2_e'             ### exit pink
+51  EXIT 'blue_e'             ### exit blue
+54  CRAT3
+64  ROCK2
+66  CRAT3
+76  ROCK2
+78  ROCK2
+80  LEVEL 'P'
+
+## Checkpoint Q, Champion Course
+## Blocks 090 - 179
+81  LABEL '@@ckpt_0q'
+
+91  ROCK2
+94  CRAT2
+97  ROCK2
+112 CRAT3
+132 CUE 'follower'             # follower
+138 CRAT3
+147 EXIT 'flexit'             ### exit follower stage 0
+157 EXIT 'flexit'             ### exit follower stage 1
+158 CRAT3
+173 LEVEL 'Q'
+
+## Checkpoint R, Champion Course
+## Blocks 180 - 269
+174 LABEL '@@ckpt_0r'
+
+185 EXIT 'flexit'             ### exit follower stage 2
+187 ROCK3
+190 ROCK2
+192 CRAT4
+203 ROCK2
+208 ROCK3
+209 CAUTION 2
+211 CRAT4
+229 CUE '1_mine_a'
+235 CUE '2_mine_e'
+241 CUE '1_mine_c'
+247 CUE '2_mine_d'
+254 CUE '1_mine_b'
+260 CUE '1_mine_a'
+267 LEVEL 'R'
+
+## Checkpoint S, Champion Course
+## Blocks 270 - 359
+268 LABEL '@@ckpt_0s'
+
+276 CUE '1_turret'             # turret
+
+277 CRAT3
+287 ROCK3
+290 CRAT1
+297 ROCK3              # originally a ROCK2
+# 300 ROCK2            # original in the arcade
+309 CUE '1_turret'             # turret
+310 CRAT3
+319 ROCK2
+320 CUE '1_plant'
+321 CRAT1
+
+333 CUE '1_plant'
+334 CRAT1
+
+
+342 ROCK3
+
+345 CUE '1_plant'
+346 CRAT1
+357 CUE '1_plant'
+358 CRAT1
+360 LEVEL 'S'
+
+## Checkpoint T, Champion Course
+## Blocks 360 - 449
+361 LABEL '@@ckpt_0t'
+
+364 CAUTION 1
+370 ROCK2
+373 ROCK3
+376 CRAT3
+387 CUE '2_whit_c'             # two white ships
+388 ROCK3
+389 CUE '2_whit_b'             # two white ships
+390 CUE '1_blue_b'             # one blue ships
+415 CUE '1_whit_e'             # one white ships
+428 CUE '2_blue_a'             # two blue ships
+438 ROCK2
+446 ROCK2
+449 CAUTION 3
+450 EXIT 'blue_b'             ### exit blue
+451 EXIT 'whit_c'             ### exit white
+452 ROCK2
+453 LEVEL 't'                 ### END OF LEVEL - letter must be lower case
+454 EXIT 'blue_a'             ### exit blue
+455 EXIT 'whit_b'             ### exit white
+456 EXIT 'whit_e'             ### exit white
+457 ROCK3

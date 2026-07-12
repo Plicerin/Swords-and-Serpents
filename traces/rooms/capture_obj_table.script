@@ -1,0 +1,35 @@
+; Idle patches for speed
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+p 56CC 0034
+p 56CD 0034
+
+; Run to gameplay
+r 12000000
+
+; Dump BACKTAB
+e "=== BACKTAB ($0200-$02EF) ==="
+m 0200 240
+
+; Dump object table ROM ($655E-$659D)
+e "=== OBJECT TABLE ($655E-$659D) ==="
+m 655E 64
+
+; Dump type index table ($6580-$659F)  
+e "=== TYPE INDEX ($6580-$659F) ==="
+m 6580 32
+
+; Dump room data ($64DE-$655D)
+e "=== ROOM DATA ($64DE-$655D) ==="
+m 64DE 128
+
+; Dump key RAM variables
+e "=== RAM VARS ==="
+m 0175 32
+m 019C 16
+m 01A8 8
+
+q

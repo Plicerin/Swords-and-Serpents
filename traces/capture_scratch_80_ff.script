@@ -1,0 +1,55 @@
+; Capture scratchpad $0080-$00FF at room 0 render time
+; Uses same ROM patches as render_room_0.txt
+
+; NOP out X_CHK_DISABLE to prevent boot sequence hangs
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+p 5318 0034
+p 5319 0034
+p 531A 0034
+p 531B 02B8
+p 531C 0001
+p 56CC 0034
+p 56CD 0034
+
+; NOP X_FILL_MEM to prevent title screen wipe
+p 5638 0034
+p 5639 0034
+
+; NOP CLRR + MVO for G_019C (set manually)
+p 55C0 0034
+p 55C1 0034
+p 55C2 0034
+
+; Break after X_FILL_ZERO
+b 5038
+
+; Run through boot
+r 8000000
+
+; Set room 0
+p 019C 0000
+
+; Force past title screen
+p 018C 0001
+
+; Run into gameplay
+r 8000000
+
+; Now at gameplay - dump scratchpad $0080-$00FF (128 words)
+; This is where card table ($00A0+) and other linked-list data live
+m 0080 128
+
+; Also dump system RAM $02F0-$02FF for G_02F4/G_02F5 verification
+m 02F0 16
+
+; Dump BACKTAB for reference
+m 0200 240
+
+; Dump 8-bit RAM $0100-$01EF for complete picture
+m 0100 240
+
+q

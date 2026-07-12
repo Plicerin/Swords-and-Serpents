@@ -1,0 +1,149 @@
+; Swords & Serpents — Measure enemy speed: inject script + dump velocity/pos per frame
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+p 5318 0034
+p 5319 0034
+p 531A 0034
+p 531B 02B8
+p 531C 0001
+p 56CC 0034
+p 56CD 0034
+p 55C0 0034
+p 55C1 0034
+p 55C2 0034
+p 55CF 02B8
+p 55D0 0000
+p 55D3 02B8
+p 55D4 0000
+b 5038
+r 8000000
+p 019C 0000
+p 02F4 65DC
+b 55DA
+r 8000000
+; Room loaded. Inject enemy script for MOB 2
+p 033F 5B5E
+n 5038
+n 55DA
+b 5072
+g 0 5072
+; Frame 1: dump all MOB + velocity registers
+m 0010 10
+m 0020 10
+m 0325 20
+p 0108
+p 010C
+p 012A
+p 013A
+n 5072
+r 800000
+b 5072
+g 0 5072
+; Frame 2
+m 0010 10
+m 0020 10
+m 0325 20
+p 0108
+p 010C
+p 012A
+p 013A
+n 5072
+r 800000
+b 5072
+g 0 5072
+; Frame 3
+m 0010 10
+m 0020 10
+m 0325 20
+p 0108
+p 010C
+p 012A
+p 013A
+n 5072
+r 800000
+b 5072
+g 0 5072
+; Frame 4
+m 0010 10
+m 0020 10
+m 0325 20
+p 0108
+p 010C
+p 012A
+p 013A
+n 5072
+r 800000
+b 5072
+g 0 5072
+; Frame 5
+m 0010 10
+m 0020 10
+m 0325 20
+p 0108
+p 010C
+p 012A
+p 013A
+n 5072
+r 800000
+b 5072
+g 0 5072
+; Frame 6
+m 0010 10
+m 0020 10
+m 0325 20
+p 0108
+p 010C
+p 012A
+p 013A
+n 5072
+r 800000
+b 5072
+g 0 5072
+; Frame 7
+m 0010 10
+m 0020 10
+m 0325 20
+p 0108
+p 010C
+p 012A
+p 013A
+n 5072
+r 800000
+b 5072
+g 0 5072
+; Frame 8
+m 0010 10
+m 0020 10
+m 0325 20
+p 0108
+p 010C
+p 012A
+p 013A
+n 5072
+r 800000
+b 5072
+g 0 5072
+; Frame 9
+m 0010 10
+m 0020 10
+m 0325 20
+p 0108
+p 010C
+p 012A
+p 013A
+n 5072
+r 800000
+b 5072
+g 0 5072
+; Frame 10
+m 0010 10
+m 0020 10
+m 0325 20
+p 0108
+p 010C
+p 012A
+p 013A
+q

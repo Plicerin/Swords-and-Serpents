@@ -1,0 +1,133 @@
+## Note:  All cues are moved back by 22 units to account for the fact
+##        that they're processed when the world is decoded off the
+##        right-hand side of the screen.
+
+## The data segments below are named after the checkpoint they END at.
+
+## Checkpoint P, Champion Course
+## Blocks 000 - 089
+0   LABEL '@@ckpt_0p'
+
+9   CUE 'stal_b'
+14  CUE 'stal_e'
+19  CUE 'stal_d'
+20  CUE '3_whit_d'
+35  CRAT3
+65  EXIT 'whit_d'
+69  CUE 'stal_f'
+74  CUE 'stal_c'
+79  CUE 'stal_a'
+80  LEVEL 'P'
+
+## Checkpoint Q, Champion Course
+## Blocks 090 - 179
+81  LABEL '@@ckpt_0q'
+
+88  CUE '2_mine_c'
+97  CUE '2_mine_f'
+98  CUE '2_blu2_c'
+104 CUE '1_turret'
+106 CUE 'stal_e'
+109 CUE 'stal_b'
+112 CUE '2_pin2_a'
+115 CUE 'stal_a'
+119 CUE 'stal_a'
+120 CUE '2_pin2_c'
+122 CUE 'stal_c'
+124 CUE 'stal_b'
+126 CUE 'stal_c'
+131 CUE 'stal_h'
+133 CUE 'stal_i'
+135 CUE '2_pin2_c'
+140 CUE '1_turret'
+150 CRAT4
+160 CUE '2_mine_d'
+165 CUE '1_mine_a'
+170 CUE '2_mine_c'
+173 LEVEL 'Q'
+
+## Checkpoint R, Champion Course
+## Blocks 180 - 269
+174 LABEL '@@ckpt_0r'
+
+179 CUE '2_mine_e'
+186 CUE '1_mine_c'
+190 CUE '3_whit_e'
+193 CRAT1
+200 CRAT1
+205 CUE '3_whit_e'
+218 CUE '1_plbig'
+219 CRAT2
+221 CUE '1_plbig'
+222 CRAT2
+235 EXIT 'whit_e'
+239 CUE '2_pin2_b'
+242 EXIT 'whi2_e'
+246 CUE 'stal_a'
+248 CUE 'stal_b'
+252 CUE 'stal_b'
+253 CUE '2_pin2_e'
+254 CUE 'stal_a'
+258 CUE 'stal_c'
+262 CUE 'stal_b'
+264 CUE 'stal_f'
+265 CUE '2_pin2_b'
+266 CUE 'stal_d'
+267 LEVEL 'R'
+
+## Checkpoint S, Champion Course
+## Blocks 270 - 359
+268 LABEL '@@ckpt_0s'
+
+275 CUE '3_pin2_d'
+276 CUE '1_turret'
+280 CUE 'stal_i'
+284 CUE '1_plant'
+285 CRAT1
+287 CUE 'stal_d'
+295 CUE '1_plant'
+296 CRAT1
+305 CUE '1_turret'
+313 CUE '1_turret'
+317 CUE 'stal_b'
+320 CUE '1_plant'
+321 CRAT1
+324 CUE 'stal_c'
+328 CUE '1_plant'
+329 CRAT1
+334 CUE 'stal_g'
+339 CUE 'stal_h'
+342 CUE '1_plant'
+343 CRAT1
+347 CUE 'stal_f'
+351 CUE 'stal_g'
+353 CUE 'stal_h'
+356 CUE 'stal_i'
+357 CUE '1_plant'
+358 CRAT1
+360 LEVEL 'S'
+
+## Checkpoint T, Champion Course
+## Blocks 360 - 449
+361 LABEL '@@ckpt_0t'
+
+366  CUE '1_plant'
+367  CRAT1
+373 CUE 'stal_e'
+374  CRAT2
+382 CUE 'stal_f'
+387 CUE '1_plant'
+388 CRAT1
+394 CUE '1_pin2_a'
+395 ROCK1
+397 ROCK2
+399 ROCK3
+408 CUE 'stal_g'
+415 CUE 'stal_h'
+417 CUE 'stal_i'
+435 CUE 'stal_e'
+438 CUE '2_pin2_d'
+440 CUE 'stal_b'
+445 CUE 'stal_e'
+450 CUE 'stal_d'
+453 LEVEL 't'                 ### END OF LEVEL - letter must be lower case

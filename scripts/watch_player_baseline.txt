@@ -1,0 +1,32 @@
+; Swords & Serpents — watch player-state region with NO input (baseline).
+; Boots into the first dungeon (same menu-bypass as debug_capture_gameplay.txt),
+; then dumps the $01xx scratch + the player state region ($0320-$033F) across
+; several frames. With no input the player should be stationary — this confirms
+; the live X/Y ($0325/$032D) and surrounding state vs the JS engine model, and
+; shows which scratch vars drift on their own (e.g. RNG, timers).
+; Run: jzintv -d --script=scripts/watch_player_baseline.txt -e exec.bin -g grom.bin "Swords and Serpents.bin"
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+b 5072
+r 8000000
+p 018C 0001
+g 7 56C9
+n 5072
+b 5072
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+r 8000000
+m 0320 16
+m 0100 32
+r 8000000
+m 0320 16
+m 0100 32
+r 8000000
+m 0320 16
+m 0100 32
+q

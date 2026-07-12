@@ -1,0 +1,21 @@
+; Watch every WRITE to MOB-0 X shadow ($0000) and player X ($0325) for a couple
+; of frames in dungeon gameplay. Reveals who writes the warrior's on-screen X and
+; with what value -> proves pinned-at-centre (always 88) vs tracks-player-position.
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+b 5072
+r 8000000
+p 018C 0001
+g 7 56C9
+n 5072
+b 5072
+r 8000000
+r 8000000
+w 0000
+w 0325
+r 8000000
+r 8000000
+q

@@ -1,0 +1,33 @@
+; Watch-diff probe: dump full scratch $0100-$01EF at idle baseline,
+; then poke various disc/controller vars and see what changes.
+p 506A 0034
+p 506B 0034
+p 506C 0034
+p 506D 0034
+p 506E 0034
+b 5072
+r 8000000
+p 018C 0001
+g 7 56C9
+n 5072
+b 5072
+r 8000000
+r 8000000
+r 8000000
+; BASELINE: full scratch dump
+m 0100 80
+m 0300 48
+; try poke controller disc direction via EXEC RAM
+; EXEC controller 0 scan result is commonly at $019E (disc) or $01B0
+; Let's try $019E = 1 (north direction in most Intv games)
+p 019E 0001
+r 8000000
+m 0100 80
+m 0300 48
+; try $01B0
+p 019E 0000
+p 01B0 0001
+r 8000000
+m 0100 80
+m 0300 48
+q

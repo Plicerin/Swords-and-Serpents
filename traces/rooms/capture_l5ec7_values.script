@@ -1,0 +1,66 @@
+; Capture L_5EC7 tile descriptor values during room 0 rendering
+; Strategy: break at L_5EC7 and log R1 for first 80 calls
+
+; NOP out title screen X_FILL_MEM so BACKTAB isn't wiped
+p 5638 0034
+p 5639 0034
+
+; NOP room index write (we'll set G_019C manually)
+p 55C0 0034
+p 55C1 0034
+p 55C2 0034
+
+; Break after X_FILL_ZERO (which wipes G_019C)
+b 5038
+
+; Run through boot + X_FILL_ZERO
+r 8000000
+
+; Set room index to 0
+p 019C 0000
+
+; Force past title screen
+p 018C 0001
+
+; Continue past boot + title screen into gameplay
+r 8000000
+
+; Now we should be in gameplay. Set a breakpoint at L_5EC7 entry
+b 5EC7
+
+; Capture first 80 tile descriptors
+; Use trace command or just step and log
+; Actually use 'e' to evaluate/print R1 at each break
+
+; Run until first hit at L_5EC7
+r 8000000
+
+; Now log R1
+e R1
+
+; Continue and log 79 more times
+; jzintv doesn't have great loop support, so we do it manually-ish
+; Actually use conditional breakpoints... let's just dump many times
+
+; Alternative: trace register writes at 5EC7
+; Set trace to file
+> traces/rooms/l5ec7_r1_trace.txt
+
+; trace registers when PC=5EC7
+t 5EC7 r
+
+; Run until rendering is done (enough frames)
+r 20000000
+
+; Stop tracing
+t off
+
+> 
+
+; Dump BACKTAB for verification
+m 0200 240
+
+; Dump SYSRAM
+m 02F0 16
+
+q

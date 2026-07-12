@@ -1,0 +1,101 @@
+## Note:  All cues are moved back by 22 units to account for the fact
+##        that they're processed when the world is decoded off the
+##        right-hand side of the screen.
+
+## The data segments below are named after the checkpoint they END at.
+
+## Checkpoint K, Beginner Course
+## Blocks 000 - 089
+0   LABEL '@@ckpt_0k'
+
+7   CAUTION 2
+24  CUE '2_blu2_d'
+31  CUE '1_mine_b'
+36  CUE '1_mine_a'
+42  CUE '1_mine_a'
+51  CUE '1_mine_b'
+59  CUE '2_mine_d'
+65  CUE '1_mine_b'
+71  CUE '1_mine_a'
+77  CUE '2_mine_e'
+79  EXIT 'blu2_d'
+80  LEVEL 'K'
+
+## Checkpoint L, Beginner Course
+## Blocks 090 - 179
+81  LABEL '@@ckpt_0l'
+
+82  CUE '1_mine_a'
+88  CUE '2_mine_e'
+94  CUE '1_mine_b'
+101 CUE '1_pink_a'
+110 CUE '1_bould'
+120 CUE '2_blu2_e'
+123 CUE '1_bould'
+140 CUE '1_bould'
+142 CUE '1_bould'
+151 CUE '2_bould'
+159 EXIT 'pink_a'
+164 CUE '2_boulc'
+169 CAUTION 2
+171 EXIT 'blu2_e'
+173 LEVEL 'L'
+
+## Checkpoint M, Beginner Course
+## Blocks 180 - 269
+174 LABEL '@@ckpt_0m'
+
+176 CAUTION 2
+179 CUE '1_mine_c'
+180 CUE '1_pink_b'
+185 CUE '1_mine_b'
+190 CUE '2_mine_e'
+196 CUE '2_mine_a'
+202 CUE '1_mine_a'
+208 CUE '1_mine_b'
+214 EXIT 'pink_b'
+219 CUE '2_mine_d'
+222 CUE '1_blue_a'
+230 CUE '2_mine_f'
+238 CUE '1_mine_b'
+244 CUE '1_mine_d'
+250 CUE '1_mine_b'
+257 CUE '1_mine_a'
+261 CAUTION 1
+267 LEVEL 'M'
+
+## Checkpoint N, Beginner Course
+## Blocks 270 - 359
+268 LABEL '@@ckpt_0n'
+
+269 CAUTION 1
+271 CUE '2_blue_b'
+274 EXIT 'blue_a'
+290 CUE '1_bould'
+298 CUE '2_bould'
+305 CUE '2_pink_c'
+315 CUE '2_bould'
+340 EXIT 'blue_b'
+343 CUE '2_bould'
+359 EXIT 'pink_c'
+360 LEVEL 'N'
+
+## Checkpoint O, Beginner Course
+## Blocks 360 - 449
+361 LABEL '@@ckpt_0o'
+
+365 CAUTION 1
+366 CUE '2_pink_d'
+370 CUE '2_bould'
+385 CUE '1_whi2_a'
+390 CRAT2
+405 CRAT2
+420 CRAT1
+425 CUE '2_blue_c'
+432 CRAT1
+440 CRAT2
+449 ROCK3
+453 LEVEL 'o'                 ### END OF LEVEL - letter must be lower case
+454 EXIT 'pink_d'
+456 EXIT 'whi2_a'
+458 EXIT 'blue_c'
