@@ -1,4 +1,4 @@
-import { PlayerState, Direction } from './state';
+import { PlayerState } from './state';
 
 export type EnemyType = 'phantom_knight' | 'sorcerer' | 'serpent';
 
@@ -11,6 +11,11 @@ export interface Enemy {
   hitCd: number;            // frames of post-strike grace (multi-hit enemies)
   homeX: number;            // spawn point (dragon guards it)
   homeY: number;
+  // facing (unit-ish vector toward the player) — knights hold their sword
+  // 8 px ahead along this; captured behaviour is axis-locked movement.
+  faceDx: number;
+  faceDy: number;
+  dying: number;            // >0: death-flash frames remaining (still drawn, harmless)
   // sorcerer-specific state
   visibleTimer: number;     // frames until vanish (sorcerer)
   fireTimer: number;        // frames until next fireball
@@ -39,16 +44,37 @@ export type ItemKind = GameItem['kind'];
 
 export type CanWalkFn = (x: number, y: number) => boolean;
 
-// Manual p.8: "Since they are spirits, Phantom Knights move FASTER than the
-// Wizard or the Warrior Prince." You cannot outrun them (player 0.25) — you
-// must turn and strike (move INTO them while facing).
-// Player = 0.5 px/frame (captured); knights stay a little faster.
-const KNIGHT_SPEED = 0.56;
-const CONTACT_DIST = 5;
-const STUN_FRAMES = 24;
-const INVULN_FRAMES = 90;
-const RESPAWN_FRAMES = 75;
+// ---------------------------------------------------------------------------
+// COMBAT — captured from the real game under real input in the Intellijsd
+// oracle, reading the STIC MOB-collision registers ($0018-$001F) every
+// frame (docs/HANDOVER.md ROM finding #7):
+//  * Knights walk at 0.5 px/frame — the same speed as the player. They hold
+//    a black sword MOB 8 px ahead of the body in their facing direction.
+//  * Hit detection is PIXEL collision between SWORD MOBs and BODY MOBs:
+//      knight-sword pixels ∩ player-body pixels  → the player is hit
+//      player-sword pixels ∩ knight-body pixels  → the knight dies
+//    Body-on-body overlap does NOTHING (a knight can stand exactly on the
+//    player for hundreds of frames with no effect). When both swords land
+//    on the same frame the player's strike wins.
+//  * Being hit: hit flag G_01A3=1, movement lock G_01AB=1, timer G_01A4=40
+//    frames during which the player's colour cycles through the palette
+//    every 1-3 frames (the "stunned" flash). Afterwards: white (7) → GRAY
+//    (8) on the first hit ("loses half a life"); a hit while gray costs a
+//    reincarnation ($017C, 9 at start) and restores white. Gray never heals
+//    by itself (manual: Lantern of Life / Heal spell only).
+//  * A slain knight runs a short death script ($5B94): its colour flashes
+//    (black→white→blue) for ~20-65 frames, then it despawns.
+// ---------------------------------------------------------------------------
+const KNIGHT_SPEED = 0.5;
+const STUN_FRAMES = 40;
+const RESPAWN_FRAMES = 75;         // not yet captured (death → reappear)
 const HIT_GRACE_FRAMES = 30;
+const KNIGHT_DEATH_FRAMES = 24;    // death-flash length (captured 20-65; median)
+// Sword MOB is 8×16 at 2× vertical resolution: reach is ~8 px along the
+// facing axis; the blade is 1 px thick on the perpendicular axis (a single
+// row/column) so the perpendicular tolerance is small.
+const SWORD_REACH = 8;
+const SWORD_HALF_WIDTH = 3;
 
 export const RESPAWN_INVULN = 120;
 
@@ -79,6 +105,9 @@ export function createEnemy(x: number, y: number, type: EnemyType): Enemy {
     hitCd: 0,
     homeX: x,
     homeY: y,
+    faceDx: 0,
+    faceDy: -1,
+    dying: 0,
     visibleTimer: 0,
     fireTimer: type === 'serpent' ? SERPENT_FIRST_SHOT : SORCERER_FIRE_INTERVAL,
     phase: isSorcerer ? 'hidden' : 'active',
@@ -107,25 +136,26 @@ function aimedFireball(ex: number, ey: number, player: PlayerState, speed: numbe
 // the movement wall test (L_63F5 selects G_01AB/G_01AC by player index before
 // calling L_6054); enemy MOBs are driven by animation-script velocities with
 // no BACKTAB lookup — phantom knights chase straight through walls.
-function flyStep(enemy: Enemy, tx: number, ty: number, speed: number): void {
-  const dx = tx - enemy.x;
-  const dy = ty - enemy.y;
-  const len = Math.sqrt(dx * dx + dy * dy);
-  if (len <= speed) {
-    enemy.x = tx;
-    enemy.y = ty;
-    return;
-  }
-  enemy.x += (dx / len) * speed;
-  enemy.y += (dy / len) * speed;
-}
 
 export function updateEnemy(enemy: Enemy, player: PlayerState, canWalk: CanWalkFn): Fireball | null {
   if (!enemy.alive) return null;
+  if (enemy.dying > 0) {
+    // Death flash plays out, then the knight is removed.
+    enemy.dying--;
+    if (enemy.dying === 0) enemy.alive = false;
+    return null;
+  }
   if (enemy.hitCd > 0) enemy.hitCd--;
 
   if (enemy.type === 'phantom_knight') {
-    flyStep(enemy, player.x, player.y, KNIGHT_SPEED);
+    // Captured: knights move axis-locked along the dominant axis toward the
+    // player at 0.5 px/frame, sword held ahead in the facing direction.
+    const dx = player.x - enemy.x;
+    const dy = player.y - enemy.y;
+    if (Math.abs(dx) >= Math.abs(dy)) { enemy.faceDx = Math.sign(dx) || 1; enemy.faceDy = 0; }
+    else { enemy.faceDx = 0; enemy.faceDy = Math.sign(dy) || 1; }
+    enemy.x += enemy.faceDx * KNIGHT_SPEED;
+    enemy.y += enemy.faceDy * KNIGHT_SPEED;
     return null;
   }
 
@@ -214,60 +244,76 @@ export function updateEnemy(enemy: Enemy, player: PlayerState, canWalk: CanWalkF
 
 export type CombatEvent = 'player_strikes' | 'enemy_slain' | 'player_injured' | null;
 
+// Sword hitbox: the blade sits SWORD_REACH px ahead of a body along its
+// facing axis; a body is an 8×8 box. Mirrors the STIC per-pixel MOB collision
+// closely enough for a 1-px-thick blade (a thin box, SWORD_HALF_WIDTH).
+function swordHitsBody(
+  sx: number, sy: number, fdx: number, fdy: number,
+  bx: number, by: number, bw: number, bh: number,
+): boolean {
+  // blade centre, SWORD_REACH px ahead of the wielder's body centre
+  const cx = sx + 4 + fdx * SWORD_REACH;
+  const cy = sy + 4 + fdy * SWORD_REACH;
+  // blade extent: 8 px along facing axis, thin across it (diagonals: 8×8)
+  const alongX = fdx !== 0, alongY = fdy !== 0;
+  const hw = alongX && !alongY ? 4 : (alongY && !alongX ? SWORD_HALF_WIDTH : 4);
+  const hh = alongY && !alongX ? 4 : (alongX && !alongY ? SWORD_HALF_WIDTH : 4);
+  return cx + hw > bx && cx - hw < bx + bw && cy + hh > by && cy - hh < by + bh;
+}
+
 export function resolveContact(player: PlayerState, enemy: Enemy): CombatEvent {
-  if (!enemy.alive || player.dead) return null;
+  if (!enemy.alive || enemy.dying > 0 || player.dead) return null;
   // Sorcerers can only be fought while materialized.
   if (enemy.type === 'sorcerer' && enemy.phase !== 'active') return null;
   if (enemy.hitCd > 0) return null;
 
-  // The Serpent is a 56×16 px body — measure against the nearest point of its
-  // box, not its top-left corner. It can be struck at sword reach but only
-  // bites back at close range.
-  let ex = enemy.x;
-  let ey = enemy.y;
-  if (enemy.type === 'serpent') {
-    ex = Math.max(enemy.x, Math.min(player.x, enemy.x + SERPENT_W - 8));
-    ey = Math.max(enemy.y, Math.min(player.y, enemy.y + SERPENT_H - 8));
-  }
-  const strikePad = enemy.type === 'serpent' ? 4 : 0;
-  const injurePad = enemy.type === 'serpent' ? 0 : 0;
-  const dist = Math.max(Math.abs(player.x - ex), Math.abs(player.y - ey));
-  if (dist > CONTACT_DIST + strikePad) return null;
+  const bw = enemy.type === 'serpent' ? SERPENT_W : 8;
+  const bh = enemy.type === 'serpent' ? SERPENT_H : 8;
 
-  if (player.moving && player.stunned === 0 && facingToward(player.facing, player, ex, ey)) {
+  // 1) Player's sword on the enemy body → the enemy is struck. Captured:
+  //    this wins ties with the enemy's own strike on the same frame.
+  const pfx = player.faceDx || (player.faceDy ? 0 : 1);
+  const pfy = player.faceDy;
+  if (!player.dead && swordHitsBody(player.x, player.y, pfx, pfy, enemy.x, enemy.y, bw, bh)) {
     enemy.hp--;
     enemy.hitCd = HIT_GRACE_FRAMES;
     if (enemy.hp <= 0) {
-      enemy.alive = false;
+      enemy.dying = KNIGHT_DEATH_FRAMES;
       return 'enemy_slain';
     }
     return 'player_strikes';
   }
-  if (dist > CONTACT_DIST + injurePad) return null;
-  return 'player_injured';
-}
 
-function facingToward(facing: Direction, player: PlayerState, ex: number, ey: number): boolean {
-  switch (facing) {
-    case 'up':    return ey <= player.y;
-    case 'down':  return ey >= player.y;
-    case 'left':  return ex <= player.x;
-    case 'right': return ex >= player.x;
-    default:      return false;
+  // 2) Enemy's sword on the player body → the player is hit. Only knights
+  //    carry a sword; the Serpent bites at close range; sorcerers use fire.
+  if (enemy.type === 'phantom_knight') {
+    if (swordHitsBody(enemy.x, enemy.y, enemy.faceDx, enemy.faceDy, player.x, player.y, 8, 8)) return 'player_injured';
+    return null;
   }
+  if (enemy.type === 'serpent') {
+    const ex = Math.max(enemy.x, Math.min(player.x, enemy.x + SERPENT_W - 8));
+    const ey = Math.max(enemy.y, Math.min(player.y, enemy.y + SERPENT_H - 8));
+    if (Math.max(Math.abs(player.x - ex), Math.abs(player.y - ey)) <= 5) return 'player_injured';
+  }
+  return null;
 }
 
+// Captured injury model: 40-frame stun with palette-cycling flash (movement
+// locked), then white → GRAY on the first hit; a hit while gray costs a
+// reincarnation and restores white. No natural recovery from gray.
 export function injurePlayer(player: PlayerState): void {
-  if (player.dead || player.invuln > 0) return;
+  if (player.dead || player.stunned > 0) return;
 
+  player.stunned = STUN_FRAMES;
   if (!player.injured) {
     player.injured = true;
-    player.stunned = STUN_FRAMES;
-    player.invuln = INVULN_FRAMES;
   } else {
-    player.dead = true;
-    player.respawnTimer = RESPAWN_FRAMES;
+    player.injured = false;
     player.reincarnations = Math.max(0, player.reincarnations - 1);
+    if (player.reincarnations === 0) {
+      player.dead = true;
+      player.respawnTimer = RESPAWN_FRAMES;
+    }
   }
 }
 

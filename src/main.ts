@@ -91,6 +91,14 @@ const SERPENT_LAYOUT: { r: number; c: number; card: number; bg: string }[] = [
 // ---------------------------------------------------------------------------
 const lw = (): LevelWorld => levels[state.level];
 
+// STIC 8-colour foreground palette (indices 0-7) as CSS.
+const FG = ['#000000', '#002DFF', '#FF3D10', '#C9CFAB', '#386B3F', '#00A756', '#FAEA50', '#FFFCFF'];
+// Captured colour sequences (fg index per frame) — see HANDOVER finding #7.
+// Player body while stunned (samples every ~2 frames over the 40-frame stun):
+const STUN_CYCLE = [5, 4, 2, 1, 4, 5, 0, 1, 0, 3, 7, 5, 0, 4, 2, 1, 3, 4, 6, 5, 2, 3, 4].map(i => FG[i]);
+// Player sword, every frame, always:
+const SWORD_CYCLE = [6, 1, 2, 4, 6, 1, 0, 4, 3, 2, 3, 0, 2, 3, 6, 5, 0, 1, 7, 2, 7, 4, 1, 3].map(i => FG[i]);
+
 function facingFrame(dx: number, dy: number, knightWalk = false): { frame: number; mirror: boolean; flip: boolean } {
   const ax = Math.abs(dx);
   const ay = Math.abs(dy);
@@ -427,16 +435,17 @@ function update() {
     const event = resolveContact(shim, enemy);
     if (event === 'enemy_slain') {
       kills++;
-      deathFx.push({ x: enemy.x, y: enemy.y, t: 24 });
+      if (enemy.type !== 'phantom_knight') deathFx.push({ x: enemy.x, y: enemy.y, t: 24 });
       if (enemy.type === 'serpent') setInfo('THE SERPENT IS SLAIN! Claim the Crown!', 300);
       else if (enemy.type === 'sorcerer') setInfo('Red Sorcerer vanquished!', 90);
       else setInfo('Phantom Knight slain!', 90);
     } else if (event === 'player_strikes') {
       setInfo('You wound the Serpent!', 90);
     } else if (event === 'player_injured') {
-      if (state.invuln === 0 && !state.dead) {
+      if (state.stunned === 0 && !state.dead) {
+        const wasGray = state.injured;
         injurePlayer(state);
-        setInfo(state.dead ? 'You have fallen...' : 'Injured! Strike back or flee!', 90);
+        setInfo(state.dead ? 'You have fallen...' : wasGray ? 'A life is lost!' : 'Injured! (half a life)', 90);
       }
     }
   }
@@ -453,7 +462,7 @@ function update() {
     }
     if (!state.dead && tDist(state.level, fb.x, fb.y, state.x, state.y) < 5) {
       fb.alive = false;
-      if (state.invuln === 0) {
+      if (state.stunned === 0) {
         injurePlayer(state);
         setInfo(state.dead ? 'Burned down...' : 'Scorched by a fireball!', 90);
       }
@@ -663,15 +672,17 @@ function render(ctx: CanvasRenderingContext2D) {
     const flash = enemy.hitCd > 0 && Math.floor(frameCount / 3) % 2 === 0;
 
     if (enemy.type === 'phantom_knight') {
-      // The player's own knight figure in BLACK, facing its chase direction,
-      // with its black sword MOB in front.
-      const kdx = wrapDelta(enemy.x, state.x, W);
-      const kdy = wrapDelta(enemy.y, state.y, H);
-      const f = facingFrame(kdx, kdy, true);
+      // The player's own knight figure in BLACK, facing its (axis-locked)
+      // movement direction, with its black sword MOB 8 px ahead. A slain
+      // knight plays a captured death flash (black → white → blue) before
+      // vanishing.
+      const f = facingFrame(enemy.faceDx, enemy.faceDy, true);
       const bytes = playerSprites[f.frame];
-      const color = flash ? '#FFFCFF' : '#000000';
+      let color = '#000000';
+      if (enemy.dying > 0) color = ['#FFFCFF', '#002DFF', '#000000'][Math.floor(frameCount / 4) % 3];
+      else if (flash) color = '#FFFCFF';
       if (bytes) drawBitmap(ctx, bytes, 16, ex, ey, color, f.mirror, f.flip);
-      drawSword(ctx, ex, ey, kdx, kdy, color);
+      drawSword(ctx, ex, ey, enemy.faceDx, enemy.faceDy, color);
     } else if (enemy.type === 'sorcerer') {
       if (enemy.phase === 'hidden') continue;
       const blink = (enemy.phase === 'appearing' || enemy.phase === 'vanishing')
@@ -758,19 +769,22 @@ function render(ctx: CanvasRenderingContext2D) {
       ctx.stroke();
     }
   } else {
-    const visible = state.invuln === 0 || Math.floor(frameCount / 4) % 2 === 0;
     const facingF = facingFrame(state.faceDx, state.faceDy);
     const spriteBytes = playerSprites[facingF.frame];
-    const playerColor = state.injured ? '#BDACC8' : '#FFFCFF';
-    if (visible && spriteBytes) {
+    // Captured: while stunned (40 frames) the body colour cycles through the
+    // palette every ~2 frames; steady colour is white, or GRAY once injured.
+    const playerColor = state.stunned > 0
+      ? STUN_CYCLE[Math.floor(frameCount / 2) % STUN_CYCLE.length]
+      : (state.injured ? '#BDACC8' : '#FFFCFF');
+    if (spriteBytes) {
       drawBitmap(ctx, spriteBytes, 16, px, py, playerColor, facingF.mirror, facingF.flip);
     }
   }
 
-  // Sword — the player's own sword MOB (axis-aligned, white like the Prince)
+  // Sword — the player's own sword MOB. Captured: it cycles through the
+  // palette every frame, always (a rainbow shimmer), independent of state.
   if (!state.dead) {
-    const playerColor = state.injured ? '#BDACC8' : '#FFFCFF';
-    drawSword(ctx, px, py, state.faceDx, state.faceDy, playerColor);
+    drawSword(ctx, px, py, state.faceDx, state.faceDy, SWORD_CYCLE[frameCount % SWORD_CYCLE.length]);
   }
 
   // --- HUD ---

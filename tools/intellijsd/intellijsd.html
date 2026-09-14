@@ -1794,6 +1794,10 @@ $1038: FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF</pre>
           cpu.requestInterrupt(3791);
           let spent = 0;
           while (spent < 14934) { const c = cpu.step(); if (!c) break; spent += c; }
+          // The STIC collision registers ($0018-$001F) are computed by the MOB
+          // render pass; real hardware updates them every frame, so render even
+          // when no rAF is running (hidden tab / headless driving).
+          if (memory.sticDisplayEnabled) display.renderHardware();
         }
         return cpu.r[7];
       },

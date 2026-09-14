@@ -159,6 +159,38 @@ not flee. NOTE for future fidelity work: the manual says the Fortress has
 level 3 may be reading past the real level table; the 14-level descent is a
 designed mode, not ROM truth.
 
+**ROM finding #7 — COMBAT, CAPTURED (2026-09-14).** With the Intellijsd
+oracle patched so `runFrames` also runs the STIC MOB pass (the collision
+registers `$0018-$001F` are computed by `renderMobs()`, which upstream only
+called from rAF — without the patch they read `$3C00` forever and NOTHING
+ever hit anything), real fights were observed frame by frame:
+  * Knights (script `$5B30` walking, `$5B76/$5B7C` entry, `$5B94` death)
+    walk at **0.5 px/frame, same as the player**, axis-locked, sword MOB
+    (card 54 vertical / 50 horizontal) held 8 px ahead in the facing
+    direction. Spawn on a timer (`$017E` counts 4→1 in ~178-frame steps);
+    one knight at a time was seen.
+  * **Hit detection = STIC per-pixel MOB collision between SWORD and BODY
+    MOBs.** Knight-sword ∩ player-body → player hit. Player-sword ∩
+    knight-body → knight dies (death flash black→white→blue, ~20-65 frames,
+    then despawn). Body∩body does NOTHING — a knight sat at distance 0 on the
+    player for 400+ frames with no effect. Simultaneous strikes: the
+    player's wins.
+  * **Being hit:** `G_01A3=1` (hit), `G_01AB=1` (disc locked — the register
+    `L_63F5` gates movement on), `G_01A4=40` countdown; body colour cycles
+    through the palette every 1-3 frames for those 40 frames. Then: white(7)
+    → **gray(8)** ("half a life"); a hit while gray decrements
+    **`$017C` = the Prince's reincarnations (starts 9)** and restores white.
+    Gray never recovers on its own. `$017B` (3/15/51/63) is a separate
+    timer, not health.
+  * The player's **sword colour cycles through the palette every frame,
+    always** (rainbow shimmer) — cosmetic, now reproduced.
+Implemented in combat.ts (`swordHitsBody`, new `injurePlayer`, knight
+`faceDx/faceDy` + `dying`) and main.ts (stun/sword palette cycles, death
+flash). Verified via `g.step`: hit→40-frame stun→gray with no life lost;
+hit while gray → life lost + white; knight walking into the sword dies at
+the expected range with no damage taken. Still uncaptured: death (0 lives)
+→ respawn timing; knight spawn placement rule; sorcerer encounters.
+
 **ROM finding #6 — REAL PLAYER INPUT, AT LAST (2026-09-14). SUPERSEDES #5.**
 The owner found **Intellijsd** (a pure-JS Intellivision emulator). A local,
 patched copy lives in `tools/intellijsd/` (README there) and exposes
