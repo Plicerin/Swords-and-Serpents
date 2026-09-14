@@ -1,5 +1,13 @@
 # jzIntv Memory-Extraction Runbook
 
+> **2026-09-14 — read this first.** For anything that depends on **player
+> input** (facing, speed, pickups, stairs, menus, title flow), jzIntv is the
+> wrong tool: its debugger cannot inject controller input (§8.3). Use the
+> **Intellijsd browser oracle** in `tools/intellijsd/` instead — it boots the
+> game legitimately and drives the real controller port from a script
+> (`ijsd.setPad`, `ijsd.runFrames`, `ijsd.read`). See its README. jzIntv
+> remains the reference for static state dumps (§4) and cross-checks.
+
 > How to pull memory-address data out of the running original game with the
 > jzIntv debugger — commands, recipes, parsing, and every pitfall this project
 > has hit. Written for an operator (human or agent) with no prior context.

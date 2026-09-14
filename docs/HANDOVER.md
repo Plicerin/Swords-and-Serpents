@@ -55,12 +55,12 @@ ONLY changing pixels in the player's screen band besides scrolling
 background tiles were the player's own columns 308-335 — i.e. the F4↔F3
 walk alternation itself. All positional causes were measured out (sprite
 bbox constant, background columns stable, canvas layout rect constant at
-DPR 1.25). Since the F4/F3 cycle is captured from KNIGHTS (script $5B5E)
-and the player's own animation (script $5B28) is unverifiable in the
-emulator (no input injection), and the owner reports the real game's player
-does not wiggle: **the player now renders a static frame in all directions
-by default**; knights keep their captured walk cycle. A/B flag: load with
-`?anim=1` to re-enable the knight-style animation on the player.
+DPR 1.25). The F4/F3 cycle was captured from KNIGHTS (script $5B5E); the
+owner reported the real player does not wiggle, and **ROM finding #6 later
+proved it directly** (233+ identical frames on straight runs under real
+input): **the player renders a static frame in all directions**; knights
+keep their captured walk cycle. (The `?anim=1` A/B flag was removed once
+the ground truth was captured.)
 Verified: 20 sampled frames of downward walking → exactly 1 distinct sprite
 pixel profile (zero changes).
 
@@ -159,8 +159,38 @@ not flee. NOTE for future fidelity work: the manual says the Fortress has
 level 3 may be reading past the real level table; the 14-level descent is a
 designed mode, not ROM truth.
 
-**ROM finding #5 — FACING SOLVED (2026-07-06, REVISED same day; closes the
-old BUG-2).** First analysis (sign-binned) wrongly concluded "no diagonal
+**ROM finding #6 — REAL PLAYER INPUT, AT LAST (2026-09-14). SUPERSEDES #5.**
+The owner found **Intellijsd** (a pure-JS Intellivision emulator). A local,
+patched copy lives in `tools/intellijsd/` (README there) and exposes
+`window.ijsd` — load ROMs, run N frames synchronously, and drive controller
+1 through the real port encodings (`psg.setController`). This removes the
+"no input injection" wall entirely: the game is booted LEGITIMATELY (title →
+'1' → ENTER, all via the EXEC's own keypad decode) and the PLAYER is
+observed under REAL disc input. Results (40 frames held per direction,
+dominant frame ≥33/40; then 240-frame straight runs):
+  E: F0 · W: F0 xy · N: F4 x · S: F4 y ·
+  **NE: F2 · SE: F2 y · NW: F2 x · SW: F2 xy**   (diagonal pose is F2, NOT F1)
+  **NO walk animation in any direction** — 233/234 consecutive identical
+  frames on S/E runs. Turning = 3-4 frame transition (old frame, then old
+  frame with the new flips). F1/F3 are never a steady player pose; the F4/F3
+  cycle in #5 was a KNIGHT behaviour (knights keep it).
+  **Sword MOB (card 50):** E/W `$FF` row at (±8,0); N/S `$10` column at
+  (0,±8); diagonals a 12-row 45° blade (rows 4-15: 04 04 08 08 10 10 20 20
+  40 40 80 80, NE-pointing) at **(±7, ±7)** flipped per quadrant — not the
+  (±8,∓2) 5-row blade guessed from knight data.
+  **Speed:** `$0325` advances 1 px every 2 frames → **0.5 px/frame** on
+  cardinals; diagonals ≈0.35 px/frame per axis (trig decomposition, ≈0.5·√½).
+  The port ran at 0.25 — half speed — since June. Now 0.5 (knights 0.56).
+  MOB X (`$0000`) is a screen position that oscillates 81–88 as the camera
+  snaps; always use `$0325`/`$032D` deltas for speed.
+All of the above is now in main.ts (`facingFrame`, `DIAG_SWORD`,
+`drawSword`, `MOVE_SPEED`) and verified through the `window.__game` bridge
+(`g.facing`, `g.step(n)` — deterministic stepping for hidden-tab tests).
+Bridge additions: `step(n)`.
+
+**ROM finding #5 — FACING (2026-07-06; knight-derived, PARTLY WRONG — see #6
+for the player truth: diagonals are F2 not F1, no player walk cycle, sword
+blade at (±7,±7)).** First analysis (sign-binned) wrongly concluded "no diagonal
 poses" — owner caught it (SW didn't face SW). Angle-binned re-analysis of a
 700-frame live capture (scripts/capture_facing_long.txt, ±15° sectors) plus
 visual identification of the frames settles it:

@@ -1,0 +1,22 @@
+{
+  "agent_id": "pm-swords-serpents",
+  "agent_name": "Project Manager — Swords and Serpents",
+  "profile": "pm-swords-serpents",
+  "project": "Swords and Serpents",
+  "workspace_root": "/mnt/c/Users/vrock/Documents/Swords and Serpents",
+  "windows_workspace_root": "C:\\Users\\vrock\\Documents\\Swords and Serpents",
+  "role": "Project management / Intellivision fidelity, milestone, risk, and specialist coordination",
+  "scope": "Exactly one active project: Swords and Serpents. Coordinate work; do not perform production implementation or approve releases.",
+  "status": "active_refreshed",
+  "assigned_at": "2026-08-02T00:00:00-04:00",
+  "latest_status_path": "/mnt/c/Users/vrock/Documents/Swords and Serpents/.hermes/project-manager-status.md",
+  "phase": "Native JS/TypeScript port with ROM-verified renderer and gameplay",
+  "milestone": "Preserve validated toroidal-world port while resolving remaining fidelity and build-environment risks",
+  "health": {"score": 50, "category": "Attention"},
+  "next_cycle_trigger": "Refresh after build repair, emulator comparison, a commit, or a material fidelity or gameplay-risk change.",
+  "current_features_count": 6,
+  "delta_summary": "Room 0 decode and toroidal world are validated; WSL build blocker and full-dungeon gameplay verification remain.",
+  "completion_estimate_percent": 50,
+  "completion_estimate_summary": "Decoder/render evidence is strong for Room 0; playable full-dungeon behavior and native build repair remain.",
+  "target_completion_date": null
+}

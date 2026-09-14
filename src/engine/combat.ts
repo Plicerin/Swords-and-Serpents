@@ -42,7 +42,8 @@ export type CanWalkFn = (x: number, y: number) => boolean;
 // Manual p.8: "Since they are spirits, Phantom Knights move FASTER than the
 // Wizard or the Warrior Prince." You cannot outrun them (player 0.25) — you
 // must turn and strike (move INTO them while facing).
-const KNIGHT_SPEED = 0.28;
+// Player = 0.5 px/frame (captured); knights stay a little faster.
+const KNIGHT_SPEED = 0.56;
 const CONTACT_DIST = 5;
 const STUN_FRAMES = 24;
 const INVULN_FRAMES = 90;

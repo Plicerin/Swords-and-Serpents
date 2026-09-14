@@ -41,7 +41,10 @@ const PLAYER_ASPECT_SCALE = 1.25;
 const PLAYER_WIDTH = 8 * PLAYER_SCALE;
 const VIEW_W = WIDTH;
 const VIEW_H = HEIGHT;
-const MOVE_SPEED = 0.25;
+// Real ROM walking speed: 0.5 px/frame on cardinals (1 px every 2 frames),
+// ~0.35 px/frame per axis on diagonals — captured frame-by-frame from the
+// player position word ($0325) under real disc input (Intellijsd oracle).
+const MOVE_SPEED = 0.5;
 
 // Enemies farther than this (torus distance) from the player are dormant.
 // Kept tight: knights fly through walls, so anything active WILL reach you.
@@ -72,43 +75,35 @@ const SERPENT_LAYOUT: { r: number; c: number; card: number; bg: string }[] = [
   { r: 2, c: 4, card: 33, bg: OLIVE },
 ];
 
-// A/B flag for OPEN BUG #1: `?anim=1` re-enables the knight-style F4/F3
-// vertical walk animation on the PLAYER. Default is static — the owner
-// reports the real game's player does not wiggle vertically, and player
-// animation is unverifiable in the emulator (no input injection).
-const PLAYER_VERTICAL_ANIM = new URLSearchParams(location.search).has('anim');
-
+// ---------------------------------------------------------------------------
+// PLAYER FACING — ground truth from the REAL player under REAL disc input,
+// captured in the Intellijsd browser emulator (tools/intellijsd/) with a
+// legitimately booted game (title → '1' → ENTER). See docs/HANDOVER.md
+// ROM finding #6. Dominant body frame per direction (≥33 of 40 frames):
+//   E:  F0            W:  F0 xflip+yflip
+//   N:  F4 xflip      S:  F4 yflip
+//   NE: F2            SE: F2 yflip     NW: F2 xflip     SW: F2 xflip+yflip
+// The player has NO walk animation in any direction (233+ consecutive
+// identical frames on straight runs). Turning shows a 3-4 frame transition
+// (old frame, then old frame with new flips) — cosmetic, not modelled.
+// F1 and F3 are never the player's steady pose; the earlier F4/F3 walk cycle
+// was a KNIGHT behaviour and is knight-only below.
+// ---------------------------------------------------------------------------
 const lw = (): LevelWorld => levels[state.level];
 
-// Facing — from angle-binned live captures of the game's own display logic
-// (traces/capture_facing_long_out.txt, ±15° sectors):
-//   E:  frame 0 unflipped (static — the 455-sample pure-W chase shows NO
-//   W:  frame 0 xflip+yflip        walk alternates on E/W)
-//   N:  frame 4 X-FLIPPED, walk-alt frame 3
-//   S:  frame 4 Y-FLIPPED, walk-alt frame 3 (y-flipped)
-//   NE: frame 1 unflipped   (captured: F1(0,0) during NE-ward movement)
-//   SE: frame 1 y-flipped   (captured: F1(0,1) during SE-ward movement)
-//   NW: frame 1 x-flipped   ┐ derived by the game's own mirror convention
-//   SW: frame 1 xy-flipped  ┘ (identical to how W mirrors E)
-// F1 is visually the 3/4 NE-facing helm; F2 remains unused in-dungeon.
-// Vertical walk cycle (captured sequence, e.g. `4y 4y 3xy 3xy 4y 4y 3y ...`):
-// F4 and F3 alternate in ~5-frame phases (50/50), and F3's x-flip wobbles
-// between cycles. Horizontal movement is static (455-sample W run, no alts).
-function facingFrame(dx: number, dy: number, moving = false): { frame: number; mirror: boolean; flip: boolean } {
+function facingFrame(dx: number, dy: number, knightWalk = false): { frame: number; mirror: boolean; flip: boolean } {
   const ax = Math.abs(dx);
   const ay = Math.abs(dy);
   if (ax > 0 && ay > 0 && Math.min(ax, ay) / Math.max(ax, ay) > 0.414) {
     // within ±22.5° of a diagonal
-    return { frame: 1, mirror: dx < 0, flip: dy > 0 };
+    return { frame: 2, mirror: dx < 0, flip: dy > 0 };
   }
   if (ax >= ay && ax > 0) {
     return { frame: 0, mirror: dx < 0, flip: dx < 0 };
   }
   if (ay > 0) {
-    if (moving && Math.floor(frameCount / 5) % 2 === 1) {
-      // F3 walk phase — flips are CONSTANT per direction (dominant captured
-      // variants: N = F3 unflipped, S = F3 y-flip only). An x-flip "rock"
-      // reads as left-right wiggle and is wrong.
+    if (knightWalk && Math.floor(frameCount / 5) % 2 === 1) {
+      // Knight-only F3 walk phase (captured from knight animation scripts).
       return { frame: 3, mirror: false, flip: dy > 0 };
     }
     return dy < 0
@@ -535,13 +530,14 @@ function drawBitmap(
 }
 
 // The sword is its own 8×16 MOB in the original: a $FF row (horizontal), a
-// $10 column (vertical), or a 45° blade for diagonals (rows $06 $0C $30 $60
-// $C0, NE-pointing, y-flipped for SE, offset (+8,∓2) from the body — captured
-// live during F1 diagonal frames in traces/capture_facing_long_out.txt;
-// cardinals from traces/capture_attack_anim_out.txt cards 50/54/58).
+// $10 column (vertical), or a 45° blade for diagonals. Captured from the
+// PLAYER's own sword MOB under real input (Intellijsd oracle, HANDOVER #6):
+//   E/W: $FF row at (±8, 0)        N/S: $10 column at (0, ±8)
+//   diagonals: a 12-row blade (rows 4-15: 04 04 08 08 10 10 20 20 40 40 80 80,
+//   NE-pointing) at (±7, ±7), x/y-flipped per quadrant.
 const DIAG_SWORD: number[] = [
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x06, 0x0C, 0x30,
-  0x60, 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x04, 0x04, 0x08, 0x08,
+  0x10, 0x10, 0x20, 0x20, 0x40, 0x40, 0x80, 0x80,
 ];
 
 function drawSword(
@@ -555,9 +551,9 @@ function drawSword(
   const ax = Math.abs(dirX);
   const ay = Math.abs(dirY);
   if (ax > 0 && ay > 0 && Math.min(ax, ay) / Math.max(ax, ay) > 0.414) {
-    // diagonal blade: (+8, -2) for NE, y-offset +2 when facing south
-    const sx = px + (dirX > 0 ? 8 : -8) * u;
-    const sy = py + (dirY > 0 ? 2 : -2) * uy;
+    // diagonal blade at (±7, ±7) from the body, flipped per quadrant
+    const sx = px + (dirX > 0 ? 7 : -7) * u;
+    const sy = py + (dirY > 0 ? 7 : -7) * uy;
     drawBitmap(ctx, DIAG_SWORD, 16, sx, sy, color, dirX < 0, dirY > 0);
     return;
   }
@@ -763,7 +759,7 @@ function render(ctx: CanvasRenderingContext2D) {
     }
   } else {
     const visible = state.invuln === 0 || Math.floor(frameCount / 4) % 2 === 0;
-    const facingF = facingFrame(state.faceDx, state.faceDy, PLAYER_VERTICAL_ANIM && state.moving);
+    const facingF = facingFrame(state.faceDx, state.faceDy);
     const spriteBytes = playerSprites[facingF.frame];
     const playerColor = state.injured ? '#BDACC8' : '#FFFCFF';
     if (visible && spriteBytes) {
@@ -868,6 +864,9 @@ async function main() {
     giveKey: () => { state.keys++; },
     facing: (dx: number, dy: number, alt = false) => facingFrame(dx, dy, alt),
     info: () => infoMessage,
+    // Deterministic stepping for headless verification: run N simulation
+    // frames synchronously (rAF is paused when the tab is hidden).
+    step: (n: number) => { for (let i = 0; i < n; i++) update(); },
     // Hold a key for `ms` milliseconds (resolves after release) — lets an
     // agent "play" with real input instead of teleports.
     hold: (key: string, ms: number) => new Promise<void>(resolve => {

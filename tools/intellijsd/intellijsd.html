@@ -1,0 +1,1813 @@
+<html lang="it"><head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="description" content="Intellijsd: emulatore Intellivision scritto in HTML e JavaScript puro.">
+  <title>Intellijsd — banco di emulazione</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #f7f3dc;
+      --muted: #9ca3a8;
+      --panel: #101416;
+      --panel-2: #161c1f;
+      --edge: #30383c;
+      --gold: #edb83f;
+      --gold-2: #ffda70;
+      --cyan: #58d9d0;
+      --red: #ff6a5f;
+      --green: #8bd36d;
+      --shadow: 0 24px 70px rgba(0,0,0,.45);
+    }
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 50% -20%, #364248 0, transparent 35rem),
+        linear-gradient(145deg, #111719, #07090a 60%);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 16px;
+      line-height: 1.45;
+    }
+    button, input, select { font: inherit; }
+    button { color: inherit; }
+    .app { width: min(1500px, 100%); margin: 0 auto; padding: 20px; }
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between; gap: 18px;
+      margin-bottom: 18px;
+    }
+    .brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
+    .mark {
+      width: 48px; height: 48px; display: grid; place-items: center;
+      border: 1px solid #5e4d24; background: #17130a; color: var(--gold-2);
+      box-shadow: inset 0 0 22px rgba(237,184,63,.09); font: 800 19px/1 ui-monospace, monospace;
+    }
+    h1 { margin: 0; font-size: clamp(1.25rem, 2vw, 1.75rem); letter-spacing: -.035em; }
+    .eyebrow { color: var(--gold); font: 700 .75rem/1.3 ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; }
+    .build { color: var(--muted); font: 600 .78rem/1.2 ui-monospace, monospace; }
+    .status-line { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+    .pill {
+      border: 1px solid var(--edge); background: rgba(17,22,24,.8); color: var(--muted);
+      border-radius: 999px; padding: 7px 10px; font-size: .78rem; font-weight: 700;
+    }
+    .pill.ready { color: var(--green); border-color: rgba(139,211,109,.35); }
+    .pill.warn { color: var(--gold-2); border-color: rgba(237,184,63,.35); }
+
+    .bench {
+      display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(320px, .75fr); gap: 18px;
+      align-items: start;
+    }
+    .console, .side-card {
+      border: 1px solid var(--edge); background: rgba(13,17,19,.9); box-shadow: var(--shadow);
+    }
+    .console { padding: 18px; position: relative; overflow: hidden; }
+    .console::before {
+      content: ""; position: absolute; inset: 0 0 auto; height: 3px;
+      background: linear-gradient(90deg, transparent, var(--gold), var(--cyan), transparent);
+      opacity: .8;
+    }
+    .screen-bezel {
+      position: relative; width: 100%; aspect-ratio: 5 / 3; padding: clamp(12px, 2vw, 24px);
+      background: linear-gradient(145deg, #252a2b, #090b0c 58%); border: 1px solid #363b3d;
+      box-shadow: inset 0 0 0 2px #070808, inset 0 0 55px #000;
+    }
+    canvas {
+      width: 100%; height: 100%; display: block; background: #030606;
+      image-rendering: pixelated; image-rendering: crisp-edges;
+      box-shadow: 0 0 45px rgba(50,210,193,.08);
+      transition: filter .2s ease, border-radius .2s ease, box-shadow .2s ease;
+    }
+    .scanlines { pointer-events: none; position: absolute; inset: clamp(12px, 2vw, 24px); opacity: 0; mix-blend-mode: screen;
+      background: repeating-linear-gradient(to bottom, transparent 0 3px, rgba(255,255,255,.12) 4px); }
+    .screen-bezel[data-video="sharp"] canvas { filter: saturate(1.12) contrast(1.08); }
+    .screen-bezel[data-video="crt"] canvas {
+      filter: saturate(1.12) contrast(1.08) brightness(.94); border-radius: 3% / 5%;
+      box-shadow: 0 0 54px rgba(88,217,208,.13), inset 0 0 28px rgba(0,0,0,.28);
+    }
+    .screen-bezel[data-video="crt"] .scanlines { opacity: .28; mix-blend-mode: soft-light; }
+    .screen-bezel[data-video="modern"] canvas {
+      image-rendering: auto; filter: saturate(1.16) contrast(1.08);
+      box-shadow: 0 0 62px rgba(88,217,208,.2), 0 0 26px rgba(237,184,63,.1);
+    }
+    .screen-bezel[data-video="modern"] .scanlines {
+      opacity: .14; mix-blend-mode: screen;
+      background: radial-gradient(circle at 50% 42%, rgba(255,255,255,.1), transparent 62%);
+    }
+    .screen-bezel[data-sprite="soft"] canvas, .screen-bezel[data-sprite="smooth"] canvas { image-rendering: auto; }
+    .screen-corner { position: absolute; right: 32px; bottom: 29px; color: rgba(255,255,255,.36); font: 700 .68rem/1 ui-monospace, monospace; }
+    .transport { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin-top: 15px; }
+    .btn {
+      min-height: 42px; border: 1px solid var(--edge); background: #191f21; padding: 9px 13px;
+      cursor: pointer; font-weight: 760; transition: transform .12s ease, border-color .12s, background .12s;
+    }
+    .btn:hover { border-color: #596469; background: #21282b; }
+    .btn:active { transform: translateY(1px); }
+    .btn.primary { background: var(--gold); border-color: var(--gold); color: #161105; }
+    .btn.primary:hover { background: var(--gold-2); }
+    .btn.icon { width: 44px; padding: 0; display: grid; place-items: center; }
+    .btn[disabled] { opacity: .4; cursor: not-allowed; }
+    .sep { width: 1px; height: 28px; background: var(--edge); margin: 0 3px; }
+    .speed { display: flex; align-items: center; gap: 8px; margin-left: auto; color: var(--muted); font-size: .82rem; font-weight: 700; }
+    .video-mode { margin-left: 0; }
+    .speed select { min-height: 38px; border: 1px solid var(--edge); color: var(--ink); background: #111618; padding: 7px 26px 7px 9px; }
+
+    .tabs { display: flex; gap: 3px; border-bottom: 1px solid var(--edge); margin-top: 18px; overflow-x:auto; white-space:nowrap; }
+    .tab { border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--muted); padding: 10px 12px; cursor: pointer; font-weight: 750; }
+    .tab.active { color: var(--gold-2); border-bottom-color: var(--gold); }
+    .tab-panel { padding-top: 14px; }
+    .hidden { display: none !important; }
+    .drop-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .drop {
+      min-height: 112px; padding: 14px; border: 1px dashed #465055; background: #111618;
+      display: flex; flex-direction: column; justify-content: space-between; gap: 10px; cursor: pointer;
+    }
+    .drop:hover, .drop.drag { border-color: var(--gold); background: #18190f; }
+    .drop.loaded { border-style: solid; border-color: rgba(139,211,109,.45); }
+    .drop strong { font-size: .9rem; }
+    .drop small { color: var(--muted); font-size: .77rem; }
+    .file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--cyan) !important; }
+    .notice { margin-top: 10px; color: var(--muted); font-size: .82rem; }
+    .notice strong { color: var(--ink); }
+    .re-toolbar { display:flex; gap:9px; align-items:end; flex-wrap:wrap; }
+    .re-field { display:grid; gap:5px; color:var(--muted); font-size:.76rem; font-weight:700; }
+    .re-field select, .re-field input, .re-field textarea { min-height:40px; border:1px solid var(--edge); color:var(--ink); background:#090d0e; padding:7px 9px; }
+    .re-field select { padding-right:30px; }
+    .re-field input { width:190px; font:700 .78rem/1 ui-monospace,monospace; color:var(--cyan); }
+    .re-field.wide { flex:1 1 100%; }
+    .re-field textarea { width:100%; min-height:58px; resize:vertical; font:700 .78rem/1.45 ui-monospace,monospace; color:var(--cyan); }
+    .re-summary { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; margin-top:10px; }
+    .re-summary div { border:1px solid #263034; background:#0b0f10; padding:8px; color:var(--muted); font-size:.68rem; }
+    .re-summary output { display:block; margin-top:3px; color:var(--cyan); font:700 .86rem/1.2 ui-monospace,monospace; }
+    .asm-output { height:420px; margin:10px 0 0; white-space:pre; tab-size:8; color:#b7c4c7; }
+
+    .side { display: grid; gap: 14px; }
+    .side-card { padding: 16px; }
+    .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+    .card-head h2 { margin: 0; font-size: .96rem; letter-spacing: .01em; }
+    .card-head span { color: var(--muted); font: .72rem/1 ui-monospace, monospace; }
+    .regs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
+    .reg { background: #0b0f10; border: 1px solid #242c2f; padding: 8px; }
+    .reg b { display: block; color: var(--muted); font: 700 .68rem/1.2 ui-monospace, monospace; }
+    .reg output { display: block; margin-top: 4px; color: var(--cyan); font: 700 .9rem/1.2 ui-monospace, monospace; }
+    .flags { display: flex; gap: 6px; margin-top: 9px; }
+    .flag { width: 31px; height: 26px; display: grid; place-items: center; border: 1px solid #2a3336; color: #60696c; font: 800 .72rem/1 ui-monospace, monospace; }
+    .flag.on { color: #101607; background: var(--green); border-color: var(--green); }
+    .stats { margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .stat { color: var(--muted); font-size: .74rem; }
+    .stat output { display: block; color: var(--ink); font: 700 .85rem/1.3 ui-monospace, monospace; margin-top: 3px; }
+
+    .controller-wrap { display: grid; grid-template-columns: 126px 1fr; align-items: center; gap: 16px; }
+    .disc {
+      width: 126px; height: 126px; border-radius: 50%; position: relative; touch-action: none;
+      border: 2px solid #735c27; background: repeating-conic-gradient(#3b321d 0 11.25deg, #17140d 11.25deg 22.5deg);
+      box-shadow: inset 0 0 0 10px #090b0c, inset 0 0 0 12px #5a4923;
+    }
+    .disc::after { content:""; position:absolute; inset:39%; border-radius:50%; background:var(--gold); box-shadow:0 0 14px rgba(237,184,63,.35); }
+    .disc.active { filter: brightness(1.35); transform: scale(.98); }
+    .pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .key {
+      min-height: 35px; border: 1px solid #3d474a; background: #171d1f; cursor: pointer;
+      font: 800 .78rem/1 ui-monospace, monospace;
+    }
+    .key:hover, .key.active { color: #171105; background: var(--gold-2); border-color: var(--gold-2); }
+    .actions { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; margin-top: 3px; }
+    .action-key { min-height: 32px; border: 1px solid #485257; background: #0d1112; color: var(--muted); cursor:pointer; font-size: .72rem; font-weight: 800; }
+    .action-key.active { color:#071416; background:var(--cyan); border-color:var(--cyan); }
+    .keymap { margin-top: 12px; color: var(--muted); font-size: .74rem; }
+    kbd { border: 1px solid #445055; border-bottom-width: 2px; background: #171d1f; padding: 2px 5px; color: var(--ink); font: 700 .7rem/1 ui-monospace, monospace; }
+
+    .log { height: 158px; overflow: auto; background: #080b0c; border: 1px solid #20272a; padding: 9px; color: #a9b6ba; font: .72rem/1.55 ui-monospace, monospace; }
+    .log div::before { content: attr(data-time); color: #586468; margin-right: 8px; }
+    .log .ok { color: var(--green); }
+    .log .err { color: var(--red); }
+    .log .info { color: var(--cyan); }
+    .milestones { display: grid; gap: 8px; }
+    .mile { display:grid; grid-template-columns:22px 1fr auto; gap:9px; align-items:center; color:var(--muted); font-size:.8rem; }
+    .mile i { width: 18px; height: 18px; border:1px solid #465055; display:grid; place-items:center; font-style:normal; font-size:.68rem; }
+    .mile.done { color:var(--ink); }
+    .mile.done i { color:#071407; background:var(--green); border-color:var(--green); }
+    .mile.now i { color:#1b1404; background:var(--gold); border-color:var(--gold); }
+    .mile em { color:var(--muted); font-style:normal; font: .68rem/1 ui-monospace, monospace; }
+    footer { color: #6f787b; font-size: .76rem; padding: 18px 2px 4px; display:flex; justify-content:space-between; gap:20px; }
+
+    @media (max-width: 980px) {
+      .bench { grid-template-columns: 1fr; }
+      .side { grid-template-columns: 1fr 1fr; }
+      .side-card:last-child { grid-column: 1 / -1; }
+    }
+    @media (max-width: 680px) {
+      .app { padding: 12px; }
+      .topbar { align-items: flex-start; }
+      .status-line { display:none; }
+      .console { padding: 11px; }
+      .screen-bezel { padding: 9px; }
+      .scanlines { inset: 9px; }
+      .drop-grid, .side { grid-template-columns: 1fr; }
+      .re-summary { grid-template-columns:1fr 1fr; }
+      .speed { width:100%; margin:3px 0 0; justify-content:flex-end; }
+      .controller-wrap { grid-template-columns: 112px 1fr; gap:11px; }
+      .disc { width:112px; height:112px; }
+      .side-card:last-child { grid-column:auto; }
+      footer { flex-direction:column; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div>
+          <h1>Intellijsd</h1>
+        </div>
+      </div>
+      <div class="status-line" aria-label="Stato emulatore">
+        <span class="pill ready" id="core-pill">CORE PRONTO</span>
+        <span class="pill " id="rom-pill">ROM ASSENTE</span>
+        <span class="pill warn" id="run-pill">SPENTO</span>
+        <span class="build">M5.0 · PURE JS</span>
+      </div>
+    </header>
+
+    <div class="bench">
+      <section class="console" aria-label="Console virtuale">
+        <div class="screen-bezel" data-video="original" data-sprite="pixel">
+          <canvas id="screen" width="320" height="192" aria-label="Schermo Intellivision"></canvas>
+          <div class="scanlines"></div>
+          <div class="screen-corner" id="fps-label">DIAG · 7.6 FPS</div>
+        </div>
+
+        <div class="transport" aria-label="Comandi emulatore">
+          <button class="btn primary" id="power-btn">ACCENDI</button>
+          <button class="btn" id="reset-btn">RESET</button>
+          <span class="sep"></span>
+          <button class="btn icon" id="pause-btn" title="Pausa" aria-label="Pausa">▶</button>
+          <button class="btn icon" id="step-btn" title="Esegui una istruzione" aria-label="Passo singolo">›</button>
+          <button class="btn icon" id="fullscreen-btn" title="Schermo intero" aria-label="Schermo intero">⛶</button>
+          <button class="btn icon" id="audio-btn" title="Attiva audio" aria-label="Attiva audio">♪</button>
+          <label class="speed">VELOCITÀ
+            <select id="speed-select" aria-label="Velocità emulazione">
+              <option value="0.5">0,5×</option>
+              <option value="1" selected="">1×</option>
+              <option value="2">2×</option>
+              <option value="0">Senza limite</option>
+            </select>
+          </label>
+          <label class="speed video-mode">GRAFICA
+            <select id="video-select" aria-label="Profilo grafico">
+              <option value="original">Originale</option>
+              <option value="sharp">Pixel nitidi</option>
+              <option value="crt">CRT caldo</option>
+              <option value="modern">Neo moderno</option>
+            </select>
+          </label>
+          <label class="speed video-mode">SPRITE
+            <select id="sprite-select" aria-label="Render degli sprite">
+              <option value="pixel">Pixel hardware</option>
+              <option value="soft">Antialias leggero</option>
+              <option value="smooth">Antialias + moto fluido</option>
+            </select>
+          </label>
+          <label class="speed">LANG
+            <select id="language-select" aria-label="Lingua"><option value="it">Italiano</option><option value="en">English</option></select>
+          </label>
+        </div>
+
+        <div class="tabs" role="tablist" aria-label="Pannelli console">
+          <button class="tab" data-tab="files" role="tab">File macchina</button>
+          <button class="tab active" data-tab="memory" role="tab">Memoria</button>
+          <button class="tab" data-tab="reverse" role="tab">Reverse engineering</button>
+        </div>
+
+        <div class="tab-panel hidden" id="tab-files">
+          <div class="drop-grid">
+            <label class="drop" id="drop-exec">
+              <strong>EXECUTIVE ROM</strong>
+              <small>4K parole · indirizzo $1000</small>
+              <small class="file-name" id="name-exec">Seleziona il BIOS</small>
+              <input hidden="" type="file" id="file-exec" accept=".bin,.rom,.int,.img">
+            </label>
+            <label class="drop" id="drop-grom">
+              <strong>GRAPHICS ROM</strong>
+              <small>2K byte · indirizzo $3000</small>
+              <small class="file-name" id="name-grom">Seleziona il GROM</small>
+              <input hidden="" type="file" id="file-grom" accept=".bin,.rom,.int,.img">
+            </label>
+            <label class="drop" id="drop-cart">
+              <strong>CARTUCCIA</strong>
+              <small>BIN grezzo o Intellicart ROM</small>
+              <small class="file-name" id="name-cart">Seleziona una ROM</small>
+              <input hidden="" type="file" id="file-cart" accept=".bin,.rom,.int,.img">
+            </label>
+          </div>
+          <p class="notice"><strong>I file non lasciano il browser.</strong> BIOS e giochi non sono inclusi. Sono accettati BIN a parole big-endian e immagini Intellicart <code>.rom</code> con segmenti, attributi RAM/ROM, restrizioni fini e bankswitch.</p>
+        </div>
+
+        <div class="tab-panel" id="tab-memory">
+          <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+            <label for="mem-address" style="color:var(--muted);font-size:.82rem;font-weight:700">INDIRIZZO</label>
+            <input id="mem-address" value="1000" maxlength="4" inputmode="text" style="min-height:40px;width:92px;border:1px solid var(--edge);background:#090d0e;color:var(--cyan);padding:8px;font-family:ui-monospace,monospace">
+            <button class="btn" id="mem-read">LEGGI 64 PAROLE</button>
+          </div>
+          <pre id="mem-dump" class="log" style="height:180px;margin:10px 0 0;white-space:pre-wrap">$1000: FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+$1008: FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+$1010: FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+$1018: FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+$1020: FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+$1028: FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+$1030: FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+$1038: FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF</pre>
+        </div>
+
+        <div class="tab-panel hidden" id="tab-reverse">
+          <div class="re-toolbar">
+            <label class="re-field">SORGENTE
+              <select id="dasm-source" aria-label="Sorgente da analizzare">
+                <option value="all">Executive + cartuccia</option>
+                <option value="cart">Solo cartuccia</option>
+                <option value="exec">Solo Executive ROM</option>
+              </select>
+            </label>
+            <label class="re-field">ANALISI
+              <select id="dasm-mode" aria-label="Tipo di analisi">
+                <option value="hybrid">Profonda strutturata</option>
+                <option value="strict">Solo flussi certi</option>
+                <option value="linear">Tutta lineare</option>
+                <option value="trace">Solo codice eseguito</option>
+              </select>
+            </label>
+            <label class="re-field">PUNTI D'INGRESSO
+              <input id="dasm-entry" inputmode="text" spellcheck="false" placeholder="es. 5000, 52A0" aria-label="Punti d'ingresso esadecimali">
+            </label>
+            <button class="btn primary" id="dasm-run">ANALIZZA ROM</button>
+            <button class="btn" id="dasm-export" disabled="">SCARICA ASM</button>
+            <button class="btn" id="dasm-export-sprites" disabled="">SPRITE JSON</button>
+            <button class="btn" id="dasm-export-atlas" disabled="">ATLANTE PNG</button>
+            <button class="btn" id="dasm-export-sounds" disabled="">SUONI JSON</button>
+            <button class="btn" id="dasm-trace-toggle" aria-pressed="false">AVVIA TRACE</button>
+            <button class="btn" id="dasm-clear-trace">AZZERA TRACE</button>
+            <label class="re-field wide">MAPPA AREE — un intervallo per riga
+              <textarea id="dasm-map" spellcheck="false" placeholder="5000-500F: data
+5010-503F: code
+5400-545F: string
+5800-58FF: graphics" aria-label="Classificazione manuale delle aree ROM"></textarea>
+            </label>
+          </div>
+          <div class="re-summary" aria-label="Riepilogo disassemblaggio">
+            <div>ISTRUZIONI<output id="dasm-instructions">0</output></div>
+            <div>OSSERVATE<output id="dasm-executed">0</output></div>
+            <div>PAROLE DUBBIE<output id="dasm-uncertain">0</output></div>
+            <div>INTERVALLI<output id="dasm-ranges">0</output></div>
+            <div>SPRITE/CARTE<output id="dasm-sprites">0</output></div>
+            <div>SEQUENZE AUDIO<output id="dasm-sounds">0</output></div>
+          </div>
+          <p class="notice"><strong>Decoder DIS-1600 compatibile.</strong> L’analisi profonda riconosce header EXEC, frame MOB, carte 8×8, stringhe e sequenze audio inline, prologhi <code>PSHR R5</code> e tabelle di dispatch. La mappa manuale ha sempre la precedenza.</p>
+          <pre id="dasm-output" class="log asm-output">Carica Executive ROM e cartuccia, avvia il gioco e premi ANALIZZA. La modalità Profonda strutturata combina convenzioni CP1610 e percorsi osservati.</pre>
+        </div>
+
+      </section>
+
+      <aside class="side">
+        <section class="side-card">
+          <div class="card-head"><h2>CP1610</h2><span id="cpu-state">OFF</span></div>
+          <div class="regs" id="registers"><div class="reg"><b>R0</b><output id="reg-0">$0000</output></div><div class="reg"><b>R1</b><output id="reg-1">$0000</output></div><div class="reg"><b>R2</b><output id="reg-2">$0000</output></div><div class="reg"><b>R3</b><output id="reg-3">$0000</output></div><div class="reg"><b>R4</b><output id="reg-4">$0000</output></div><div class="reg"><b>R5</b><output id="reg-5">$0000</output></div><div class="reg"><b>R6 · SP</b><output id="reg-6">$02F1</output></div><div class="reg"><b>R7 · PC</b><output id="reg-7">$1000</output></div></div>
+          <div class="flags" aria-label="Flag CPU">
+            <span class="flag" id="flag-s">S</span><span class="flag" id="flag-z">Z</span><span class="flag" id="flag-o">O</span><span class="flag" id="flag-c">C</span><span class="flag" id="flag-i">I</span><span class="flag" id="flag-d">D</span>
+          </div>
+          <div class="stats">
+            <div class="stat">CICLI<output id="cycle-count">0</output></div>
+            <div class="stat">OPCODE<output id="opcode-value">$0000</output></div>
+            <div class="stat">PC / STACK<output id="pc-stack">$1000 / $02F1</output></div>
+            <div class="stat">OPCODE RISERVATE<output id="unknown-count">0</output></div>
+          </div>
+        </section>
+
+        <section class="side-card">
+          <div class="card-head"><h2>Controller 1</h2><span id="pad-state">NEUTRO</span></div>
+          <div class="controller-wrap">
+            <div class="disc" id="disc" role="group" aria-label="Disco direzionale"></div>
+            <div class="pad" id="keypad">
+              <button class="key" data-key="1">1</button><button class="key" data-key="2">2</button><button class="key" data-key="3">3</button>
+              <button class="key" data-key="4">4</button><button class="key" data-key="5">5</button><button class="key" data-key="6">6</button>
+              <button class="key" data-key="7">7</button><button class="key" data-key="8">8</button><button class="key" data-key="9">9</button>
+              <button class="key" data-key="C">CLR</button><button class="key" data-key="0">0</button><button class="key" data-key="E">ENT</button>
+              <div class="actions"><button class="action-key" data-key="L">SINISTRA</button><button class="action-key" data-key="T">ALTO</button><button class="action-key" data-key="R">DESTRA</button></div>
+            </div>
+          </div>
+          <div class="keymap"><kbd>WASD</kbd> disco · <kbd>0–9</kbd> tastierino · <kbd>Z</kbd> <kbd>X</kbd> <kbd>C</kbd> azioni</div>
+        </section>
+
+        <section class="side-card">
+          <div class="card-head"><h2>AY-3-8914 PSG</h2><span id="audio-state">NON AVVIATO</span></div>
+          <div class="stats">
+            <div class="stat">CANALE A<output id="psg-a">111.861 Hz</output></div>
+            <div class="stat">CANALE B<output id="psg-b">111.861 Hz</output></div>
+            <div class="stat">CANALE C<output id="psg-c">111.861 Hz</output></div>
+            <div class="stat">NOISE / MIXER<output id="psg-noise">111.861 Hz · $00</output></div>
+            <div class="stat">VBLANK<output id="vblank-count">0 · IRQ 0</output></div>
+            <div class="stat">PORTA CTRL 1<output id="controller-port">$FF</output></div>
+          </div>
+        </section>
+
+        <section class="side-card">
+          <div class="card-head"><h2>Registro eventi</h2><button class="tab" id="clear-log" style="padding:4px 0">PULISCI</button></div>
+          <div class="log" id="event-log" aria-live="polite"><div class="" data-time="01:09:59">Carica Executive ROM, GROM e cartuccia oppure usa la diagnostica</div><div class="info" data-time="01:09:59">Banco di emulazione inizializzato</div></div>
+        </section>
+
+      </aside>
+    </div>
+
+    <footer><span>Progetto sperimentale indipendente · nessun BIOS o gioco incluso</span><span>HTML · JavaScript · Canvas 2D · Web Audio · zero dipendenze</span></footer>
+  </main>
+
+  <script>
+    'use strict';
+
+    const $ = (id) => document.getElementById(id);
+    const hex = (n, width = 4) => (n >>> 0).toString(16).toUpperCase().padStart(width, '0');
+
+    class AY38914 {
+      constructor(clock=3579545/2) {
+        this.clock=clock; this.registers=new Uint8Array(16); this.controllerPorts=new Uint8Array([0xFF,0xFF]);
+        this.onWrite=null; this.reset();
+      }
+      reset() {
+        this.registers.fill(0); this.controllerPorts.fill(0xFF);
+        if(this.onWrite)this.onWrite(-1,0);
+      }
+      mask(offset) {
+        if(offset>=4&&offset<=6)return 0x0F;
+        if(offset===9)return 0x1F;
+        if(offset===10)return 0x0F;
+        if(offset>=11&&offset<=13)return 0x3F;
+        return 0xFF;
+      }
+      read(offset) {
+        offset&=15;
+        if(offset===14)return this.controllerPorts[0];
+        if(offset===15)return this.controllerPorts[1];
+        return this.registers[offset];
+      }
+      write(offset,value) {
+        offset&=15; value&=this.mask(offset); this.registers[offset]=value;
+        if(this.onWrite)this.onWrite(offset,value);
+      }
+      setController(port,value) { this.controllerPorts[port&1]=value&0xFF; }
+      tonePeriod(channel) { return Math.max(1,this.registers[channel]|((this.registers[4+channel]&15)<<8)); }
+      toneFrequency(channel) { return this.clock/(16*this.tonePeriod(channel)); }
+      noiseFrequency() { return this.clock/(16*Math.max(1,this.registers[9]&31)); }
+      envelopePeriod() { return Math.max(1,this.registers[3]|(this.registers[7]<<8)); }
+      envelopeStepFrequency() { return this.clock/(256*this.envelopePeriod()); }
+    }
+
+    class IntellivisionMemory {
+      constructor() {
+        this.words = new Uint16Array(0x10000);
+        this.readable = new Uint8Array(0x10000);
+        this.writable = new Uint8Array(0x10000);
+        this.kind = new Uint8Array(0x10000);
+        this.cartWords = new Uint16Array(0x10000);
+        this.cartAccess = new Uint8Array(32);
+        this.cartLo = new Uint8Array(32);
+        this.cartHi = new Uint8Array(32);
+        this.bankOffset = new Uint8Array(32);
+        this.psg = null;
+        this.reset();
+      }
+      attachPSG(psg) { this.psg=psg; }
+      reset() {
+        this.words.fill(0xFFFF); this.readable.fill(0); this.writable.fill(0); this.kind.fill(0);
+        this.sticDisplayEnabled = false; this.sticColorStackMode = false;
+        this.clearCartridge();
+        this.mapRAM(0x0100, 0x01EF, 8, 1);
+        this.mapRAM(0x0200, 0x035F, 16, 2);
+        this.mapRAM(0x3800, 0x39FF, 8, 3);
+        this.mapRAM(0x0000, 0x003F, 16, 4);
+        this.mapRAM(0x01F0, 0x01FF, 8, 5);
+      }
+      clearCartridge() {
+        this.cartWords.fill(0xFFFF); this.cartAccess.fill(0); this.cartLo.fill(0); this.cartHi.fill(7);
+        for (let i = 0; i < 32; i++) this.bankOffset[i] = (i * 8) & 0xFF;
+      }
+      mapRAM(start, end, bits, kind) {
+        for (let a = start; a <= end; a++) {
+          this.words[a] = 0; this.readable[a] = 1; this.writable[a] = bits; this.kind[a] = kind;
+        }
+      }
+      load(start, values, bits = 16, kind = 6) {
+        const room = Math.min(values.length, 0x10000 - start);
+        const mask = bits === 8 ? 0xFF : bits === 10 ? 0x3FF : 0xFFFF;
+        for (let i = 0; i < room; i++) {
+          const a = (start + i) & 0xFFFF;
+          this.words[a] = values[i] & mask; this.readable[a] = 1; this.writable[a] = 0; this.kind[a] = kind;
+        }
+        return room;
+      }
+      loadRawCartridge(values, start = 0x5000) {
+        this.clearCartridge();
+        const room = Math.min(values.length, 0x10000 - start);
+        for (let i = 0; i < room; i++) this.cartWords[start + i] = values[i];
+        const first = start >>> 11, last = (start + Math.max(0, room - 1)) >>> 11;
+        for (let w = first; w <= last; w++) this.cartAccess[w] = 1;
+        return room;
+      }
+      cartAllowed(addr, mask) {
+        const win = addr >>> 11, page = (addr >>> 8) & 7;
+        return !!(this.cartAccess[win] & mask) && page >= this.cartLo[win] && page <= this.cartHi[win];
+      }
+      cartAddress(addr) {
+        const win = addr >>> 11;
+        if (!(this.cartAccess[win] & 8)) return addr;
+        return (((this.bankOffset[win] + ((addr >>> 8) & 7)) & 0xFF) << 8) | (addr & 0xFF);
+      }
+      peek(addr) {
+        addr &= 0xFFFF;
+        if(addr>=0x3A00&&addr<=0x3BFF)addr-=0x0200;
+        if (this.cartAllowed(addr, 1)) return this.cartWords[this.cartAddress(addr)];
+        return this.readable[addr] ? this.words[addr] : 0xFFFF;
+      }
+      read(addr) {
+        addr &= 0xFFFF;
+        if(addr>=0x3A00&&addr<=0x3BFF)addr-=0x0200;
+        if(addr>=0x01F0&&addr<=0x01FF&&this.psg)return this.psg.read(addr-0x01F0);
+        if (addr <= 0x003F) {
+          if (addr === 0x0021) this.sticColorStackMode = true;
+          if (addr <= 0x0007) return 0x3800 | (this.words[addr] & 0x07FF);
+          if (addr <= 0x000F) return 0x3000 | (this.words[addr] & 0x0FFF);
+          if (addr <= 0x0017) return this.words[addr] & 0x3FFF;
+          if (addr <= 0x001F) return 0x3C00 | (this.words[addr] & 0x03FF);
+          if (addr === 0x0020 || addr === 0x0021) return 0x3FFF;
+          if (addr >= 0x0028 && addr <= 0x002C) return 0x3FF0 | (this.words[addr] & 0x000F);
+          if (addr === 0x0030 || addr === 0x0031) return 0x3FF8 | (this.words[addr] & 0x0007);
+          if (addr === 0x0032) return 0x3FFC | (this.words[addr] & 0x0003);
+          return 0x3FFF;
+        }
+        return this.peek(addr);
+      }
+      write(addr, value) {
+        addr &= 0xFFFF; value &= 0xFFFF;
+        if(addr>=0x3A00&&addr<=0x3BFF)addr-=0x0200;
+        if(addr>=0x01F0&&addr<=0x01FF&&this.psg) { this.psg.write(addr-0x01F0,value); return; }
+        if (addr <= 0x003F) {
+          if (addr === 0x0020) this.sticDisplayEnabled = true;
+          if (addr === 0x0021) this.sticColorStackMode = false;
+          if (addr >= 0x0018 && addr <= 0x001F) value &= ~(1 << (addr - 0x0018));
+        }
+        if (addr >= 0x0040 && addr <= 0x005F) {
+          const win = ((addr & 0x0F) << 1) | ((addr & 0x10) ? 1 : 0);
+          this.bankOffset[win] = value & 0xFF;
+        }
+        if (this.cartAllowed(addr, 2)) this.cartWords[this.cartAddress(addr)] = value;
+        if (this.writable[addr]) this.words[addr] = value & (this.writable[addr] === 8 ? 0xFF : 0xFFFF);
+      }
+    }
+
+    class CP1610 {
+      constructor(memory) { this.mem = memory; this.r = new Uint16Array(8); this.trace=null; this.onControlTransfer=null; this.reset(); }
+      reset() {
+        this.r.fill(0); this.r[6] = 0x02F1; this.r[7] = 0x1000;
+        this.flags = {s:0,z:0,o:0,c:0,i:0,d:0}; this.cycles = 0; this.instructions = 0; this.halted = true;
+        this.lastOpcode = 0; this.unknown = 0; this.interrupts=0; this.irqCycles=0; this.lastInterruptible=false;
+      }
+      requestInterrupt(duration=3791) { this.irqCycles=Math.max(this.irqCycles,duration); }
+      notifyControlTransfer(from,target,kind) {
+        if(this.onControlTransfer)this.onControlTransfer(from&0xFFFF,target&0xFFFF,kind);
+      }
+      acceptInterrupt() {
+        const from=this.r[7];
+        this.mem.write(this.r[6],this.r[7]); this.r[6]=(this.r[6]+1)&0xFFFF;
+        this.r[7]=0x1004; this.flags.d=0; this.irqCycles=0; this.interrupts++; this.cycles+=12;
+        this.notifyControlTransfer(from,this.r[7],'interrupt');
+        return 12;
+      }
+      isInterruptible(op) {
+        if(op===0x004)return true;
+        if(op<=0x007||op>=0x040&&op<=0x07F||op>=0x240&&op<=0x27F)return false;
+        return true;
+      }
+      setSZ(v) { v &= 0xFFFF; this.flags.s = (v >>> 15) & 1; this.flags.z = v === 0 ? 1 : 0; return v; }
+      add(a, b) {
+        const wide = (a & 0xFFFF) + (b & 0xFFFF), out = wide & 0xFFFF;
+        this.setSZ(out); this.flags.c = wide > 0xFFFF ? 1 : 0;
+        this.flags.o = ((~(a ^ b) & (a ^ out) & 0x8000) !== 0) ? 1 : 0;
+        return out;
+      }
+      sub(a, b) {
+        const wide = (a & 0xFFFF) + ((~b) & 0xFFFF) + 1, out = wide & 0xFFFF;
+        this.setSZ(out); this.flags.c = wide > 0xFFFF ? 1 : 0;
+        this.flags.o = (((a ^ b) & (a ^ out) & 0x8000) !== 0) ? 1 : 0;
+        return out;
+      }
+      fetchWord() { const v = this.mem.read(this.r[7]); this.r[7] = (this.r[7] + 1) & 0xFFFF; return v; }
+      statusWord() { return (this.flags.c << 4) | (this.flags.o << 5) | (this.flags.z << 6) | (this.flags.s << 7); }
+      condition(code) {
+        const f = this.flags;
+        return [true,!!f.c,!!f.o,!f.s,!!f.z,!!(f.s ^ f.o),!!(f.z || (f.s ^ f.o)),!!(f.c ^ f.s),false,!f.c,!f.o,!!f.s,!f.z,!(f.s ^ f.o),!!(!f.z && !(f.s ^ f.o)),!(f.c ^ f.s)][code];
+      }
+      memoryOperand(mode, dbd) {
+        if (!dbd && mode === 0) return this.mem.read(this.fetchWord());
+        if (!dbd) {
+          if (mode === 6) this.r[6] = (this.r[6] - 1) & 0xFFFF;
+          const value = this.mem.read(mode === 7 ? this.r[7] : this.r[mode]);
+          if (mode === 4 || mode === 5 || mode === 7) this.r[mode] = (this.r[mode] + 1) & 0xFFFF;
+          return value;
+        }
+        if (mode === 6) {
+          this.r[6] = (this.r[6] - 1) & 0xFFFF;
+          const lo = this.mem.read(this.r[6]) & 0xFF;
+          this.r[6] = (this.r[6] - 1) & 0xFFFF;
+          return lo | ((this.mem.read(this.r[6]) & 0xFF) << 8);
+        }
+        const addr = mode === 7 ? this.r[7] : this.r[mode];
+        const lo = this.mem.read(addr) & 0xFF;
+        const hiAddr = (mode === 4 || mode === 5 || mode === 7) ? (addr + 1) & 0xFFFF : addr;
+        if (mode === 4 || mode === 5 || mode === 7) this.r[mode] = (this.r[mode] + 2) & 0xFFFF;
+        return lo | ((this.mem.read(hiAddr) & 0xFF) << 8);
+      }
+      setShiftSZ(v) { v&=0xFFFF; this.flags.s=(v>>>7)&1; this.flags.z=v===0?1:0; return v; }
+      shift(op) {
+        const family = (op - 0x040) >>> 3, count = (op & 4) ? 2 : 1, reg = op & 3;
+        const v=this.r[reg], oldC=this.flags.c, oldO=this.flags.o; let out=v;
+        if(family===0) out=count===1?((v<<8)|(v>>>8))&0xFFFF:(v&0xFF)*0x0101;
+        if(family===1) out=(v<<count)&0xFFFF;
+        if(family===2) {
+          out=count===1?((v<<1)|oldC)&0xFFFF:((v<<2)|(oldC<<1)|oldO)&0xFFFF;
+          this.flags.c=(v>>>15)&1; if(count===2)this.flags.o=(v>>>14)&1;
+        }
+        if(family===3) {
+          out=(v<<count)&0xFFFF; this.flags.c=(v>>>15)&1; if(count===2)this.flags.o=(v>>>14)&1;
+        }
+        if(family===4)out=v>>>count;
+        if(family===5)out=((v<<16>>16)>>count)&0xFFFF;
+        if(family===6) {
+          out=count===1?((v>>>1)|(oldC<<15)):((v>>>2)|(oldC<<14)|(oldO<<15));
+          this.flags.c=v&1; if(count===2)this.flags.o=(v>>>1)&1;
+        }
+        if(family===7) {
+          out=((v<<16>>16)>>count)&0xFFFF; this.flags.c=v&1; if(count===2)this.flags.o=(v>>>1)&1;
+        }
+        this.r[reg]=(family===1||family===2||family===3)?this.setSZ(out):this.setShiftSZ(out);
+      }
+      step() {
+        if(this.halted) {
+          if(this.irqCycles>0&&this.flags.i){this.halted=false;return this.acceptInterrupt();}
+          return 0;
+        }
+        if(this.irqCycles>0&&this.flags.i&&this.lastInterruptible)return this.acceptInterrupt();
+        const pc=this.r[7], dbd=this.flags.d;
+        if(this.trace&&this.trace.enabled) { this.trace.count[pc]=1; this.trace.dbd[pc]|=dbd?2:1; }
+        const op = this.fetchWord() & 0x3FF;
+        this.flags.d = 0; this.lastOpcode = op; this.instructions++;
+        let cost = 6, transferKind='';
+        if (op === 0x000) { this.halted = true; cost = 4; }
+        else if (op === 0x001) { this.flags.d = 1; cost = 4; }
+        else if (op === 0x002) { this.flags.i = 1; cost = 4; }
+        else if (op === 0x003) { this.flags.i = 0; cost = 4; }
+        else if (op === 0x004) {
+          const spec = this.fetchWord(), low = this.fetchWord(), link = 4 + ((spec >>> 8) & 3), mode = spec & 3;
+          const target = (((spec >>> 2) & 0x3F) << 10) | (low & 0x3FF);
+          if (link !== 7) this.r[link] = this.r[7];
+          if (mode === 1) this.flags.i = 1; else if (mode === 2) this.flags.i = 0;
+          this.r[7] = target; transferKind=link===7?'jump':'call'; cost = 12;
+        }
+        else if (op === 0x005) { cost = 4; }
+        else if (op === 0x006) { this.flags.c = 0; cost = 4; }
+        else if (op === 0x007) { this.flags.c = 1; cost = 6; }
+        else if (op >= 0x008 && op <= 0x00F) {
+          const n = op & 7; this.r[n] = this.setSZ((this.r[n] + 1) & 0xFFFF);if(n===7)transferKind='computed';
+        }
+        else if (op >= 0x010 && op <= 0x017) {
+          const n = op & 7; this.r[n] = this.setSZ((this.r[n] - 1) & 0xFFFF);if(n===7)transferKind='computed';
+        }
+        else if (op >= 0x018 && op <= 0x01F) { const n = op & 7; this.r[n] = this.setSZ((~this.r[n]) & 0xFFFF);if(n===7)transferKind='computed'; }
+        else if (op >= 0x020 && op <= 0x027) { const n = op & 7; this.r[n] = this.sub(0,this.r[n]);if(n===7)transferKind='computed'; }
+        else if (op >= 0x028 && op <= 0x02F) { const n=op&7; this.r[n]=this.add(this.r[n],this.flags.c);if(n===7)transferKind='computed'; }
+        else if (op >= 0x030 && op <= 0x033) { const sw=this.statusWord(); this.r[op&3]=(sw<<8)|sw; }
+        else if (op === 0x034 || op === 0x035) { cost = 6; }
+        else if (op === 0x036 || op === 0x037) { cost=6; }
+        else if (op >= 0x038 && op <= 0x03F) { const sw = this.r[op & 7]; this.flags.c=(sw>>>4)&1; this.flags.o=(sw>>>5)&1; this.flags.z=(sw>>>6)&1; this.flags.s=(sw>>>7)&1; }
+        else if (op >= 0x040 && op <= 0x07F) { this.shift(op); cost = (op & 4) ? 8 : 6; }
+        else if (op >= 0x080 && op <= 0x1FF) {
+          const family = (op - 0x080) >>> 6, src = (op >>> 3) & 7, dst = op & 7, a = this.r[dst], b = this.r[src];
+          if (family === 0) this.r[dst] = this.setSZ(b);
+          if (family === 1) this.r[dst] = this.add(a,b);
+          if (family === 2) this.r[dst] = this.sub(a,b);
+          if (family === 3) this.sub(a,b);
+          if (family === 4) this.r[dst] = this.setSZ(a & b);
+          if (family === 5) this.r[dst] = this.setSZ(a ^ b);
+          if(dst===7&&family!==3)transferKind=family===0&&src===5?'return':'computed';
+          if (dst >= 6 || src >= 6) cost++;
+        }
+        else if (op >= 0x200 && op <= 0x23F) {
+          const displacement = this.fetchWord() & 0x3FF, backwards = !!(op & 0x20), external = !!(op & 0x10), code = op & 0x0F;
+          const take = external ? false : this.condition(code);
+          if (take) {this.r[7] = backwards ? (this.r[7] + ((~displacement) & 0xFFFF)) & 0xFFFF : (this.r[7] + displacement) & 0xFFFF;transferKind='branch';}
+          cost = take ? 9 : 7;
+        }
+        else if (op >= 0x240) {
+          const family = op >>> 6, mode = (op >>> 3) & 7, reg = op & 7;
+          if (family === 9) {
+            if (mode === 0) this.mem.write(this.fetchWord(), this.r[reg]);
+            else if (mode === 7) { this.mem.write(this.r[7], this.r[reg]); this.r[7] = (this.r[7] + 1) & 0xFFFF; }
+            else { const addr=this.r[mode]; this.mem.write(addr,this.r[reg]); if(mode>=4&&mode<=6)this.r[mode]=(this.r[mode]+1)&0xFFFF; }
+            cost = mode === 0 ? 11 : 9;
+          } else {
+            const value = this.memoryOperand(mode, dbd), a = this.r[reg];
+            if (family === 10) this.r[reg] = value;
+            if (family === 11) this.r[reg] = this.add(a,value);
+            if (family === 12) this.r[reg] = this.sub(a,value);
+            if (family === 13) this.sub(a,value);
+            if (family === 14) this.r[reg] = this.setSZ(a & value);
+            if (family === 15) this.r[reg] = this.setSZ(a ^ value);
+            if(reg===7&&family!==13)transferKind=family===10&&mode===6?'return':'computed';
+            cost = dbd ? (mode===6?13:10) : mode === 0 ? 10 : mode === 6 ? 11 : 8;
+          }
+        }
+        else { this.unknown++; }
+        if(transferKind)this.notifyControlTransfer(pc,this.r[7],transferKind);
+        this.lastInterruptible=this.isInterruptible(op);
+        this.irqCycles=Math.max(0,this.irqCycles-cost);
+        this.cycles += cost;
+        return cost;
+      }
+    }
+
+    class CP1610Disassembler {
+      constructor(memory,trace) { this.mem=memory; this.trace=trace; this.ranges=[]; this.regions=[]; this.header=null; this.resources={sprites:[],sounds:[],strings:[],tables:[],regions:[],entries:[]}; }
+      rangeAt(addr) { return this.ranges.find(r=>addr>=r.start&&addr<=r.end); }
+      mapped(addr) { return !!this.rangeAt(addr&0xFFFF); }
+      regionAt(addr) { for(let i=this.regions.length-1;i>=0;i--)if(addr>=this.regions[i].start&&addr<=this.regions[i].end)return this.regions[i];return null; }
+      blocked(addr) { const region=this.regionAt(addr&0xFFFF);return !!region&&region.type!=='code'; }
+      word(addr) {
+        addr&=0xFFFF; const range=this.rangeAt(addr);
+        return range&&range.kind==='cart'?this.mem.cartWords[addr]&0xFFFF:this.mem.peek(addr)&0xFFFF;
+      }
+      detectExecHeader(ranges=this.ranges) {
+        const cart=ranges.find(r=>r.kind==='cart'&&r.start<=0x5000&&r.end>=0x500C);
+        if(!cart)return null;
+        const byteWord=addr=>{const value=this.word(addr);return value<=0xFF?value:null;};
+        const bidecle=addr=>{const lo=byteWord(addr),hi=byteWord(addr+1);return lo===null||hi===null?null:lo|(hi<<8);};
+        const fields={
+          mobPictures:bidecle(0x5000),processTable:bidecle(0x5002),programStart:bidecle(0x5004),
+          backgroundCards:bidecle(0x5006),gramPictures:bidecle(0x5008),title:bidecle(0x500A)
+        };
+        if(Object.values(fields).some(value=>value===null)||!this.mapped(fields.programStart)||!this.mapped(fields.processTable)||!this.mapped(fields.title))return null;
+        if(Object.values(fields).filter(value=>this.mapped(value)).length<3)return null;
+        const processEntries=[];let processEnd=fields.processTable-1,terminated=false;
+        for(let record=0,at=fields.processTable;record<64&&this.mapped(at)&&this.mapped(at+3);record++,at+=4) {
+          const target=bidecle(at);if(target===null)break;
+          processEnd=at+3;
+          if(target===0){processEnd=at+1;terminated=true;break;}
+          if(!this.mapped(target))break;
+          processEntries.push({address:at,target,index:record,words:[this.word(at),this.word(at+1),this.word(at+2),this.word(at+3)]});
+        }
+        if(!terminated)processEnd=fields.processTable-1;
+        const year=this.word(fields.title)&0xFF,titleBytes=[];let titleEnd=fields.title;
+        for(let at=fields.title+1;at<=fields.title+64&&this.mapped(at);at++) {
+          const value=byteWord(at);if(value===null)break;titleBytes.push(value);titleEnd=at;if(value===0)break;
+        }
+        const terminatedTitle=titleBytes.length&&titleBytes[titleBytes.length-1]===0;
+        const printable=titleBytes.slice(0,terminatedTitle?-1:undefined).every(value=>value>=32&&value<=126);
+        if(!terminatedTitle||!printable)return null;
+        const regions=[
+          {start:0x5000,end:0x500C,type:'data',source:'auto',label:'header EXEC: 6 puntatori BIDECLE + flag'},
+          {start:fields.title,end:fields.title,type:'data',source:'auto',label:'anno del titolo'},
+          {start:fields.title+1,end:titleEnd,type:'string',source:'auto',label:'titolo ASCII terminato da zero'}
+        ];
+        if(processEnd>=fields.processTable)regions.push({start:fields.processTable,end:processEnd,type:'data',source:'auto',label:'tabella processi EXEC'});
+        const flags=this.word(0x500C),postTitleStart=(flags&0x0080)&&this.mapped(titleEnd+1)?titleEnd+1:null;
+        return {...fields,flags,year,titleText:String.fromCharCode(...titleBytes.slice(0,-1)),titleEnd,postTitleStart,processEntries,regions};
+      }
+      symbol(addr) {
+        addr&=0xFFFF;
+        if(this.header) {
+          const dynamic=new Map([[0x5000,'CART_HEADER'],[this.header.mobPictures,'MOB_PICTURES'],[this.header.processTable,'PROCESS_TABLE'],[this.header.programStart,'CART_START'],[this.header.backgroundCards,'BACKGROUND_CARDS'],[this.header.gramPictures,'GRAM_PICTURES'],[this.header.title,'TITLE_DATE']]);
+          if(dynamic.has(addr))return dynamic.get(addr);
+        }
+        if(addr<=0x0007)return `STIC_MOB${addr}_X`;
+        if(addr<=0x000F)return `STIC_MOB${addr-8}_Y`;
+        if(addr<=0x0017)return `STIC_MOB${addr-0x10}_ATTR`;
+        if(addr<=0x001F)return `STIC_MOB${addr-0x18}_COLL`;
+        const fixed={0x0020:'STIC_DISPLAY_ENABLE',0x0021:'STIC_MODE',0x0028:'STIC_COLOR_STACK_0',0x0029:'STIC_COLOR_STACK_1',0x002A:'STIC_COLOR_STACK_2',0x002B:'STIC_COLOR_STACK_3',0x002C:'STIC_BORDER',0x0030:'STIC_H_DELAY',0x0031:'STIC_V_DELAY',0x0032:'STIC_EDGE_BLOCK'};
+        if(fixed[addr])return fixed[addr];
+        if(addr>=0x01F0&&addr<=0x01FF)return `PSG_R${addr-0x01F0}`;
+        if(addr===0x0100||addr===0x0101)return `SYSTEM_ISR_VECTOR_${addr-0x0100}`;
+        if(addr>=0x0200&&addr<=0x02EF)return 'BACKTAB';
+        if(addr>=0x02F0&&addr<=0x035F)return 'SYSTEM_RAM';
+        if(addr===0x1014)return 'EXEC_ISR_RETURN';
+        if(addr>=0x3000&&addr<=0x37FF)return 'GROM';
+        if(addr>=0x3800&&addr<=0x3FFF)return 'GRAM';
+        if(addr===0x5000)return 'CARTRIDGE_HEADER';
+        return '';
+      }
+      decode(addr,dbd=false) {
+        addr&=0xFFFF;
+        const raw=this.word(addr),op=raw&0x3FF,words=[raw],notes=[],doubts=[];
+        let asm='',length=1,flow='next',targets=[],direct=null,immediate=null,mnemonic='',valid=true,invalidReason='';
+        const reg=n=>`R${n}`;
+        const next=n=>{const v=this.word((addr+n)&0xFFFF);words.push(v);return v;};
+        const invalidate=reason=>{valid=false;invalidReason=reason;mnemonic='DECLE';asm=`DECLE $${hex(raw)}`;length=1;flow='stop';targets=[];direct=null;immediate=null;doubts.push('opcode non valido: '+reason);};
+        if(raw&0xFC00)invalidate('la parola istruzione usa bit oltre i 10 consentiti');
+        else if(op<=0x003) {
+          const names=['HLT','SDBD','EIS','DIS'];mnemonic=names[op];asm=mnemonic;if(op===0)flow='stop';
+          if(op===1) {
+            const following=this.word((addr+1)&0xFFFF);
+            if((following&0xFC00)||(following&0x3C0)<0x280||(following&0x038)<0x008)invalidate('SDBD non precede un operando indiretto o immediato valido');
+          }
+        } else if(op===0x004) {
+          const spec=next(1),low=next(2);
+          if((spec&0xFC00)||(low&0xFC00))invalidate('J/JSR richiede due parole argomento a 10 bit');
+          else {
+            const link=4+((spec>>>8)&3),mode=spec&3,target=((spec&0x0FC)<<8)|(low&0x3FF),suffix=mode===1?'E':mode===2?'D':'';
+            if(mode===3)invalidate('modalità interrupt 3 riservata');
+            else {length=3;mnemonic=link===7?'J'+suffix:'JSR'+suffix;asm=link===7?`${mnemonic} $${hex(target)}`:`${mnemonic} ${reg(link)},$${hex(target)}`;targets=[target];flow=link===7?'jump':'call';}
+          }
+        } else if(op<=0x007) {
+          const names=['','','','','','TCI','CLRC','SETC'];mnemonic=names[op];asm=mnemonic;
+          if(op===0x005)notes.push('istruzione rara sul software Intellivision');
+        } else if(op<=0x02F) {
+          const families=['INCR','DECR','COMR','NEGR','ADCR'],family=(op-0x008)>>>3;mnemonic=families[family];asm=`${mnemonic} ${reg(op&7)}`;
+        } else if(op<=0x033) {mnemonic='GSWD';asm=`GSWD ${reg(op&3)}`;}
+        else if(op<=0x037) {
+          if(op&1)invalidate(op===0x035?'codifica NOP con bit basso impostato':'codifica SIN con bit basso impostato');
+          else {mnemonic=op===0x034?'NOP':'SIN';asm=mnemonic;if(mnemonic==='SIN')notes.push('istruzione rara sul software Intellivision');}
+        } else if(op<=0x03F) {mnemonic='RSWD';asm=`RSWD ${reg(op&7)}`;}
+        else if(op<=0x07F) {
+          const names=['SWAP','SLL','RLC','SLLC','SLR','SAR','RRC','SARC'],family=(op-0x040)>>>3,count=(op&4)?2:1;mnemonic=names[family];asm=`${mnemonic} ${reg(op&3)}${count===2?',2':''}`;
+        } else if(op<=0x1FF) {
+          const names=['MOVR','ADDR','SUBR','CMPR','ANDR','XORR'],family=(op-0x080)>>>6,src=(op>>>3)&7,dst=op&7;
+          mnemonic=names[family];asm=`${mnemonic} ${reg(src)},${reg(dst)}`;
+          if(mnemonic==='MOVR'&&src===dst){mnemonic='TSTR';asm=`TSTR ${reg(dst)}`;}
+          if(mnemonic==='XORR'&&src===dst){mnemonic='CLRR';asm=`CLRR ${reg(dst)}`;}
+          if(dst===7&&family!==3){flow='computed';notes.push('scrittura del PC: destinazione calcolata');}
+        } else if(op<=0x23F) {
+          const disp=next(1),back=!!(op&0x20),external=!!(op&0x10),code=op&15,targetWide=addr+2+(back?~disp:disp);
+          const names=['B','BC','BOV','BPL','BEQ','BLT','BLE','BUSC','NOPP','BNC','BNOV','BMI','BNEQ','BGE','BGT','BESC'];
+          if(targetWide<0||targetWide>0xFFFF)invalidate('destinazione del branch oltre lo spazio indirizzi');
+          else if(!external&&code===8&&back)invalidate('NOPP/SKIP non ammette direzione inversa');
+          else if(!external&&code===8&&disp!==0){words.pop();length=1;mnemonic='SKIP';asm='SKIP';}
+          else {
+            const target=targetWide&0xFFFF;length=2;
+            if(external){mnemonic='BEXT';asm=`BEXT ${code},$${hex(target)}`;targets=[target];flow='branch';notes.push('condizione hardware esterna');}
+            else {mnemonic=names[code];asm=code===8?'NOPP':`${mnemonic} $${hex(target)}`;if(code===0){targets=[target];flow='jump';}else if(code!==8){targets=[target];flow='branch';}}
+          }
+        } else {
+          const family=op>>>6,mode=(op>>>3)&7,r=op&7;
+          if(family===9) {
+            if(dbd)invalidate('SDBD non è applicabile a MVO');
+            else if(mode===0){const a=next(1);length=2;direct=a;mnemonic='MVO';asm=`MVO ${reg(r)},$${hex(a)}`;}
+            else if(mode===7){next(1);length=2;mnemonic='MVOI';asm=`MVOI ${reg(r)}`;notes.push('scrive nella parola immediatamente successiva');}
+            else if(mode===6){mnemonic='PSHR';asm=`PSHR ${reg(r)}`;}
+            else {mnemonic='MVO@';asm=`MVO@ ${reg(r)},${reg(mode)}`;}
+          } else {
+            const names=['','','','','','','','','','','MVI','ADD','SUB','CMP','AND','XOR'],base=names[family];
+            if(dbd&&mode===0)invalidate('SDBD non è applicabile al modo diretto');
+            else if(mode===0){const a=next(1);length=2;direct=a;mnemonic=base;asm=`${base} $${hex(a)},${reg(r)}`;}
+            else if(mode===7){
+              const lo=next(1);immediate=lo;length=2;
+              if(dbd){const hi=next(2);if((lo&0xFF00)||(hi&0xFF00))invalidate('SDBD immediato richiede due byte a 8 bit');else {immediate=(lo&0xFF)|((hi&0xFF)<<8);length=3;}}
+              if(valid){mnemonic=base+'I';asm=`${mnemonic} #$${hex(immediate)},${reg(r)}`;}
+            } else if(family===10&&mode===6){mnemonic='PULR';asm=`PULR ${reg(r)}`;}
+            else {mnemonic=base+'@';asm=`${mnemonic} ${reg(mode)},${reg(r)}`;}
+            if(valid&&r===7&&family!==13){flow='computed';notes.push('risultato scritto nel PC: destinazione calcolata');}
+          }
+        }
+        if(valid&&direct!==null){const name=this.symbol(direct);if(name)notes.push(name);}
+        return {addr,raw,op,words,length,mnemonic,asm,flow,targets,direct,immediate,notes,doubts,dbd,valid,invalidReason,analysisReason:''};
+      }
+      plausibleBlock(start,code,operands,minInstructions=6) {
+        let pc=start&0xFFFF,dbd=false,instructions=0,words=0,strong=0,rare=0;
+        const range=this.rangeAt(pc); if(!range||this.blocked(pc))return null;
+        while(pc<=range.end&&instructions<18&&words<28) {
+          if(this.blocked(pc))break;
+          if((pc!==start)&&(code.has(pc)||operands.has(pc)))break;
+          const d=this.decode(pc,dbd);
+          if(!d.valid||pc+d.length-1>range.end)return null;
+          if(d.mnemonic==='SDBD') {
+            const next=this.word(pc+1)&0x3FF;
+            if((next&0x3C0)<0x280||(next&0x038)<0x008)return null;
+          }
+          if(d.flow!=='next')strong+=2;
+          if(d.op>=0x240)strong++;
+          if(d.direct!==null&&this.symbol(d.direct))strong+=2;
+          if(d.mnemonic==='EIS'||d.mnemonic==='DIS'||d.mnemonic==='SDBD')strong++;
+          if(d.mnemonic==='TCI'||d.mnemonic==='SIN'||d.raw===0x0035)rare++;
+          instructions++; words+=d.length;
+          if(d.flow==='stop') { if(instructions<4)return null; strong++; break; }
+          if(d.flow==='jump'||d.flow==='computed')break;
+          dbd=d.mnemonic==='SDBD'; pc=(pc+d.length)&0xFFFF;
+        }
+        return instructions>=minInstructions&&words>=minInstructions+1&&strong>=3&&rare<=1?{instructions,words,strong}:null;
+      }
+      discoverResources(code,ranges) {
+        const resources={sprites:[],sounds:[],strings:[],tables:[],regions:[],entries:[]},regionKeys=new Set();
+        const addRegion=region=>{
+          if(region.end<region.start)return;
+          const key=`${region.start}:${region.end}:${region.type}`;
+          if(!regionKeys.has(key)){regionKeys.add(key);resources.regions.push(region);}
+        };
+        const addEntry=addr=>{addr&=0xFFFF;if(this.mapped(addr)&&!resources.entries.includes(addr))resources.entries.push(addr);};
+        const makePixels=rows=>rows.map(value=>(value&0xFF).toString(2).padStart(8,'0'));
+        const scanCards=(start,limit,kind,label)=>{
+          if(!this.mapped(start))return;
+          const range=this.rangeAt(start);limit=Math.min(limit,range.end);
+          let at=start,index=0;
+          while(at+7<=limit&&Array.from({length:8},(_,row)=>this.word(at+row)).every(value=>value<=0xFF)) {
+            const rows=Array.from({length:8},(_,row)=>this.word(at+row)&0xFF);
+            resources.sprites.push({index:resources.sprites.length,groupIndex:index++,kind,address:at,addressHex:`$${hex(at)}`,width:8,height:8,bitsPerPixel:1,rows,rowsHex:rows.map(value=>`$${hex(value,2)}`),pixels:makePixels(rows)});
+            at+=8;
+          }
+          if(at>start)addRegion({start,end:at-1,type:'graphics',source:'auto',label:`${index} ${label} 8×8 riconosciuti dall’header EXEC`,resourceKind:kind});
+        };
+        const ordered=[...code.values()].sort((a,b)=>a.addr-b.addr);
+        if(this.header) {
+          const pointers=[this.header.mobPictures,this.header.backgroundCards,this.header.gramPictures,this.header.processTable,this.header.programStart,this.header.title].filter(Number.isInteger);
+          const nextAfter=addr=>Math.min(...pointers.filter(value=>value>addr),this.rangeAt(addr)?.end+1||0x10000)-1;
+          scanCards(this.header.mobPictures,nextAfter(this.header.mobPictures),'mob','frame MOB');
+          scanCards(this.header.backgroundCards,nextAfter(this.header.backgroundCards),'background','carte BACKGROUND');
+          if(this.header.processTable>0x500D&&this.header.processTable-0x500D<=64&&this.mapped(0x500D)) {
+            const end=this.header.processTable-1,values=Array.from({length:end-0x500D+1},(_,i)=>this.word(0x500D+i));
+            resources.tables.push({kind:'pre_process_table',address:0x500D,addressHex:'$500D',endAddress:end,endAddressHex:`$${hex(end)}`,confidence:'medium',words:values,wordsHex:values.map(value=>`$${hex(value)}`)});
+            addRegion({start:0x500D,end,type:'data',source:'auto',label:'padding o tabella privata prima della process table',resourceKind:'pre_process_table'});
+          }
+          if(this.mapped(this.header.gramPictures)) {
+            const gramStart=this.header.gramPictures,firstRoutine=ordered.find(d=>d.addr>gramStart&&d.addr-gramStart<=512&&d.mnemonic==='PSHR'&&d.asm==='PSHR R5'&&!['heuristic','pointer'].includes(d.analysisReason));
+            if(firstRoutine&&firstRoutine.addr>gramStart) {
+              const end=firstRoutine.addr-1,values=Array.from({length:end-gramStart+1},(_,i)=>this.word(gramStart+i));
+              resources.tables.push({kind:'gram_loader_table',address:gramStart,addressHex:`$${hex(gramStart)}`,endAddress:end,endAddressHex:`$${hex(end)}`,confidence:'medium',words:values,wordsHex:values.map(value=>`$${hex(value)}`)});
+              addRegion({start:gramStart,end,type:'data',source:'auto',label:'tabella o stream di caricamento GRAM fino al successivo prologo di funzione',resourceKind:'gram_loader_table'});
+            }
+          }
+        }
+        for(const d of ordered) {
+          if(d.flow!=='call'||d.targets.length!==1)continue;
+          const target=d.targets[0],start=(d.addr+d.length)&0xFFFF;
+          let end=null,kind='',label='',terminator='';
+          if(target===0x187B) {
+            for(let at=start;at<=Math.min(start+96,this.rangeAt(start)?.end??start-1);at++)if(this.word(at)===0){end=at;break;}
+            kind='exec_string';label=`testo inline consumato da EXEC $187B, chiamata a $${hex(d.addr)}`;terminator='$0000';
+          } else if(target===0x1B95) {
+            for(let at=start;at<=Math.min(start+96,this.rangeAt(start)?.end??start-1);at++)if(this.word(at)===0){end=at;break;}
+            kind='stock_sfx';label='effetto sonoro inline consumato da EXEC $1B95';terminator='$0000';
+          } else if(target===0x1BBB||target===0x1BBE) {
+            for(let at=start;at<=Math.min(start+64,this.rangeAt(start)?.end??start-1);at++)if((this.word(at)&0xFF)===0xCF){end=at;break;}
+            kind='noise_envelope';label=`inviluppo/noise inline consumato da EXEC $${hex(target)}`;terminator='xCF';
+          } else if(target===0x1B27||target===0x1B5D) {
+            resources.sounds.push({index:resources.sounds.length,kind:target===0x1B27?'flute_tune':'organ_tune',callAddress:d.addr,callAddressHex:`$${hex(d.addr)}`,execTarget:target,execTargetHex:`$${hex(target)}`,dataStart:start,dataStartHex:`$${hex(start)}`,dataEnd:null,dataEndHex:null,terminator:'formato non risolto',confidence:'low',words:[],wordsHex:[]});
+          }
+          if(end===null)continue;
+          const values=Array.from({length:end-start+1},(_,i)=>this.word(start+i));
+          addRegion({start,end,type:kind==='exec_string'?'string':'data',source:'auto',label,resourceKind:kind,execTarget:target,callAddress:d.addr});
+          addEntry(end+1);
+          if(kind==='noise_envelope'&&d.addr>0&&this.word(d.addr-1)===0x0275)addEntry(d.addr-1);
+          const item={index:kind==='exec_string'?resources.strings.length:resources.sounds.length,kind,callAddress:d.addr,callAddressHex:`$${hex(d.addr)}`,execTarget:target,execTargetHex:`$${hex(target)}`,dataStart:start,dataStartHex:`$${hex(start)}`,dataEnd:end,dataEndHex:`$${hex(end)}`,terminator,confidence:target===0x1BBB?'medium':'high',words:values,wordsHex:values.map(value=>`$${hex(value)}`)};
+          if(kind==='exec_string') {item.text=String.fromCharCode(...values.slice(0,-1).map(value=>value&0xFF));resources.strings.push(item);}
+          else resources.sounds.push(item);
+        }
+        return resources;
+      }
+      analyze(ranges,mode='hybrid',manualEntries=[],regions=[],runtimeEntries=[],runtimeCallContinuations=[],autoPass=false) {
+        if(!autoPass)this.resources={sprites:[],sounds:[],strings:[],tables:[],regions:[],entries:[]};
+        this.ranges=ranges;this.header=this.detectExecHeader(ranges);this.regions=[...(this.header?this.header.regions:[])];
+        const runtimeRegions=[];
+        for(const continuation of runtimeCallContinuations) {
+          const callFrom=continuation.callFrom&0xFFFF,returnTo=continuation.returnTo&0xFFFF,d=this.decode(callFrom),callEnd=callFrom+d.length;
+          if(d.valid&&d.flow==='call'&&this.mapped(callFrom)&&this.mapped(returnTo)&&returnTo>callEnd&&returnTo-callEnd<=32&&this.rangeAt(callFrom)===this.rangeAt(returnTo)) {
+            runtimeRegions.push({start:callEnd,end:returnTo-1,type:'data',source:'runtime',label:`parametri inline osservati dopo la chiamata $${hex(callFrom)}`});
+          }
+        }
+        this.regions=[...(this.header?this.header.regions:[]),...runtimeRegions,...regions];
+        const code=new Map(),operands=new Map(),visited=new Set(),queued=new Set(),queue=[];
+        const addEntry=(addr,dbd=false,reason='static')=>{
+          addr&=0xFFFF; const key=`${addr}:${dbd?1:0}`;
+          if(!this.mapped(addr)||this.blocked(addr)||visited.has(key)||queued.has(key))return false;
+          queued.add(key);queue.push({addr,dbd,reason});return true;
+        };
+        if(mode!=='trace') {
+          addEntry(0x1000,false,'reset'); addEntry(0x1004,false,'interrupt');
+          if(this.header) {
+            addEntry(this.header.programStart,false,'header');
+            if(this.header.postTitleStart!==null)addEntry(this.header.postTitleStart,false,'post-title');
+            for(const process of this.header.processEntries)addEntry(process.target,false,'process');
+          }
+          for(const addr of runtimeEntries)addEntry(addr,false,'runtime');
+          for(const addr of manualEntries)addEntry(addr,false,'manual');
+          for(const region of this.regions)if(region.type==='code')addEntry(region.start,false,region.source==='auto'?'header':'manual');
+        }
+        for(let a=0;a<0x10000;a++)if(this.trace.count[a]&&this.mapped(a)) {
+          if(this.trace.dbd[a]&1)addEntry(a,false,'trace');
+          if(this.trace.dbd[a]&2)addEntry(a,true,'trace');
+          if(!this.trace.dbd[a])addEntry(a,false,'trace');
+        }
+        const addCode=(d,reason='',linear=false)=>{
+          d.analysisReason=reason;
+          if(reason==='pointer')d.doubts.push('ingresso ricavato da una parola-puntatore: verificare codice/dati');
+          if(reason==='heuristic')d.doubts.push('blocco individuato euristicamente: verificare codice/dati');
+          const existing=code.get(d.addr);
+          if(existing&&existing.dbd!==d.dbd&&!existing.doubts.includes('raggiungibile con stato SDBD ambiguo'))existing.doubts.push('raggiungibile con stato SDBD ambiguo');
+          else if(!existing)code.set(d.addr,d);
+          for(let i=1;i<d.length;i++){const at=(d.addr+i)&0xFFFF;if(code.has(at))d.doubts.push('sovrapposizione con un altro ingresso di codice');operands.set(at,d.addr);}
+          if(linear)d.doubts.push('analisi lineare: la sequenza potrebbe essere un dato');
+        };
+        const walkQueue=()=>{
+          while(queue.length) {
+            let {addr:pc,dbd,reason}=queue.shift(),firstInstruction=true; queued.delete(`${pc}:${dbd?1:0}`);
+            while(this.mapped(pc)&&!this.blocked(pc)) {
+              const key=`${pc}:${dbd?1:0}`; if(visited.has(key))break; visited.add(key);
+              const d=this.decode(pc,dbd),range=this.rangeAt(pc);
+              const currentReason=firstInstruction||reason==='pointer'||reason==='heuristic'?reason:'static';
+              if(pc+d.length-1>range.end){d.length=1;d.words=[d.raw];d.asm=`DECLE $${hex(d.raw)}`;d.doubts.push('istruzione troncata al limite dell’intervallo');addCode(d,currentReason);break;}
+              if(operands.has(pc))d.doubts.push('ingresso nel mezzo di un’altra istruzione'); addCode(d,currentReason);firstInstruction=false;
+              const inherited=reason==='pointer'||reason==='heuristic'?reason:'static';
+              for(const target of d.targets)addEntry(target,false,inherited);
+              if(!d.valid||d.flow==='stop'||d.flow==='jump'||d.flow==='computed')break;
+              dbd=d.mnemonic==='SDBD'; pc=(pc+d.length)&0xFFFF;
+            }
+          }
+        };
+        if(mode==='linear') {
+          for(const range of ranges)for(let pc=range.start,dbd=false;pc<=range.end;) {
+            if(this.blocked(pc)){dbd=false;pc++;continue;}
+            const d=this.decode(pc,dbd); if(pc+d.length-1>range.end){d.length=1;d.words=[d.raw];d.asm=`DECLE $${hex(d.raw)}`;d.doubts.push('istruzione troncata al limite dell’intervallo');}
+            addCode(d,'linear',true); dbd=d.mnemonic==='SDBD'; pc+=d.length;
+          }
+        } else if(mode==='trace') {
+          for(const entry of queue) { const key=`${entry.addr}:${entry.dbd?1:0}`; if(visited.has(key))continue;visited.add(key);const d=this.decode(entry.addr,entry.dbd);addCode(d,'trace'); }
+        } else {
+          walkQueue();
+          for(const region of this.regions)if(region.type==='code') {
+            for(let pc=region.start,dbd=false;pc<=region.end;) {
+              if(!this.mapped(pc)||code.has(pc)||operands.has(pc)){pc++;continue;}
+              const d=this.decode(pc,dbd),limit=Math.min(region.end,this.rangeAt(pc).end);
+              if(pc+d.length-1>limit){d.length=1;d.words=[d.raw];d.asm=`DECLE $${hex(d.raw)}`;d.valid=false;d.doubts.push('istruzione troncata al limite CODE');}
+              addCode(d,'manual');for(const target of d.targets)addEntry(target,false,'static');dbd=d.valid&&d.mnemonic==='SDBD';pc+=d.length;
+            }
+          }
+          walkQueue();
+          if(mode==='hybrid') {
+            for(const range of ranges)if(range.kind==='cart')for(let at=range.start;at<=range.end;at++) {
+              if(this.word(at)===0x0275&&!this.blocked(at)&&!code.has(at)&&!operands.has(at)&&this.plausibleBlock(at,code,operands,5))addEntry(at,false,'prologue');
+            }
+            walkQueue();
+            for(let round=0;round<4;round++) {
+              let dispatchSeeds=0;
+              for(const d of [...code.values()])if(d.flow==='computed'&&d.mnemonic==='ADDR'&&d.asm.endsWith(',R7')) {
+                const table=[];let pc=d.addr+d.length;
+                while(table.length<16&&this.mapped(pc)&&!this.blocked(pc)) {
+                  const branch=this.decode(pc,false);
+                  if(!branch.valid||branch.mnemonic!=='B'||branch.length!==2)break;
+                  table.push(pc);pc+=2;
+                }
+                if(table.length>=2)for(const entry of table)if(addEntry(entry,false,'dispatch'))dispatchSeeds++;
+                const register=(d.op>>>3)&7,window=[...code.values()].filter(x=>x.addr>=d.addr-24&&x.addr<d.addr).sort((a,b)=>a.addr-b.addr);
+                const zeroed=window.some(x=>x.mnemonic==='CLRR'&&(x.op&7)===register);
+                if(zeroed)for(const move of window)if(move.mnemonic==='MOVR'&&(move.op&7)===register) {
+                  const source=(move.op>>>3)&7,constant=window.slice().reverse().find(x=>x.addr<move.addr&&x.mnemonic==='MVII'&&(x.op&7)===source&&x.immediate<=16);
+                  if(constant)for(const offset of [0,constant.immediate])if(this.mapped(d.addr+d.length+offset)&&addEntry(d.addr+d.length+offset,false,'dispatch'))dispatchSeeds++;
+                }
+              }
+              if(!dispatchSeeds)break;walkQueue();
+            }
+            let pointerSeeds=0;
+            for(const range of ranges)for(let at=range.start;at<=range.end&&pointerSeeds<256;at++) {
+              if(this.blocked(at)||code.has(at)||operands.has(at))continue;
+              const target=this.word(at)&0xFFFF;
+              if(!code.has(target)&&!operands.has(target)&&this.mapped(target)&&this.plausibleBlock(target,code,operands,4)) {
+                if(addEntry(target,false,'pointer'))pointerSeeds++;
+              }
+            }
+            walkQueue();
+            let heuristicSeeds=0;
+            for(const range of ranges)for(let at=range.start;at<=range.end&&heuristicSeeds<256;) {
+              if(this.blocked(at)||code.has(at)||operands.has(at)){at++;continue;}
+              const candidate=this.plausibleBlock(at,code,operands,7);
+              if(candidate&&addEntry(at,false,'heuristic')) { heuristicSeeds++;walkQueue();at+=candidate.words; }
+              else at++;
+            }
+          }
+        }
+        if(!autoPass) {
+          this.resources=this.discoverResources(code,ranges);
+          if(mode!=='linear'&&mode!=='trace'&&this.resources.regions.length) {
+            return this.analyze(ranges,mode,[...new Set([...manualEntries,...this.resources.entries])],[...this.resources.regions,...regions],runtimeEntries,runtimeCallContinuations,true);
+          }
+        }
+        return this.render(code,operands,ranges,mode,manualEntries,this.regions,runtimeEntries);
+      }
+      render(code,operands,ranges,mode,manualEntries=[],regions=[],runtimeEntries=[]) {
+        const labels=new Map([[0x1000,'RESET'],[0x1004,'IRQ_VECTOR']]);
+        const setLabel=(addr,label)=>{if(this.mapped(addr)&&!labels.has(addr))labels.set(addr,label);};
+        if(this.header) {
+          setLabel(0x5000,'CART_HEADER');setLabel(this.header.mobPictures,'MOB_PICTURES');setLabel(this.header.processTable,'PROCESS_TABLE');
+          setLabel(this.header.programStart,'CART_START');setLabel(this.header.backgroundCards,'BACKGROUND_CARDS');setLabel(this.header.gramPictures,'GRAM_PICTURES');setLabel(this.header.title,'TITLE_DATE');
+          if(this.header.postTitleStart!==null)setLabel(this.header.postTitleStart,'AFTER_TITLE');
+          for(const process of this.header.processEntries)setLabel(process.target,`PROCESS_${String(process.index).padStart(2,'0')}`);
+        }
+        for(const addr of runtimeEntries)setLabel(addr,`RUNTIME_${hex(addr)}`);
+        for(const addr of manualEntries)if(this.mapped(addr)&&!labels.has(addr))labels.set(addr,`ENTRY_${hex(addr)}`);
+        for(const region of regions)if(region.type==='code'&&this.mapped(region.start)&&!labels.has(region.start))labels.set(region.start,`CODE_${hex(region.start)}`);
+        for(const d of code.values())if(d.analysisReason==='prologue')setLabel(d.addr,`FUNC_${hex(d.addr)}`);else if(d.analysisReason==='dispatch')setLabel(d.addr,`SWITCH_${hex(d.addr)}`);
+        for(const d of code.values())for(const target of d.targets)if(this.mapped(target)&&!labels.has(target))labels.set(target,`L_${hex(target)}`);
+        const replaceTargets=d=>{let out=d.asm;for(const target of d.targets){const label=this.mapped(target)?labels.get(target):'';if(label)out=out.replace(`$${hex(target)}`,label);}return out;};
+        const lines=['; Intellijsd - disassemblaggio CP1610 / modello DIS-1600','; Gli opcode validi sono deterministici; "?" riguarda classificazioni non certe.','; Modalità: '+({hybrid:'profonda strutturata con fallback euristico',strict:'solo flussi certi',linear:'lineare completa',trace:'solo codice osservato'}[mode])];
+        if(this.header)lines.push(`; Header EXEC: ${JSON.stringify(this.header.titleText)} · ${1900+this.header.year} · start $${hex(this.header.programStart)} · ${this.header.processEntries.length} processi`);
+        const runtimeCount=runtimeEntries.filter(addr=>this.mapped(addr)).length;
+        if(runtimeCount)lines.push(`; Destinazioni di controllo osservate durante l’emulazione: ${runtimeCount}`);
+        lines.push('');
+        let uncertain=0,executed=0,lastEnd=-2;
+        const emitInstruction=d=>{
+          if(labels.has(d.addr))lines.push(labels.get(d.addr)+':');
+          if(d.addr!==lastEnd+1)lines.push(`        ORG     $${hex(d.addr)}`);
+          const reasonText={manual:'punto d’ingresso manuale',header:'ingresso dall’header EXEC','post-title':'codice dopo il titolo, indicato dai flag EXEC',process:'processo dall’header EXEC',runtime:'destinazione osservata durante l’emulazione',prologue:'funzione riconosciuta dal prologo PSHR R5',dispatch:'ramo di una tabella di dispatch'};
+          const status=this.trace.count[d.addr]?'osservato nel trace':(reasonText[d.analysisReason]||(d.analysisReason==='reset'||d.analysisReason==='interrupt'||d.analysisReason==='static'?'raggiungibile staticamente':''));
+          if(this.trace.count[d.addr])executed++;
+          const comments=[`$${hex(d.addr)}: ${d.words.map(w=>hex(w)).join(' ')}`,...d.notes,status,...d.doubts.map(x=>'? '+x)].filter(Boolean);
+          lines.push(`        ${replaceTargets(d).padEnd(30)} ; ${comments.join(' · ')}`); if(d.doubts.length)uncertain+=d.length; lastEnd=d.addr+d.length-1;
+        };
+        if(mode==='trace') {
+          for(const d of [...code.values()].sort((a,b)=>a.addr-b.addr))emitInstruction(d);
+        } else {
+          for(const range of ranges) {
+            lines.push('',`; ---- ${range.kind==='cart'?'CARTUCCIA':'EXECUTIVE ROM'} $${hex(range.start)}-$${hex(range.end)} ----`,`        ORG     $${hex(range.start)}`); lastEnd=range.start-1;
+            for(let pc=range.start;pc<=range.end;) {
+              const manual=this.regionAt(pc);
+              if(manual&&manual.type!=='code') {
+                const start=pc,values=[],limit=Math.min(range.end,manual.end),max=manual.type==='string'?16:8;
+                while(pc<=limit&&this.regionAt(pc)===manual&&values.length<max){values.push(this.word(pc));pc++;}
+                if(labels.has(start))lines.push(labels.get(start)+':');
+                let detail=manual.source?manual.label:`${manual.type.toUpperCase()} manuale`;
+                if(manual.type==='string')detail+=` ${JSON.stringify(values.map(v=>{const c=v&0xFF;return c>=32&&c<=126?String.fromCharCode(c):'.';}).join(''))}`;
+                if(manual.type==='graphics')detail+=` ${values.map(v=>(v&0xFF).toString(2).padStart(8,'0').replace(/0/g,'.').replace(/1/g,'#')).join(' / ')}`;
+                lines.push(`        DECLE   ${values.map(v=>'$'+hex(v)).join(', ')} ; $${hex(start)} · ${detail}`);lastEnd=pc-1;continue;
+              }
+              const d=code.get(pc); if(d){emitInstruction(d);pc+=d.length;continue;}
+              if(operands.has(pc)){pc++;continue;}
+              const start=pc,values=[];
+              while(pc<=range.end&&!this.regionAt(pc)&&!code.has(pc)&&!operands.has(pc)&&(!labels.has(pc)||pc===start)&&values.length<8){values.push(this.word(pc));pc++;}
+              if(!values.length){values.push(this.word(pc));pc++;}
+              if(labels.has(start))lines.push(labels.get(start)+':');
+              lines.push(`        DECLE   ${values.map(v=>'$'+hex(v)).join(', ')} ; $${hex(start)} · ? area non raggiunta: dati, tabella o codice indiretto`); uncertain+=values.length; lastEnd=pc-1;
+            }
+          }
+        }
+        return {text:lines.join('\n'),instructions:code.size,executed,uncertain,ranges:ranges.length,header:this.header,runtimeEntries:runtimeCount,resources:this.resources};
+      }
+    }
+
+    class STICDisplay {
+      constructor(memory, canvas=null) {
+        this.mem=memory; this.canvas=canvas; this.ctx=canvas?canvas.getContext('2d',{alpha:false}):null;
+        this.width=160; this.height=192; this.frameBuffer=new Uint8Array(this.width*this.height);
+        this.backgroundBuffer=new Uint8Array(this.frameBuffer.length);
+        this.foreground=new Uint8Array(this.frameBuffer.length); this.mobOwner=new Int8Array(this.frameBuffer.length);
+        this.mobVisual=Array.from({length:8},()=>({ready:false,active:false,previousActive:false,x:0,y:0,targetX:0,targetY:0,sourceRows:8,yScale:1,xScale:1,xFlip:false,yFlip:false,base:0,color:0,behind:false}));
+        this.phase=0; this.powered=false; this.mode='original'; this.spriteMode='pixel';
+        this.classicPalette=[[0,0,0],[0,45,255],[255,61,32],[195,166,59],[0,104,62],[0,168,58],[250,234,80],[255,255,255],[90,90,90],[66,199,179],[236,101,76],[160,96,28],[206,91,183],[95,143,228],[168,231,46],[108,94,181]];
+        this.modernPalette=[[3,8,12],[53,104,255],[255,79,91],[241,197,111],[18,122,87],[38,204,113],[255,229,92],[250,248,232],[105,116,128],[66,229,218],[255,142,54],[156,92,51],[244,93,190],[111,151,255],[178,240,71],[151,104,224]];
+        if(canvas) {
+          this.surface=canvas.ownerDocument.createElement('canvas'); this.surface.width=this.width; this.surface.height=this.height;
+          this.surfaceCtx=this.surface.getContext('2d',{alpha:false}); this.imageData=this.surfaceCtx.createImageData(this.width,this.height);
+          this.spriteSurface=canvas.ownerDocument.createElement('canvas'); this.spriteSurface.width=this.width*2; this.spriteSurface.height=this.height*2;
+          this.spriteSurfaceCtx=this.spriteSurface.getContext('2d',{alpha:true});
+        }
+      }
+      setMode(mode) { this.mode=['original','sharp','crt','modern'].includes(mode)?mode:'original'; }
+      setSpriteMode(mode) { this.spriteMode=['pixel','soft','smooth'].includes(mode)?mode:'pixel'; }
+      raw(addr) { return this.mem.peek(addr)&0xFFFF; }
+      put(x,y,color,isForeground=false) {
+        if(x<0||x>=159||y<0||y>=this.height)return;
+        const at=y*this.width+x; this.frameBuffer[at]=color&15; if(isForeground)this.foreground[at]=1;
+      }
+      fillRect(x,y,w,h,color,isForeground=false) {
+        for(let py=0;py<h;py++)for(let px=0;px<w;px++)this.put(x+px,y+py,color,isForeground);
+      }
+      patternCard(x,y,offset,isGram,foreground,background) {
+        const base=isGram?0x3800:0x3000;
+        for(let row=0;row<8;row++) {
+          const bits=this.raw(base+offset+row)&0xFF;
+          for(let col=0;col<8;col++) {
+            const on=!!(bits&(0x80>>>col));
+            this.put(x+col,y+row*2,on?foreground:background,on);
+            this.put(x+col,y+row*2+1,on?foreground:background,on);
+          }
+        }
+      }
+      coloredSquares(x,y,word,stackColor) {
+        const colors=[word&7,(word>>>3)&7,(word>>>6)&7,((word&0x2000)>>>11)|((word&0x0600)>>>9)];
+        for(let q=0;q<4;q++) {
+          const stack=colors[q]===7, color=stack?stackColor:colors[q];
+          this.fillRect(x+(q&1)*4,y+(q>>>1)*8,4,8,color,!stack);
+        }
+      }
+      renderBackground() {
+        const border=this.raw(0x002C)&15, hDelay=this.raw(0x0030)&7, vDelay=this.raw(0x0031)&7, block=this.raw(0x0032)&3;
+        this.frameBuffer.fill(border); this.foreground.fill(0);
+        let stackPointer=0;
+        for(let row=0;row<12;row++)for(let col=0;col<20;col++) {
+          if(((block&1)&&col===0)||((block&2)&&row===0))continue;
+          const word=this.raw(0x0200+row*20+col), x=col*8+hDelay, y=(row*8+vDelay)*2;
+          if(this.mem.sticColorStackMode) {
+            const colored=(word&0x1800)===0x1000;
+            if(colored) { this.coloredSquares(x,y,word,this.raw(0x0028+stackPointer)&15); continue; }
+            if(word&0x2000)stackPointer=(stackPointer+1)&3;
+            const isGram=!!(word&0x0800), foreground=((word&0x1000)>>>9)|(word&7), background=this.raw(0x0028+stackPointer)&15;
+            const offset=isGram?(word&0x01F8):(word&0x07F8);
+            this.patternCard(x,y,offset,isGram,foreground,background);
+          } else {
+            const isGram=!!(word&0x0800), foreground=word&7;
+            const background=((word&0x2000)>>>11)|((word&0x1600)>>>9);
+            this.patternCard(x,y,word&0x01F8,isGram,foreground,background);
+          }
+        }
+      }
+      renderMobs() {
+        const collisions=Array.from({length:8},(_,i)=>this.raw(0x0018+i)&0x03FF);
+        const hDelay=this.raw(0x0030)&7, vDelay=this.raw(0x0031)&7; this.mobOwner.fill(-1);
+        for(const visual of this.mobVisual) { visual.previousActive=visual.active; visual.active=false; }
+        for(let mob=7;mob>=0;mob--) {
+          const xr=this.raw(mob), yr=this.raw(0x0008+mob), attr=this.raw(0x0010+mob), xpos=xr&0xFF;
+          const visible=!!(xr&0x0200), detect=!!(xr&0x0100); if(xpos===0||(!visible&&!detect))continue;
+          const sourceRows=(yr&0x0080)?16:8, yScale=((yr&0x0100)?2:1)*((yr&0x0200)?4:1), xScale=(xr&0x0400)?2:1;
+          const xFlip=!!(yr&0x0400), yFlip=!!(yr&0x0800), isGram=!!(attr&0x0800), behind=!!(attr&0x2000);
+          const card=(attr&0x07F8)>>>3, color=((attr&0x1000)>>>9)|(attr&7), base=(isGram?0x3800:0x3000)+card*8;
+          const left=xpos-8+hDelay, top=((yr&0x7F)-8+vDelay)*2;
+          const visual=this.mobVisual[mob];
+          if(visible) {
+            if(!visual.ready||!visual.previousActive) { visual.x=left; visual.y=top; }
+            else if(this.spriteMode==='smooth') { visual.x+=(left-visual.x)*.42; visual.y+=(top-visual.y)*.42; }
+            else { visual.x=left; visual.y=top; }
+            Object.assign(visual,{ready:true,active:true,targetX:left,targetY:top,sourceRows,yScale,xScale,xFlip,yFlip,base,color,behind});
+          }
+          for(let oy=0;oy<sourceRows*yScale;oy++) {
+            const sourceY=Math.floor(oy/yScale), row=yFlip?sourceRows-1-sourceY:sourceY, bits=this.raw(base+row)&0xFF;
+            for(let ox=0;ox<8*xScale;ox++) {
+              const sourceX=Math.floor(ox/xScale), bit=xFlip?sourceX:7-sourceX; if(!(bits&(1<<bit)))continue;
+              const x=left+ox,y=top+oy;
+              if(x<0||x>=159||y<0||y>=this.height) { if(detect)collisions[mob]|=0x0200; continue; }
+              const at=y*this.width+x, other=this.mobOwner[at];
+              if(detect&&this.foreground[at])collisions[mob]|=0x0100;
+              if(other>=0&&other!==mob) { if(detect)collisions[mob]|=1<<other; collisions[other]|=1<<mob; }
+              this.mobOwner[at]=mob;
+              if(visible&&!(behind&&this.foreground[at]))this.frameBuffer[at]=color;
+            }
+          }
+        }
+        for(let i=0;i<8;i++)this.mem.words[0x0018+i]=collisions[i]&~(1<<i);
+      }
+      renderHardware() { this.renderBackground(); this.backgroundBuffer.set(this.frameBuffer); this.renderMobs(); return this.frameBuffer; }
+      renderSpriteLayer(palette) {
+        if(!this.spriteSurfaceCtx)return;
+        const c=this.spriteSurfaceCtx; c.save(); c.setTransform(1,0,0,1,0,0); c.globalCompositeOperation='source-over'; c.globalAlpha=1; c.clearRect(0,0,this.spriteSurface.width,this.spriteSurface.height);
+        for(let mob=7;mob>=0;mob--) {
+          const visual=this.mobVisual[mob]; if(!visual.active)continue;
+          const left=this.spriteMode==='smooth'?visual.x:visual.targetX, top=this.spriteMode==='smooth'?visual.y:visual.targetY;
+          c.fillStyle=`rgb(${palette[visual.color].join(',')})`;
+          for(let oy=0;oy<visual.sourceRows*visual.yScale;oy++) {
+            const sourceY=Math.floor(oy/visual.yScale), row=visual.yFlip?visual.sourceRows-1-sourceY:sourceY, bits=this.raw(visual.base+row)&0xFF;
+            for(let ox=0;ox<8*visual.xScale;ox++) {
+              const sourceX=Math.floor(ox/visual.xScale), bit=visual.xFlip?sourceX:7-sourceX; if(!(bits&(1<<bit)))continue;
+              const x=left+ox,y=top+oy, px=Math.round(x), py=Math.round(y);
+              if(px<0||px>=159||py<0||py>=this.height)continue;
+              if(visual.behind&&this.foreground[py*this.width+px])continue;
+              c.fillRect(x*2,y*2,2,2);
+            }
+          }
+        }
+        c.restore();
+      }
+      present() {
+        if(!this.ctx)return;
+        const palette=this.mode==='modern'?this.modernPalette:this.classicPalette, source=this.spriteMode==='pixel'?this.frameBuffer:this.backgroundBuffer, data=this.imageData.data;
+        for(let i=0,p=0;i<source.length;i++,p+=4) {
+          const color=palette[source[i]]; data[p]=color[0]; data[p+1]=color[1]; data[p+2]=color[2]; data[p+3]=255;
+        }
+        this.surfaceCtx.putImageData(this.imageData,0,0);
+        if(this.spriteMode!=='pixel')this.renderSpriteLayer(palette);
+        const c=this.ctx; c.save(); c.globalAlpha=1; c.filter='none'; c.imageSmoothingEnabled=this.mode==='modern'; c.fillStyle='#000'; c.fillRect(0,0,this.canvas.width,this.canvas.height);
+        if(this.mode==='crt'||this.mode==='modern') {
+          c.globalAlpha=this.mode==='modern'?.38:.22; c.filter=this.mode==='modern'?'blur(6px) saturate(1.35)':'blur(3px)';
+          c.drawImage(this.surface,0,0,this.canvas.width,this.canvas.height); c.globalAlpha=1; c.filter='none';
+        }
+        c.drawImage(this.surface,0,0,this.canvas.width,this.canvas.height); c.restore();
+        if(this.spriteMode!=='pixel'&&this.spriteSurface) {
+          c.save(); c.imageSmoothingEnabled=true; c.globalAlpha=this.spriteMode==='soft'?.9:.96; c.filter=this.spriteMode==='soft'?'blur(.45px)':'blur(.2px)';
+          c.drawImage(this.spriteSurface,0,0,this.canvas.width,this.canvas.height); c.filter='none'; c.globalAlpha=this.spriteMode==='soft'?.58:.72; c.drawImage(this.spriteSurface,0,0,this.canvas.width,this.canvas.height); c.restore();
+        }
+      }
+      pixelRect(x,y,w,h,color) { this.ctx.fillStyle=color; this.ctx.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h)); }
+      text(value,x,y,size,color='#fff',align='left') {
+        const c=this.ctx; c.fillStyle=color; c.font=`700 ${size}px ui-monospace, monospace`; c.textAlign=align; c.textBaseline='middle'; c.fillText(value,x,y);
+      }
+      diagnostic(time,state) {
+        const c=this.ctx,w=this.canvas.width,h=this.canvas.height,palette=this.classicPalette.map(rgb=>`rgb(${rgb.join(',')})`);
+        c.save(); c.filter='none'; c.fillStyle='#020606'; c.fillRect(0,0,w,h);
+        if(!this.powered) {
+          for(let i=0;i<22;i++){const v=7+i*2;c.fillStyle=`rgb(${v},${v+2},${v+2})`;c.fillRect(0,i*9,w,1);}
+          this.text('POWER OFF',w/2,h/2,10,'#374144','center'); c.restore(); return;
+        }
+        this.phase+=.012; const glow=.5+.5*Math.sin(this.phase);
+        for(let x=0;x<20;x++)for(let y=0;y<12;y++){const edge=x===0||x===19||y===0||y===11,n=(x*13+y*7+Math.floor(time/700))%16;this.pixelRect(x*16,y*16,16,16,edge?palette[(n+9)%16]:'#071113');}
+        c.fillStyle='#071113';c.fillRect(18,18,w-36,h-36);const ready=state.exec&&state.grom&&state.cart;
+        this.text('INTELLIVISION',w/2,59,24,`rgba(237,184,63,${.82+glow*.18})`,'center');this.text('J A V A S C R I P T',w/2,82,9,'#58d9d0','center');
+        c.fillStyle='#1a282a';c.fillRect(61,101,198,1);this.text(ready?'FILES READY — PRESS RESET':'LOAD EXEC · GROM · CARTRIDGE',w/2,121,8,ready?'#8bd36d':'#b9c1c2','center');
+        this.text(state.running?'CPU RUNNING':state.paused?'CPU PAUSED':'MILESTONE 4 · PSG + VBLANK',w/2,143,8,state.running?'#8bd36d':'#788588','center');
+        for(let i=0;i<8;i++){c.fillStyle=palette[(i+Math.floor(time/250))%16];c.fillRect(119+i*11,158,8,3);} c.restore();
+      }
+      render(time,state) {
+        if(!this.ctx)return;
+        if(this.powered&&(state.videoDemo||(state.grom&&this.mem.sticDisplayEnabled))) { this.renderHardware(); this.present(); }
+        else this.diagnostic(time,state);
+      }
+    }
+
+    class PSGAudio {
+      constructor(psg) {
+        this.psg=psg; this.context=null; this.master=null; this.channels=[]; this.noiseSource=null;
+        this.muted=true; this.envelopeStarted=0; this.lastShape=0;
+        psg.onWrite=(offset)=>{ if(offset===10&&this.context)this.envelopeStarted=this.context.currentTime; this.update(); };
+      }
+      async ensure() {
+        if(!this.context) {
+          const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+          if(!AudioContextClass)throw new Error('Web Audio non disponibile');
+          const context=this.context=new AudioContextClass();
+          this.master=context.createGain(); this.master.gain.value=0; this.master.connect(context.destination);
+          const noise=context.createBuffer(1,context.sampleRate*2,context.sampleRate), data=noise.getChannelData(0);
+          let lfsr=0x1FFFF;
+          for(let i=0;i<data.length;i++){const bit=((lfsr>>>0)^(lfsr>>>3))&1;lfsr=(lfsr>>>1)|(bit<<16);data[i]=(lfsr&1)?0.72:-0.72;}
+          this.noiseSource=context.createBufferSource(); this.noiseSource.buffer=noise; this.noiseSource.loop=true;
+          const noiseFilter=context.createBiquadFilter(); noiseFilter.type='lowpass'; noiseFilter.frequency.value=12000;
+          this.noiseSource.connect(noiseFilter); this.noiseFilter=noiseFilter;
+          for(let i=0;i<3;i++) {
+            const oscillator=context.createOscillator(), tone=context.createGain(), noiseGain=context.createGain(), channel=context.createGain();
+            oscillator.type='square'; tone.gain.value=0; noiseGain.gain.value=0; channel.gain.value=0;
+            oscillator.connect(tone).connect(channel).connect(this.master); noiseFilter.connect(noiseGain).connect(channel);
+            oscillator.start(); this.channels.push({oscillator,tone,noise:noiseGain,channel});
+          }
+          this.noiseSource.start(); this.envelopeStarted=context.currentTime;
+        }
+        if(this.context.state==='suspended')await this.context.resume();
+        this.update();
+      }
+      levelToGain(level) { return level<=0?0:Math.pow(10,(level-15)*1.5/20)*0.13; }
+      envelopeLevel(now) {
+        const shape=this.psg.registers[10]&15, steps=Math.max(0,Math.floor((now-this.envelopeStarted)*this.psg.envelopeStepFrequency()));
+        const attack=!!(shape&4), alternate=!!(shape&2), hold=!!(shape&1), cont=!!(shape&8);
+        if(!cont&&steps>=16)return 0;
+        let cycle=Math.floor(steps/16), pos=steps&15;
+        if(hold&&cycle>0)pos=15;
+        let up=attack;
+        if(alternate&&(cycle&1))up=!up;
+        return up?pos:15-pos;
+      }
+      update() {
+        if(!this.context)return;
+        const now=this.context.currentTime, mixer=this.psg.registers[8], envelope=this.envelopeLevel(now);
+        for(let i=0;i<3;i++) {
+          const c=this.channels[i], volume=this.psg.registers[11+i], level=(volume&0x30)?envelope:(volume&15);
+          c.oscillator.frequency.setTargetAtTime(Math.min(20000,this.psg.toneFrequency(i)),now,.004);
+          c.tone.gain.setTargetAtTime((mixer&(1<<i))?0:0.7,now,.003);
+          c.noise.gain.setTargetAtTime((mixer&(1<<(i+3)))?0:0.38,now,.003);
+          c.channel.gain.setTargetAtTime(this.levelToGain(level),now,.004);
+        }
+        this.noiseFilter.frequency.setTargetAtTime(Math.min(16000,Math.max(80,this.psg.noiseFrequency()*1.7)),now,.008);
+        this.master.gain.setTargetAtTime(this.muted?0:0.72,now,.012);
+      }
+      async toggle() { await this.ensure(); this.muted=!this.muted; this.update(); return !this.muted; }
+      async enable() { await this.ensure(); this.muted=false; this.update(); }
+      silence() { this.muted=true; this.update(); }
+    }
+
+    const memory = new IntellivisionMemory();
+    const psg = new AY38914();
+    memory.attachPSG(psg);
+    const executionTrace={enabled:false,count:new Uint8Array(0x10000),dbd:new Uint8Array(0x10000)};
+    const cpu = new CP1610(memory);
+    cpu.trace=executionTrace;
+    const display = new STICDisplay(memory,$('screen'));
+    const audio = new PSGAudio(psg);
+    const loadedImages={exec:{name:'',ranges:[]},cart:{name:'',ranges:[]}};
+    const runtimeControlEntries=new Set();
+    const runtimeCallContinuations=new Map(),runtimeCallFrames=[];
+    cpu.onControlTransfer=(from,target,kind)=>{
+      if(kind==='call')runtimeCallFrames.push({from,target});
+      else if(kind==='interrupt')runtimeCallFrames.push({interrupt:true});
+      else if(kind==='return') {
+        const frame=runtimeCallFrames.pop();
+        if(frame&&!frame.interrupt&&loadedImages.cart.ranges.some(range=>frame.from>=range.start&&frame.from<=range.end&&target>=range.start&&target<=range.end))runtimeCallContinuations.set(frame.from,target);
+      }
+      if(loadedImages.cart.ranges.some(range=>target>=range.start&&target<=range.end))runtimeControlEntries.add(target);
+    };
+    const disassembler=new CP1610Disassembler(memory,executionTrace);
+    const state = {power:false, paused:true, speed:1, exec:false, grom:false, cart:false, videoDemo:false, videoMode:'original', spriteMode:'pixel', running:false, lastFrame:0, fps:60, frameCount:0, secondMark:performance.now(), cycleDebt:0, vblankCycles:0, vblanks:0, lastAsm:'', lastResources:{sprites:[],sounds:[],strings:[]}, lastHeader:null};
+    let uiLanguage='it';
+    let raf = 0;
+
+    function log(message, type='') {
+      const row=document.createElement('div'); row.className=type; row.dataset.time=new Date().toLocaleTimeString('it-IT',{hour12:false}); row.textContent=message;
+      $('event-log').prepend(row); while($('event-log').children.length>40) $('event-log').lastChild.remove();
+    }
+    function updateUI() {
+      for(let i=0;i<8;i++) $(`reg-${i}`).textContent='$'+hex(cpu.r[i]);
+      for(const f of ['s','z','o','c','i','d']) $(`flag-${f}`).classList.toggle('on',!!cpu.flags[f]);
+      $('cycle-count').textContent=cpu.cycles.toLocaleString('it-IT');
+      $('opcode-value').textContent='$'+hex(cpu.lastOpcode);
+      $('pc-stack').textContent='$'+hex(cpu.r[7])+' / $'+hex(cpu.r[6]);
+      $('unknown-count').textContent=cpu.unknown.toLocaleString('it-IT');
+      $('cpu-state').textContent=!state.power?'OFF':cpu.halted?'HALTED':state.paused?'PAUSED':'RUNNING';
+      $('run-pill').textContent=!state.power?(uiLanguage==='en'?'OFF':'SPENTO'):state.paused?(uiLanguage==='en'?'PAUSED':'IN PAUSA'):(uiLanguage==='en'?'RUNNING':'IN ESECUZIONE');
+      $('run-pill').className='pill '+(!state.paused&&state.power?'ready':'warn');
+      $('rom-pill').textContent=state.cart?(uiLanguage==='en'?'CARTRIDGE READY':'CARTUCCIA PRONTA'):(uiLanguage==='en'?'ROM ABSENT':'ROM ASSENTE');
+      $('rom-pill').className='pill '+(state.cart?'ready':'');
+      $('core-pill').textContent=state.videoDemo?'STIC DEMO':memory.sticDisplayEnabled?'STIC VIDEO':(uiLanguage==='en'?'CORE READY':'CORE PRONTO');
+      $('power-btn').textContent=state.power?(uiLanguage==='en'?'POWER OFF':'SPEGNI'):(uiLanguage==='en'?'POWER ON':'ACCENDI');
+      $('pause-btn').textContent=state.paused?'▶':'Ⅱ';
+      const mixer=psg.registers[8];
+      for(let i=0;i<3;i++)$(`psg-${String.fromCharCode(97+i)}`).textContent=((mixer&(1<<i))?'—':Math.round(psg.toneFrequency(i)).toLocaleString('it-IT')+' Hz');
+      $('psg-noise').textContent=Math.round(psg.noiseFrequency()).toLocaleString('it-IT')+' Hz · $'+hex(mixer,2);
+      $('vblank-count').textContent=state.vblanks.toLocaleString('it-IT')+' · IRQ '+cpu.interrupts.toLocaleString('it-IT');
+      $('controller-port').textContent='$'+hex(psg.read(14),2);
+      $('audio-state').textContent=!audio.context?(uiLanguage==='en'?'NOT STARTED':'NON AVVIATO'):audio.muted?(uiLanguage==='en'?'MUTED':'MUTO'):(uiLanguage==='en'?'ACTIVE':'ATTIVO');
+      $('audio-btn').textContent=audio.muted?'♪':'◖';
+      $('audio-btn').title=audio.muted?'Attiva audio':'Disattiva audio';
+      $('audio-btn').setAttribute('aria-label',$('audio-btn').title);
+    }
+    function initRegisters() {
+      $('registers').innerHTML=Array.from({length:8},(_,i)=>`<div class="reg"><b>R${i}${i===6?' · SP':i===7?' · PC':''}</b><output id="reg-${i}">$0000</output></div>`).join('');
+    }
+    function boot() {
+      state.power=!state.power; display.powered=state.power;
+      if(state.power) { cpu.halted=true; state.paused=true; audio.enable().catch(err=>log('Audio non disponibile: '+err.message,'err')); log('Alimentazione attivata','ok'); }
+      else { state.running=false; audio.silence(); log('Alimentazione disattivata'); }
+      updateUI();
+    }
+    function reset() {
+      cpu.reset(); psg.reset(); runtimeCallFrames.length=0;state.paused=true; state.running=false; state.cycleDebt=0; state.vblankCycles=0; state.vblanks=0;
+      memory.sticDisplayEnabled=state.videoDemo;
+      refreshController();
+      if(state.exec) { cpu.halted=false; log('Reset CP1610: vettore iniziale $1000','info'); }
+      else log('Reset diagnostico: Executive ROM non caricata');
+      updateUI();
+    }
+    function togglePause() {
+      if(!state.power){ boot(); return; }
+      if(cpu.halted && state.exec) cpu.halted=false;
+      state.paused=!state.paused; state.running=!state.paused&&!cpu.halted;
+      log(state.paused?'Esecuzione sospesa':'Esecuzione avviata',state.paused?'':'ok'); updateUI();
+    }
+    function singleStep() {
+      if(!state.power) boot();
+      if(cpu.halted && state.exec) cpu.halted=false;
+      state.paused=true; cpu.step(); state.running=false; updateUI();
+    }
+    function setVideoMode(mode,announce=false) {
+      const valid=['original','sharp','crt','modern']; state.videoMode=valid.includes(mode)?mode:'original'; display.setMode(state.videoMode);
+      document.querySelector('.screen-bezel').dataset.video=state.videoMode; $('video-select').value=state.videoMode;
+      try { localStorage.setItem('intellivision-video-mode',state.videoMode); } catch(_) {}
+      if(announce)log('Profilo grafico: '+$('video-select').selectedOptions[0].text,'info');
+    }
+    function setSpriteMode(mode,announce=false) {
+      const valid=['pixel','soft','smooth']; state.spriteMode=valid.includes(mode)?mode:'pixel'; display.setSpriteMode(state.spriteMode); $('sprite-select').value=state.spriteMode;
+      document.querySelector('.screen-bezel').dataset.sprite=state.spriteMode;
+      try { localStorage.setItem('intellivision-sprite-mode',state.spriteMode); } catch(_) {}
+      if(announce)log('Render sprite: '+$('sprite-select').selectedOptions[0].text,'info');
+    }
+    function seedSticDemo() {
+      for(let card=0;card<16;card++)for(let row=0;row<8;row++) {
+        let bits;
+        if(card%5===0)bits=(row===0||row===7)?0xFF:0x81;
+        else if(card%5===1)bits=((0x80>>>row)|(1<<row))&0xFF;
+        else if(card%5===2)bits=row&1?0xAA:0x55;
+        else if(card%5===3)bits=(0x18<<(row<4?row:7-row))&0xFF;
+        else bits=((card*29+row*47)^(0x81>>>Math.min(row,6)))&0xFF;
+        memory.words[0x3800+card*8+row]=bits;
+      }
+      memory.words[0x0028]=0; memory.words[0x0029]=1; memory.words[0x002A]=4; memory.words[0x002B]=11; memory.words[0x002C]=0;
+      memory.words[0x0030]=0; memory.words[0x0031]=0; memory.words[0x0032]=0;
+      for(let row=0;row<12;row++)for(let col=0;col<20;col++) {
+        const at=0x0200+row*20+col;
+        if((row===1||row===10)&&col%4===1) {
+          const a=(col+row)&7,b=(a+2)&7,c=(a+4)&7,d=7;
+          memory.words[at]=0x1000|a|(b<<3)|(c<<6)|((d&3)<<9)|((d&4)<<11);
+        } else {
+          const foreground=(row*3+col)%16,card=(row*5+col)%16;
+          memory.words[at]=0x0800|(card<<3)|(foreground&7)|(foreground>=8?0x1000:0)|(col%5===0?0x2000:0);
+        }
+      }
+      for(let mob=0;mob<8;mob++) {
+        memory.words[mob]=0; memory.words[0x0008+mob]=0; memory.words[0x0010+mob]=0; memory.words[0x0018+mob]=0;
+      }
+      memory.words[0x0000]=0x0708; memory.words[0x0008]=0x0035; memory.words[0x0010]=0x0800|(3<<3)|0x1007;
+      memory.words[0x0001]=0x0348; memory.words[0x0009]=0x05C4; memory.words[0x0011]=0x0800|(6<<3)|0x000A;
+      memory.sticColorStackMode=true; memory.sticDisplayEnabled=true; state.videoDemo=true; state.power=true; state.paused=true; state.running=false; display.powered=true;
+      log('Demo STIC: Color Stack, Colored Squares e due MOB','ok'); updateUI();
+    }
+    let audioDemoTimer=0;
+    async function playAudioDemo() {
+      try {
+        await audio.enable(); state.power=true; display.powered=true;
+        const chords=[[262,330,392],[294,370,440],[330,415,494],[392,494,587]]; let chord=0;
+        const play=()=>{
+          const notes=chords[chord++];
+          for(let i=0;i<3;i++){const period=Math.max(1,Math.round(psg.clock/(16*notes[i])));psg.write(i,period&255);psg.write(4+i,period>>>8);psg.write(11+i,12-i);}
+          psg.write(8,0x38); updateUI();
+          if(chord>=chords.length){clearInterval(audioDemoTimer);audioDemoTimer=setTimeout(()=>{for(let i=0;i<3;i++)psg.write(11+i,0);updateUI();},260);}
+        };
+        clearInterval(audioDemoTimer); play(); audioDemoTimer=setInterval(play,230);
+        log('Demo AY-3-8914: tre canali tonali','ok'); updateUI();
+      } catch(err) { log('Audio non disponibile: '+err.message,'err'); }
+    }
+    function frame(t) {
+      const dt=Math.min(40,t-state.lastFrame); state.lastFrame=t;
+      if(state.power&&!state.paused) {
+        state.vblankCycles+=state.speed===0?14934:dt*894.88625*state.speed;
+        while(state.vblankCycles>=14934){state.vblankCycles-=14934;state.vblanks++;cpu.requestInterrupt(3791);}
+        const budget=state.speed===0?50000:Math.max(1,state.cycleDebt+dt*894.88625*state.speed);
+        let spent=0;
+        while(spent<budget) {
+          const cost=cpu.step(); if(!cost)break; spent+=cost;
+        }
+        state.cycleDebt=state.speed===0||cpu.halted?0:Math.max(-24,budget-spent);
+        state.running=!cpu.halted;
+      }
+      audio.update();
+      if(state.videoDemo)memory.words[0x0000]=0x0700|(12+Math.floor((Math.sin(t*.0015)+1)*66));
+      display.render(t,state); state.frameCount++;
+      if(t-state.secondMark>=500){ state.fps=state.frameCount*1000/(t-state.secondMark); state.frameCount=0; state.secondMark=t; $('fps-label').textContent=(state.videoDemo||memory.sticDisplayEnabled?'STIC · ':'DIAG · ')+state.fps.toFixed(1)+' FPS'; updateUI(); }
+      raf=requestAnimationFrame(frame);
+    }
+
+    function selectedDisassemblyRanges() {
+      const source=$('dasm-source').value, ranges=[];
+      if(source!=='cart')ranges.push(...loadedImages.exec.ranges);
+      if(source!=='exec')ranges.push(...loadedImages.cart.ranges);
+      ranges.sort((a,b)=>a.start-b.start); const merged=[];
+      for(const range of ranges) {
+        const last=merged[merged.length-1];
+        if(last&&last.kind===range.kind&&range.start<=last.end+1)last.end=Math.max(last.end,range.end);
+        else merged.push({...range});
+      }
+      return merged;
+    }
+    function manualDisassemblyEntries() {
+      const tokens=$('dasm-entry').value.trim().split(/[\s,;]+/).filter(Boolean),entries=[];
+      for(const token of tokens) {
+        const clean=token.replace(/^\$/,'').replace(/^0x/i,'');
+        if(!/^[0-9a-f]{1,4}$/i.test(clean))throw new Error(`indirizzo non valido: ${token}`);
+        entries.push(parseInt(clean,16)&0xFFFF);
+      }
+      return [...new Set(entries)];
+    }
+    function manualDisassemblyRegions() {
+      const regions=[],lines=$('dasm-map').value.split(/\r?\n/);
+      for(let index=0;index<lines.length;index++) {
+        const line=lines[index].trim();if(!line||line.startsWith('#'))continue;
+        const match=line.match(/^\$?(?:0x)?([0-9a-f]{1,4})(?:\s*-\s*\$?(?:0x)?([0-9a-f]{1,4}))?\s*:\s*(code|data|string|graphics)$/i);
+        if(!match)throw new Error(`riga ${index+1} non valida`);
+        const start=parseInt(match[1],16),end=parseInt(match[2]||match[1],16),type=match[3].toLowerCase();
+        if(end<start)throw new Error(`riga ${index+1}: intervallo inverso`);
+        if(regions.some(region=>start<=region.end&&end>=region.start))throw new Error(`riga ${index+1}: intervallo sovrapposto`);
+        regions.push({start,end,type});
+      }
+      return regions.sort((a,b)=>a.start-b.start);
+    }
+    function runDisassembly() {
+      const ranges=selectedDisassemblyRanges();
+      if(!ranges.length){$('dasm-output').textContent='Nessuna ROM selezionata per questa analisi.';log('Disassemblaggio: carica prima Executive ROM o cartuccia','err');return;}
+      let entries=[],regions=[];try {entries=manualDisassemblyEntries();regions=manualDisassemblyRegions();} catch(err) {$('dasm-output').textContent='Mappa disassemblaggio: '+err.message;log('Disassemblaggio: '+err.message,'err');return;}
+      const continuations=[...runtimeCallContinuations].map(([callFrom,returnTo])=>({callFrom,returnTo}));
+      const result=disassembler.analyze(ranges,$('dasm-mode').value,entries,regions,[...runtimeControlEntries],continuations); state.lastAsm=result.text;
+      state.lastResources=result.resources||{sprites:[],sounds:[],strings:[]};state.lastHeader=result.header||null;
+      $('dasm-output').textContent=result.text; $('dasm-instructions').textContent=result.instructions.toLocaleString('it-IT');
+      $('dasm-executed').textContent=result.executed.toLocaleString('it-IT'); $('dasm-uncertain').textContent=result.uncertain.toLocaleString('it-IT'); $('dasm-ranges').textContent=result.ranges;
+      $('dasm-sprites').textContent=state.lastResources.sprites.length.toLocaleString('it-IT');$('dasm-sounds').textContent=state.lastResources.sounds.length.toLocaleString('it-IT');
+      $('dasm-export').disabled=false;$('dasm-export-sprites').disabled=!state.lastResources.sprites.length;$('dasm-export-atlas').disabled=!state.lastResources.sprites.length;$('dasm-export-sounds').disabled=!state.lastResources.sounds.length;
+      log(`Analisi CP1610: ${result.instructions.toLocaleString('it-IT')} istruzioni, ${state.lastResources.sprites.length.toLocaleString('it-IT')} sprite/carte, ${state.lastResources.sounds.length.toLocaleString('it-IT')} sequenze audio, ${result.uncertain.toLocaleString('it-IT')} parole dubbie`,'ok');
+    }
+    function exportBaseName() {
+      const source=loadedImages.cart.name||loadedImages.exec.name||'intellivision';
+      return source.replace(/\.[^.]+$/,'').replace(/[^a-z0-9_-]+/gi,'_');
+    }
+    function downloadBlob(blob,suffix) {
+      const url=URL.createObjectURL(blob),link=document.createElement('a');
+      link.href=url;link.download=exportBaseName()+suffix;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1200);
+    }
+    function exportDisassembly() {
+      if(!state.lastAsm)return;
+      downloadBlob(new Blob([state.lastAsm],{type:'text/plain;charset=utf-8'}),'_cp1610.asm');log('File ASM esportato','ok');
+    }
+    function resourceEnvelope(kind,items) {
+      return {
+        format:`Intellivision ${kind} resource map`,source:loadedImages.cart.name||loadedImages.exec.name||'intellivision',
+        cartridge:state.lastHeader?{title:state.lastHeader.titleText,year:1900+state.lastHeader.year,programStart:`$${hex(state.lastHeader.programStart)}`}:null,
+        addressNotation:'hexadecimal CP1610 word addresses',count:items.length,items
+      };
+    }
+    function exportSpriteMap() {
+      const items=state.lastResources.sprites;if(!items.length)return;
+      downloadBlob(new Blob([JSON.stringify(resourceEnvelope('sprite',items),null,2)],{type:'application/json;charset=utf-8'}),'_sprites.json');log(`Mappa sprite esportata: ${items.length} elementi`,'ok');
+    }
+    function exportSoundMap() {
+      const items=state.lastResources.sounds;if(!items.length)return;
+      downloadBlob(new Blob([JSON.stringify(resourceEnvelope('sound',items),null,2)],{type:'application/json;charset=utf-8'}),'_sounds.json');log(`Mappa suoni esportata: ${items.length} sequenze`,'ok');
+    }
+    function exportSpriteAtlas() {
+      const items=state.lastResources.sprites;if(!items.length)return;
+      const cols=Math.min(10,Math.max(1,items.length)),cellW=104,cellH=88,margin=18,head=48,rows=Math.ceil(items.length/cols),canvas=document.createElement('canvas');
+      canvas.width=margin*2+cols*cellW;canvas.height=head+rows*cellH+margin;const c=canvas.getContext('2d');
+      c.fillStyle='#050a11';c.fillRect(0,0,canvas.width,canvas.height);c.font='12px ui-monospace,monospace';c.fillStyle='#d5eaee';c.fillText(`${state.lastHeader?.titleText||'Intellivision'} · ${items.length} sprite/carte 8×8`,margin,22);
+      c.font='11px ui-monospace,monospace';
+      items.forEach((item,index)=>{
+        const x=margin+(index%cols)*cellW,y=head+Math.floor(index/cols)*cellH;c.fillStyle='#0d1923';c.fillRect(x,y,cellW-8,cellH-8);c.strokeStyle='#244457';c.strokeRect(x+.5,y+.5,cellW-9,cellH-9);
+        c.fillStyle=item.kind==='background'?'#ffbe4a':'#43e4e1';
+        for(let row=0;row<8;row++)for(let col=0;col<8;col++)if(item.rows[row]&(0x80>>>col))c.fillRect(x+20+col*7,y+7+row*7,7,7);
+        c.fillStyle='#d5eaee';c.fillText(`${item.kind==='background'?'B':'M'}${String(item.groupIndex).padStart(2,'0')} ${item.addressHex}`,x+9,y+72);
+      });
+      canvas.toBlob(blob=>{if(blob){downloadBlob(blob,'_sprite_atlas.png');log('Atlante sprite PNG esportato','ok');}},'image/png');
+    }
+    function clearExecutionTrace() {
+      executionTrace.count.fill(0);executionTrace.dbd.fill(0);runtimeControlEntries.clear();runtimeCallContinuations.clear();runtimeCallFrames.length=0;$('dasm-executed').textContent='0';state.lastAsm='';state.lastResources={sprites:[],sounds:[],strings:[]};state.lastHeader=null;$('dasm-export').disabled=true;$('dasm-export-sprites').disabled=true;$('dasm-export-atlas').disabled=true;$('dasm-export-sounds').disabled=true;$('dasm-sprites').textContent='0';$('dasm-sounds').textContent='0';
+      $('dasm-output').textContent=`Osservazioni dinamiche azzerate. ${executionTrace.enabled?'La registrazione continua.':'I salti essenziali saranno comunque raccolti durante il gioco.'}`;log('Trace e destinazioni dinamiche CP1610 azzerati','info');
+    }
+    function toggleExecutionTrace() {
+      executionTrace.enabled=!executionTrace.enabled;
+      const button=$('dasm-trace-toggle'); button.textContent=executionTrace.enabled?'FERMA TRACE':'AVVIA TRACE';
+      button.classList.toggle('primary',executionTrace.enabled);button.setAttribute('aria-pressed',String(executionTrace.enabled));
+      log(executionTrace.enabled?'Trace CP1610 avviato: può ridurre le prestazioni':'Trace CP1610 fermato',executionTrace.enabled?'info':'ok');
+    }
+
+    function wordsFromBuffer(buffer, bits, byteMode=false) {
+      const b=new Uint8Array(buffer);
+      if(byteMode) return Uint16Array.from(b);
+      const out=new Uint16Array(Math.ceil(b.length/2)), mask=bits===10?0x3FF:0xFFFF;
+      for(let i=0;i<out.length;i++) out[i]=(((b[i*2]||0)<<8)|(b[i*2+1]||0))&mask;
+      return out;
+    }
+    function crc16(bytes, start=0, end=bytes.length) {
+      let crc=0xFFFF;
+      for(let p=start;p<end;p++) {
+        crc^=bytes[p]<<8;
+        for(let bit=0;bit<8;bit++) crc=(crc&0x8000)?((crc<<1)^0x1021)&0xFFFF:(crc<<1)&0xFFFF;
+      }
+      return crc;
+    }
+    function parseIntellicart(buffer) {
+      const b=new Uint8Array(buffer); let p=0, crcWarnings=0, totalWords=0, ranges=[];
+      const need=(n,label)=>{if(p+n>b.length)throw new Error(`ROM troncata durante ${label}`);};
+      need(3,'header');
+      if(b[p++]!==0xA8) throw new Error('firma Intellicart $A8 non trovata');
+      const segments=b[p++], complement=b[p++];
+      if(((segments^complement)&0xFF)!==0xFF) throw new Error('header Intellicart non valido');
+      if(!segments) throw new Error('immagine Intellicart senza segmenti');
+      memory.clearCartridge();
+      for(let s=0;s<segments;s++) {
+        need(2,`header segmento ${s+1}`); const blockStart=p, first=b[p++], last=b[p++];
+        if(last<first) throw new Error(`intervallo inverso nel segmento ${s+1}`);
+        const words=(last-first+1)*256, dataStart=p; need(words*2+2,`segmento ${s+1}`);
+        let addr=first<<8;
+        for(let i=0;i<words;i++) memory.cartWords[(addr+i)&0xFFFF]=(b[p++]<<8)|b[p++];
+        const stored=(b[p++]<<8)|b[p++];
+        const dataCrc=crc16(b,dataStart,dataStart+words*2), blockCrc=crc16(b,blockStart,dataStart+words*2);
+        if(stored!==dataCrc&&stored!==blockCrc) crcWarnings++;
+        totalWords+=words; ranges.push({start:addr,end:addr+words-1,kind:'cart'});
+      }
+      need(50,'tabelle di accesso'); const tableStart=p;
+      const access=b.slice(p,p+16); p+=16; const fine=b.slice(p,p+32); p+=32;
+      const storedTableCrc=(b[p++]<<8)|b[p++]; if(storedTableCrc!==crc16(b,tableStart,tableStart+48))crcWarnings++;
+      for(let win=0;win<32;win++) {
+        const accessByte=access[win>>>1];
+        memory.cartAccess[win]=(win&1)?(accessByte>>>4):(accessByte&0x0F);
+        const fineByte=(win&1)?fine[16+(win>>>1)]:fine[win>>>1];
+        memory.cartLo[win]=(fineByte>>>4)&7; memory.cartHi[win]=fineByte&7;
+        if(memory.cartHi[win]<memory.cartLo[win]) memory.cartAccess[win]=0;
+      }
+      return {segments,totalWords,crcWarnings,trailing:b.length-p,ranges};
+    }
+    async function loadFile(kind,file) {
+      try {
+        if(state.videoDemo) { state.videoDemo=false; memory.sticDisplayEnabled=false; }
+        const buffer=await file.arrayBuffer();
+        if(!buffer.byteLength) throw new Error('file vuoto');
+        if(kind==='cart') {runtimeControlEntries.clear();runtimeCallContinuations.clear();runtimeCallFrames.length=0;executionTrace.count.fill(0);executionTrace.dbd.fill(0);}
+        const lower=file.name.toLowerCase();
+        let count=0, detail='', ranges=[];
+        if(kind==='exec') { count=memory.load(0x1000,wordsFromBuffer(buffer,10),10,6); ranges=count?[{start:0x1000,end:0x1000+count-1,kind:'exec'}]:[]; loadedImages.exec={name:file.name,ranges}; }
+        if(kind==='grom') count=memory.load(0x3000,wordsFromBuffer(buffer,8,true),8,7);
+        if(kind==='cart') {
+          const sig=new Uint8Array(buffer)[0];
+          if(lower.endsWith('.rom')||sig===0xA8) {
+            if(sig===0x41||sig===0x61) throw new Error('variante Cuttle Cart 3 non ancora supportata');
+            const parsed=parseIntellicart(buffer); count=parsed.totalWords; ranges=parsed.ranges; detail=` · ${parsed.segments} segmenti`;
+            log(`Intellicart: ${parsed.segments} segmenti, ${parsed.totalWords.toLocaleString('it-IT')} parole, ${parsed.trailing} byte finali`,'info');
+            if(parsed.crcWarnings) log(`Intellicart: ${parsed.crcWarnings} CRC non riconosciuti; immagine caricata con cautela`,'err');
+          } else { count=memory.loadRawCartridge(wordsFromBuffer(buffer,16),0x5000); ranges=count?[{start:0x5000,end:0x5000+count-1,kind:'cart'}]:[]; }
+          loadedImages.cart={name:file.name,ranges};
+        }
+        state[kind]=true;
+        $(`name-${kind}`).textContent=file.name+' · '+buffer.byteLength.toLocaleString('it-IT')+' B'+detail;
+        $(`drop-${kind}`).classList.add('loaded');
+        if(kind==='exec'||kind==='cart'){state.lastAsm='';state.lastResources={sprites:[],sounds:[],strings:[]};state.lastHeader=null;$('dasm-export').disabled=true;$('dasm-export-sprites').disabled=true;$('dasm-export-atlas').disabled=true;$('dasm-export-sounds').disabled=true;$('dasm-sprites').textContent='0';$('dasm-sounds').textContent='0';$('dasm-output').textContent='ROM aggiornata. Premi ANALIZZA per rigenerare codice e mappe risorse.';}
+        log(`${kind.toUpperCase()} caricata: ${count.toLocaleString('it-IT')} parole/byte`,'ok'); updateUI();
+      } catch(err) { log(`Errore caricamento ${kind}: ${err.message}`,'err'); }
+    }
+    function dumpMemory() {
+      const clean=$('mem-address').value.replace(/[^0-9a-f]/gi,'').slice(-4); const start=parseInt(clean||'0',16)&0xFFFF;
+      $('mem-address').value=hex(start); const lines=[];
+      for(let row=0;row<8;row++){ const a=(start+row*8)&0xFFFF, vals=[]; for(let i=0;i<8;i++) vals.push(hex(memory.read(a+i))); lines.push('$'+hex(a)+': '+vals.join(' ')); }
+      $('mem-dump').textContent=lines.join('\n');
+    }
+
+    const controllerMasks={0:0xB7,1:0x7E,2:0xBE,3:0xDE,4:0x7D,5:0xBD,6:0xDD,7:0x7B,8:0xBB,9:0xDB,C:0x77,E:0xD7,L:0x9F,T:0x5F,R:0x3F};
+    const discMasks=[0xFB,0xEB,0xE9,0xF9,0xFD,0xED,0xEC,0xFC,0xFE,0xEE,0xE6,0xF6,0xF7,0xE7,0xE3,0xF3];
+    const discNames=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSO','SO','OSO','O','ONO','NO','NNO'];
+    const directionKeyMap={KeyW:'N',KeyD:'E',KeyS:'S',KeyA:'O',ArrowUp:'N',ArrowRight:'E',ArrowDown:'S',ArrowLeft:'O'};
+    const pressedControls=new Set(), pressedDirections=new Set(); let pointerSector=null;
+    function keyboardDiscSector() {
+      const x=(pressedDirections.has('E')?1:0)-(pressedDirections.has('O')?1:0), y=(pressedDirections.has('S')?1:0)-(pressedDirections.has('N')?1:0);
+      if(!x&&!y)return null;
+      return ({'0,-1':0,'1,-1':2,'1,0':4,'1,1':6,'0,1':8,'-1,1':10,'-1,0':12,'-1,-1':14})[`${x},${y}`];
+    }
+    function refreshController() {
+      const sector=pointerSector??keyboardDiscSector(); let port=sector===null?0xFF:discMasks[sector];
+      for(const key of pressedControls)port&=controllerMasks[key];
+      psg.setController(0,port); $('disc').classList.toggle('active',sector!==null);
+      $('pad-state').textContent=pressedControls.size?[...pressedControls].join('+'):sector!==null?discNames[sector]:'NEUTRO';
+      if($('controller-port'))$('controller-port').textContent='$'+hex(port,2);
+    }
+    function setController(key,on) {
+      const el=document.querySelector(`[data-key="${key}"]`); if(el) el.classList.toggle('active',on);
+      if(on)pressedControls.add(key);else pressedControls.delete(key); refreshController(); if(on)log('Controller: '+key);
+    }
+    const keyMap={Digit0:'0',Digit1:'1',Digit2:'2',Digit3:'3',Digit4:'4',Digit5:'5',Digit6:'6',Digit7:'7',Digit8:'8',Digit9:'9',KeyZ:'L',KeyX:'T',KeyC:'R',Enter:'E',Backspace:'C'};
+    document.addEventListener('keydown',e=>{ if(e.repeat)return; if(keyMap[e.code]){e.preventDefault();setController(keyMap[e.code],true);} if(directionKeyMap[e.code]){pressedDirections.add(directionKeyMap[e.code]);refreshController();e.preventDefault();} });
+    document.addEventListener('keyup',e=>{ if(keyMap[e.code])setController(keyMap[e.code],false); if(directionKeyMap[e.code]){pressedDirections.delete(directionKeyMap[e.code]);refreshController();e.preventDefault();} });
+
+    const translations={
+      'Remake moderno':'Modern remake','File macchina':'Machine files','Memoria':'Memory','Reverse engineering':'Reverse engineering','Compatibilità':'Compatibility','Accendi':'Power on','ACCENDI':'POWER ON','Spegni':'Power off','Pausa':'Pause','Riprendi':'Resume','Passo singolo':'Single step','Schermo intero':'Fullscreen','Originale':'Original','Pixel nitidi':'Sharp pixels','CRT caldo':'Warm CRT','Neo moderno':'Neo modern','Pixel hardware':'Hardware pixels','Antialias leggero':'Light antialiasing','Antialias + moto fluido':'Antialias + smooth motion','Attiva audio':'Enable audio','Disattiva audio':'Disable audio','Demo video':'Video demo','Demo audio':'Audio demo','Analizza':'Analyze','ANALIZZA ROM':'ANALYZE ROM','Esporta ASM':'Export ASM','SCARICA ASM':'DOWNLOAD ASM','Esporta sprite':'Export sprites','SPRITE JSON':'SPRITE JSON','Esporta atlante':'Export atlas','ATLANTE PNG':'PNG ATLAS','Esporta suoni':'Export sounds','SUONI JSON':'SOUND JSON','Carica Executive ROM, GROM e cartuccia oppure usa la diagnostica':'Load Executive ROM, GROM and cartridge or use diagnostics','GRAFICA':'VIDEO','SPRITE':'SPRITE','LANG':'LANGUAGE','VELOCITÀ':'SPEED','Senza limite':'Unlimited','INDIRIZZO':'ADDRESS','LEGGI 64 PAROLE':'READ 64 WORDS','SORGENTE':'SOURCE','ANALISI':'ANALYSIS','PUNTI D\'INGRESSO':'ENTRY POINTS','Executive + cartuccia':'Executive + cartridge','Solo cartuccia':'Cartridge only','Solo Executive ROM':'Executive ROM only','Profonda strutturata':'Structured deep','Solo flussi certi':'Certain flows only','Tutta lineare':'Full linear','Solo codice eseguito':'Executed code only','AVVIA TRACE':'START TRACE','AZZERA TRACE':'CLEAR TRACE','MAPPA AREE — un intervallo per riga':'AREA MAP — one interval per line','ISTRUZIONI':'INSTRUCTIONS','OSSERVATE':'OBSERVED','PAROLE DUBBIE':'UNCERTAIN WORDS','INTERVALLI':'RANGES','SPRITE/CARTE':'SPRITES/CARDS','SEQUENZE AUDIO':'AUDIO SEQUENCES','Registro eventi':'Event log','PULISCI':'CLEAR','CICLI':'CYCLES','OPCODE RISERVATE':'RESERVED OPCODES','Controller 1':'Controller 1','NEUTRO':'NEUTRAL','SINISTRA':'LEFT','ALTO':'UP','DESTRA':'RIGHT','tastierino':'keypad','azioni':'actions','disco ·':'direction disc ·','CANALE A':'CHANNEL A','CANALE B':'CHANNEL B','CANALE C':'CHANNEL C','NOISE / MIXER':'NOISE / MIXER','PORTA CTRL 1':'CTRL PORT 1','MUTO':'MUTED','Stato emulatore':'Emulator status','Console virtuale':'Virtual console','Comandi emulatore':'Emulator controls','File macchina':'Machine files','Seleziona il BIOS':'Select BIOS','Seleziona il GROM':'Select GROM','Seleziona una ROM':'Select a ROM','CARTUCCIA':'CARTRIDGE','I file non lasciano il browser.':'Files never leave the browser.','Banco, memoria e file locali':'Workbench, memory and local files','PROSSIMA':'NEXT','Browser laboratory':'Browser laboratory'
+    };
+    function applyLanguage(lang){uiLanguage=lang;document.documentElement.lang=lang;document.querySelectorAll('#language-select option').forEach(o=>o.textContent=o.value==='en'?'English':'Italiano');if(lang==='it'){location.reload();return;}const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);while(walker.nextNode()){const n=walker.currentNode,raw=n.nodeValue.trim();if(translations[raw])n.nodeValue=n.nodeValue.replace(raw,translations[raw]);}document.querySelectorAll('[aria-label="Profilo grafico"]').forEach(x=>x.setAttribute('aria-label','Graphics profile'));document.querySelectorAll('[aria-label="Lingua"]').forEach(x=>x.setAttribute('aria-label','Language'));updateUI();}
+    try { const savedLanguage=localStorage.getItem('intellivision-language')||'it'; $('language-select').value=savedLanguage; $('language-select').addEventListener('change',e=>{localStorage.setItem('intellivision-language',e.target.value);if(e.target.value==='it')location.reload();else applyLanguage('en');}); if(savedLanguage==='en')applyLanguage('en'); } catch(_) {}
+    initRegisters();
+    try {
+      state.videoMode=localStorage.getItem('intellivision-video-mode')||'original';
+      const spriteRevision='2',savedSpriteMode=localStorage.getItem('intellivision-sprite-mode');
+      if(localStorage.getItem('intellivision-sprite-mode-revision')===spriteRevision)state.spriteMode=savedSpriteMode||'pixel';
+      else { state.spriteMode='pixel';localStorage.setItem('intellivision-sprite-mode','pixel');localStorage.setItem('intellivision-sprite-mode-revision',spriteRevision); }
+    } catch(_) {}
+    setVideoMode(state.videoMode); setSpriteMode(state.spriteMode); updateUI(); dumpMemory();
+    log('Banco di emulazione inizializzato','info');
+    log('Carica Executive ROM, GROM e cartuccia oppure usa la diagnostica');
+    $('power-btn').addEventListener('click',boot); $('reset-btn').addEventListener('click',reset); $('pause-btn').addEventListener('click',togglePause); $('step-btn').addEventListener('click',singleStep);
+    $('speed-select').addEventListener('change',e=>{state.speed=Number(e.target.value);log('Velocità: '+e.target.selectedOptions[0].text);});
+    $('video-select').addEventListener('change',e=>setVideoMode(e.target.value,true));
+    $('sprite-select').addEventListener('change',e=>setSpriteMode(e.target.value,true));
+    $('audio-btn').addEventListener('click',async()=>{try{const enabled=await audio.toggle();log(enabled?'Audio PSG attivato':'Audio PSG disattivato',enabled?'ok':'');updateUI();}catch(err){log('Audio non disponibile: '+err.message,'err');}});
+    $('fullscreen-btn').addEventListener('click',()=>{ const target=document.querySelector('.screen-bezel'); if(document.fullscreenElement)document.exitFullscreen(); else target.requestFullscreen?.(); });
+    $('mem-read').addEventListener('click',dumpMemory); $('mem-address').addEventListener('keydown',e=>{if(e.key==='Enter')dumpMemory();});
+    $('dasm-run').addEventListener('click',runDisassembly); $('dasm-export').addEventListener('click',exportDisassembly); $('dasm-export-sprites').addEventListener('click',exportSpriteMap); $('dasm-export-atlas').addEventListener('click',exportSpriteAtlas); $('dasm-export-sounds').addEventListener('click',exportSoundMap); $('dasm-trace-toggle').addEventListener('click',toggleExecutionTrace); $('dasm-clear-trace').addEventListener('click',clearExecutionTrace);
+    $('clear-log').addEventListener('click',()=>{$('event-log').innerHTML='';});
+    for(const kind of ['exec','grom','cart']) {
+      const input=$(`file-${kind}`), drop=$(`drop-${kind}`); input.addEventListener('change',()=>input.files[0]&&loadFile(kind,input.files[0]));
+      drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('drag');}); drop.addEventListener('dragleave',()=>drop.classList.remove('drag'));
+      drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('drag');if(e.dataTransfer.files[0])loadFile(kind,e.dataTransfer.files[0]);});
+    }
+    document.querySelectorAll('.tab').forEach(tab=>{ if(!tab.dataset.tab)return; tab.addEventListener('click',()=>{
+      document.querySelectorAll('.tab[data-tab]').forEach(t=>t.classList.toggle('active',t===tab));
+      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.add('hidden')); $(`tab-${tab.dataset.tab}`).classList.remove('hidden');
+    });});
+    document.querySelectorAll('.key,.action-key').forEach(k=>{ const down=e=>{e.preventDefault();setController(k.dataset.key,true);}, up=e=>{e.preventDefault();setController(k.dataset.key,false);}; k.addEventListener('pointerdown',down); k.addEventListener('pointerup',up); k.addEventListener('pointerleave',up); });
+    const disc=$('disc');
+    const moveDisc=e=>{const r=disc.getBoundingClientRect(),dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2);pointerSector=(Math.round((Math.atan2(dx,-dy)*8/Math.PI))+16)&15;refreshController();};
+    disc.addEventListener('pointerdown',e=>{disc.setPointerCapture(e.pointerId);moveDisc(e);});
+    disc.addEventListener('pointermove',e=>{if(disc.hasPointerCapture(e.pointerId))moveDisc(e);});
+    const releaseDisc=()=>{pointerSector=null;refreshController();}; disc.addEventListener('pointerup',releaseDisc); disc.addEventListener('pointercancel',releaseDisc);
+    raf=requestAnimationFrame(frame);
+
+    // ---- Swords & Serpents oracle hook (added locally; the upstream page exposes no globals) ----
+    window.ijsd = {
+      memory, psg, cpu, display, state, discMasks, controllerMasks, discNames,
+      read: (a) => memory.read(a & 0xFFFF),
+      snapshot: () => Array.from(memory.words),
+      // Run exactly N frames: one VBLANK IRQ + 14934 CPU cycles per frame (mirrors frame()).
+      runFrames: (n) => {
+        for (let f = 0; f < n; f++) {
+          cpu.requestInterrupt(3791);
+          let spent = 0;
+          while (spent < 14934) { const c = cpu.step(); if (!c) break; spent += c; }
+        }
+        return cpu.r[7];
+      },
+      // Controller 1: disc sector 0..15 (0=N,2=NE,4=E,6=SE,8=S,10=SW,12=W,14=NW) or null,
+      // keys: any of '0'-'9','C','E','L','T','R'. Writes the real port byte the EXEC decodes.
+      setPad: (sector, keys = []) => {
+        let port = (sector === null || sector === undefined) ? 0xFF : discMasks[sector];
+        for (const k of keys) port &= controllerMasks[k];
+        psg.setController(0, port);
+        return port;
+      },
+      loadBytes: async (kind, u8) => loadFile(kind, new File([u8], kind + '.bin')),
+    };
+  </script>
+
+
+</body></html>
