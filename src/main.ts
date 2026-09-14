@@ -36,6 +36,14 @@ let fireballs: Fireball[] = [];
 let deathFx: DeathFx[] = [];
 let kills = 0;
 
+// Captured item/status mechanics (docs/HANDOVER.md ROM finding #8)
+const PICKUP_LOCK_FRAMES = 21;   // movement lock after ENTER on an object
+const MAX_IN_HAND = 6;           // manual + status screen: up to six treasures
+const STATUS_FRAMES = 227;       // keypad 0 status screen duration
+let statusTimer = 0;
+let pickupFlash = -1;            // >=0 while a pickup lock is running (no injury flash)
+let inHandValue = 0;             // value of treasures currently carried
+
 const PLAYER_SCALE = 4;
 const PLAYER_ASPECT_SCALE = 1.25;
 const PLAYER_WIDTH = 8 * PLAYER_SCALE;
@@ -345,11 +353,10 @@ function update() {
   const H = world.pixelHeight;
   const inputState = input.getInput();
 
-  const respawned = tickPlayerCombat(state);
+  // Captured: the fallen Prince revives IN PLACE once the disc is released.
+  const discReleased = inputState.dx === 0 && inputState.dy === 0;
+  const respawned = tickPlayerCombat(state, discReleased);
   if (respawned) {
-    const entry = entryByLevel[state.level];
-    state.x = entry.x;
-    state.y = entry.y;
     setInfo('Reincarnated!', 90);
   }
 
@@ -474,7 +481,9 @@ function update() {
   for (const fx of deathFx) fx.t--;
   deathFx = deathFx.filter(fx => fx.t > 0);
 
-  // --- Items ---
+  // --- Items (captured: stand ON the tile, release the disc, press ENTER;
+  //     the tile vanishes 2 frames later with a 21-frame movement lock) ---
+  const wantPickup = (inputState.enter || inputState.pickup) && discReleased && !state.dead && state.stunned === 0;
   for (const item of itemsByLevel[state.level]) {
     if (item.collected) continue;
     if (tDist(state.level, item.x, item.y, state.x, state.y) < 6) {
@@ -485,30 +494,51 @@ function update() {
           if (infoTimer < 30) setInfo('The Serpent still guards the Crown!', 60);
           continue;
         }
+        if (!wantPickup) { if (infoTimer < 30) setInfo('Press ENTER to claim the Crown', 60); continue; }
         item.collected = true;
         gameWon = true;
         setInfo('', 0);
         continue;
       }
+      if (!wantPickup) { if (infoTimer < 30) setInfo('Press ENTER to pick up', 60); continue; }
+      if (item.kind === 'potion' && state.potions >= MAX_IN_HAND) { setInfo('You can carry no more treasure', 90); continue; }
       item.collected = true;
+      state.stunned = PICKUP_LOCK_FRAMES;
+      pickupFlash = 0;
       switch (item.kind) {
         case 'key':    state.keys++;    setInfo('Found a key!', 90); break;
-        case 'potion': state.potions++; setInfo('Found a potion!', 90); break;
+        case 'potion': state.potions++; inHandValue += 50 * (state.level + 1); setInfo('Found a treasure!', 90); break;
         case 'scroll': state.scrolls++; setInfo('Found a scroll — press R to read', 120); break;
       }
     }
   }
+
+  // Status screen (captured: keypad 0; shown ~227 frames)
+  if (inputState.status && statusTimer === 0 && !state.dead) statusTimer = STATUS_FRAMES;
+  if (statusTimer > 0) statusTimer--;
+  if (pickupFlash >= 0 && state.stunned === 0) pickupFlash = -1;
 
   // Read scroll
   if (inputState.readScroll && state.scrolls > 0 && infoTimer < 30) {
     setInfo('The scroll reads: "The Serpent guards the Crown in the deepest dark..."', 240);
   }
 
-  // Auto-use a potion when injured
-  if (state.injured && !state.dead && state.potions > 0 && state.stunned === 0) {
-    state.potions--;
-    state.injured = false;
-    setInfo('Used a potion — healed!', 90);
+  // Treasure chest (Store Room, level 1 entry): ENTER stores what's in hand
+  // and shows the status screen (captured). Value per manual: 50/100/150/200
+  // by the level the treasure was found on.
+  if (state.level === 0 && wantPickup && state.potions > 0 &&
+      tDist(0, entryByLevel[0].x, entryByLevel[0].y, state.x, state.y) < 8) {
+    state.stored += state.potions;
+    const before300 = Math.floor(state.storedValue / 300);
+    state.storedValue += inHandValue;
+    // Manual: "earn an additional Reincarnation for every 300 points scored"
+    state.reincarnations += Math.floor(state.storedValue / 300) - before300;
+    inHandValue = 0;
+    state.potions = 0;
+    state.stunned = PICKUP_LOCK_FRAMES;
+    pickupFlash = 0;
+    statusTimer = STATUS_FRAMES;
+    setInfo('Treasures stored!', 90);
   }
 }
 
@@ -727,6 +757,24 @@ function render(ctx: CanvasRenderingContext2D) {
   const px = toScreenX(state.x);
   const py = toScreenY(state.y);
 
+  // --- Status screen (captured layout: keypad 0, black screen, game font) ---
+  if (statusTimer > 0) {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, scaledW, scaledH);
+    ctx.fillStyle = '#FFFCFF';
+    ctx.font = `bold ${PLAYER_SCALE * 7}px monospace`;
+    ctx.textAlign = 'left';
+    const row = (r: number) => Math.round((r * 8 + 7) * PLAYER_SCALE * PLAYER_ASPECT_SCALE);
+    const col = (c: number) => c * 8 * PLAYER_SCALE;
+    ctx.fillText('REINCARNATIONS', col(2), row(2));
+    ctx.fillText(`KNIGHT:  ${state.reincarnations}`, col(4), row(3));
+    ctx.fillText('TREASURES', col(2), row(6));
+    ctx.fillText(`INHAND: ${state.potions}`, col(4), row(7));
+    ctx.fillText(`STORED: ${state.stored}`, col(4), row(8));
+    ctx.fillText(` VALUE: ${state.storedValue}`, col(4), row(9));
+    return;
+  }
+
   // --- Win screen ---
   if (gameWon) {
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
@@ -771,9 +819,11 @@ function render(ctx: CanvasRenderingContext2D) {
   } else {
     const facingF = facingFrame(state.faceDx, state.faceDy);
     const spriteBytes = playerSprites[facingF.frame];
-    // Captured: while stunned (40 frames) the body colour cycles through the
-    // palette every ~2 frames; steady colour is white, or GRAY once injured.
-    const playerColor = state.stunned > 0
+    // Captured: while stunned by a HIT (40 frames) the body colour cycles
+    // through the palette every ~2 frames; steady colour is white, or GRAY
+    // once injured. The 21-frame pickup lock does not flash.
+    const hitFlash = state.stunned > 0 && pickupFlash < 0;
+    const playerColor = hitFlash
       ? STUN_CYCLE[Math.floor(frameCount / 2) % STUN_CYCLE.length]
       : (state.injured ? '#BDACC8' : '#FFFCFF');
     if (spriteBytes) {
@@ -795,7 +845,7 @@ function render(ctx: CanvasRenderingContext2D) {
   ctx.fillStyle = '#FFF';
   ctx.font = 'bold 11px monospace';
   ctx.fillText(`Level ${state.level + 1}/4  ❤${state.reincarnations}  HP:${health}`, 8, 14);
-  ctx.fillText(`🔑${state.keys}  🧪${state.potions}  📜${state.scrolls}  ⚔${kills}`, 280, 14);
+  ctx.fillText(`🔑${state.keys}  💰${state.potions}/${MAX_IN_HAND} (${state.stored} stored, ${state.storedValue}pts)  📜${state.scrolls}  ⚔${kills}`, 250, 14);
 
   if (infoTimer > 0) {
     ctx.fillStyle = '#FAEA50';

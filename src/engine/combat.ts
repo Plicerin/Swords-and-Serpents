@@ -299,8 +299,11 @@ export function resolveContact(player: PlayerState, enemy: Enemy): CombatEvent {
 }
 
 // Captured injury model: 40-frame stun with palette-cycling flash (movement
-// locked), then white → GRAY on the first hit; a hit while gray costs a
-// reincarnation and restores white. No natural recovery from gray.
+// locked), then white → GRAY on the first hit. A hit while gray costs a
+// reincarnation: the Prince FALLS in place (script $5B9A — sword removed,
+// movement locked) and revives, white, on the same spot once the disc is
+// released. No natural recovery from gray. At 0 reincarnations the fall is
+// final (game over).
 export function injurePlayer(player: PlayerState): void {
   if (player.dead || player.stunned > 0) return;
 
@@ -310,24 +313,23 @@ export function injurePlayer(player: PlayerState): void {
   } else {
     player.injured = false;
     player.reincarnations = Math.max(0, player.reincarnations - 1);
-    if (player.reincarnations === 0) {
-      player.dead = true;
-      player.respawnTimer = RESPAWN_FRAMES;
-    }
+    player.dead = true;                 // fallen
+    player.respawnTimer = RESPAWN_FRAMES; // minimum fallen time before a release revives
   }
 }
 
-export function tickPlayerCombat(player: PlayerState): boolean {
+// `discReleased` must be true for the revive to happen (captured: holding
+// a direction keeps the player fallen indefinitely).
+export function tickPlayerCombat(player: PlayerState, discReleased = true): boolean {
   if (player.stunned > 0) player.stunned--;
   if (player.invuln > 0) player.invuln--;
 
-  if (player.dead) {
-    player.respawnTimer--;
-    if (player.respawnTimer <= 0) {
+  if (player.dead && player.reincarnations > 0) {
+    if (player.respawnTimer > 0) player.respawnTimer--;
+    if (player.respawnTimer <= 0 && discReleased) {
       player.dead = false;
       player.injured = false;
       player.stunned = 0;
-      player.invuln = RESPAWN_INVULN;
       return true;
     }
   }

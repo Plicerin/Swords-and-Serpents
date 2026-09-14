@@ -38,10 +38,12 @@ export interface PlayerState {
   dead: boolean;           // currently in death/respawn pause (flashing X)
   respawnTimer: number;    // frames until reappear after a death
 
-  // --- Inventory ---
+  // --- Inventory (captured: status screen INHAND / STORED / VALUE) ---
   keys: number;            // keys collected
-  potions: number;         // healing potions carried
+  potions: number;         // treasures IN HAND (max 6)
   scrolls: number;         // scrolls carried
+  stored: number;          // treasures stored in the level-1 chest
+  storedValue: number;     // manual: 50/100/150/200 per treasure by level found
 }
 
 export type Direction = 'up' | 'down' | 'left' | 'right' | 'none';
@@ -79,6 +81,8 @@ export function createInitialState(): PlayerState {
     keys: 0,
     potions: 0,
     scrolls: 0,
+    stored: 0,
+    storedValue: 0,
   };
 }
 

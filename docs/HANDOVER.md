@@ -159,6 +159,59 @@ not flee. NOTE for future fidelity work: the manual says the Fortress has
 level 3 may be reading past the real level table; the 14-level descent is a
 designed mode, not ROM truth.
 
+**ROM finding #8 — ITEMS, STATUS, DEATH, STAIRS MECHANICS (2026-09-14).**
+Captured live in Intellijsd (real input, legitimately booted game):
+  * **Pickup** = stand ON the object tile, disc released, press ENTER. The
+    tile is replaced by floor **2 frames** later; a **21-frame** movement lock
+    (`G_01A4=21`, `G_01AB=1`) accompanies it. Per-level bitmasks:
+    `$0180+lvl` = object ACTIVE bits, `$019D+lvl` = COLLECTED bits; each of
+    the 8 pickable objects owns one bit (level 1: treasure c21=bit6, key
+    c22=bit7, c18=bit3, c20=bit5, c15=bit2, c17=bit0, c16=bit1, c19=bit4).
+    **Card 14 (Lantern) is NOT pickable** (no bits change). Max 6 treasures in
+    hand (status screen showed INHAND: 6). The object list for a level is at
+    `$64DE` (16 records; low byte = world tile COLUMN — verified against the
+    12 object tiles in `world_level0.json`; rows come from elsewhere).
+  * **Status screen = keypad `0`** (not a side button). Layout in the game's
+    font (uppercase decode card+32, lowercase/digits card+64):
+    REINCARNATIONS / KNIGHT: n / TREASURES / INHAND: n / STORED: n / VALUE: n.
+    Shown ~227 frames then returns to the maze. **ENTER on the treasure
+    chest (card 12, start room) = store** and also shows this screen.
+  * **Death → revive:** at 0 half-lives the player's script becomes `$5B9A`
+    (the address the ROM compares at `$5716/$5751`), sword MOB removed, body
+    recoloured, movement locked. **Revival happens only after the disc is
+    RELEASED** (≈120 idle frames sufficed); holding a direction keeps the
+    player fallen indefinitely. On revive: script `$5B28`, white, sword back,
+    `$017C` (reincarnations) already decremented.
+  * **Game over:** `$017C=0` → all 8 MOBs pile onto the player (knights +
+    swords at the Prince's position), `G_018C=$41`, disc ignored, maze stays
+    on screen, PC idles in the EXEC awaiting a game-select key.
+  * **Something besides knight swords costs lives**: with MOB collisions
+    disabled (ghost mode) `$017C` still fell 1→0 over a long walk. Suspect the
+    chomping doors (cards 1/2, 11 pairs on level 1) — UNVERIFIED.
+  * **Stairs (partially solved):** the walk-on classifier `L_65FC` (called
+    every frame from `L_6677`) masks the tile under the player with `$09F8`
+    and matches `$662A` entries shifted <<3: GRAM cards 1,2,10,9,3,4,5 →
+    codes `$6632`: 5,4,1,**$10**,**$20**,$41,$41. Code `$10` (card **9**, the
+    barred-column glyph) → `L_6717` → `L_6725`: level+1, `G_02F4 += 8`,
+    prints "Stairs to level N" (text at `$6751`), re-renders. Code `$20`
+    (card 10) → level−1. So **walking onto a card-9 tile descends
+    immediately; ENTER is what must create that tile** ("Stairs will open").
+    Card 9/10 words appear NOWHERE in the extracted maps or ROM data (the
+    card is computed), and no BACKTAB write of card 9 was observed after
+    ENTER with the key + 6 treasures in hand, at ~200 tested tiles. The
+    card-13 (`⊗`) room at (108,7) is walled off from the rest of level 1 —
+    almost certainly the level-2→1 ARRIVAL point (stairs-up marker). OPEN:
+    where/how ENTER opens the down-stairs on level 1. Best next step: trap
+    `L_692A/L_692F` BACKTAB writes with card 9 while pressing ENTER at the
+    remaining untested landmark — the chest (12,32) with the key held — and
+    the four `$64DE` records at columns 76/108 whose rows are unknown.
+  Oracle technique notes: navigate with a BFS over `world_level{N}.json`
+  (pixel-exact vs live BACKTAB — 0 mismatches) using player world pixel =
+  `(g175&31 + page*32)*8 + (mobX-8)+4`; the camera moves in whole tiles
+  while the sprite's screen X/Y drifts within an 8-px band. "Ghost mode"
+  (skip the MOB pass so collisions never register) makes navigation safe
+  but must be OFF for any collision-dependent test.
+
 **ROM finding #7 — COMBAT, CAPTURED (2026-09-14).** With the Intellijsd
 oracle patched so `runFrames` also runs the STIC MOB pass (the collision
 registers `$0018-$001F` are computed by `renderMobs()`, which upstream only

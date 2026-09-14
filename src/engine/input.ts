@@ -39,11 +39,11 @@ const KEY_MAP: Record<string, Direction> = {
 // Held action buttons -> InputState boolean field name.
 const ACTION_KEYS: Record<string, string> = {
   b: 'backUp', B: 'backUp',          // Warrior Prince backs up
-  ' ': 'pickup',                     // Pick up / store / open
+  ' ': 'pickup',                     // Pick up / store / open (= ENTER on the real pad)
   f: 'stairs', F: 'stairs',          // Stairs; use Lantern of Life
   r: 'readScroll', R: 'readScroll',  // Read Scroll
-  Tab: 'status',                     // Call up Status Screen
-  Enter: 'enter',                    // Menu confirm
+  Tab: 'status', '0': 'status',      // Call up Status Screen (captured: keypad 0)
+  Enter: 'enter',                    // ENTER: pick up / store / open
 };
 
 export class InputHandler {
