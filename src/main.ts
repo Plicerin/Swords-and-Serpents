@@ -1,8 +1,15 @@
 import { WIDTH, HEIGHT } from './platform/stic';
 import { createInitialState, PlayerState } from './engine/state';
 import { InputHandler } from './engine/input';
-import { Maze, isWalkableWord } from './world/maze';
+import { Maze, isWalkableWord, gramCard } from './world/maze';
 import { LevelWorld, wrap, wrapDelta, TILE } from './world/torus';
+import {
+  ObjectTables, LevelObjectState, createObjectState, tileBlock, pickupType,
+  TYPE_KEY, TYPE_MARKER, TYPE_UP_STAIRS, CARD_DOWN_STAIRS, CARD_UP_STAIRS,
+  CARD_CHEST, CARD_MARKER, CARD_LANTERN, CARD_KEY, WORD_DOWN_STAIRS, WORD_TAKEN,
+  MAX_IN_HAND,
+} from './world/objects';
+import { doorCards } from './world/doors';
 import {
   Enemy, Fireball, GameItem, ItemKind,
   createEnemy, createItem, updateEnemy, resolveContact,
@@ -23,26 +30,40 @@ let infoTimer = 0;
 let mazes: Maze[] = [];
 let levels: LevelWorld[] = [];
 let gramData: Uint8Array;
+let gromData: Uint8Array;
+let objectTables: ObjectTables;
 
 // --- Per-level world content ---
-interface Stairs { x: number; y: number; unlocked: boolean; }
 interface DeathFx { x: number; y: number; t: number; }
 
 let enemiesByLevel: Enemy[][] = [];
-let itemsByLevel: GameItem[][] = [];
-let stairsByLevel: (Stairs | null)[] = [];
-let entryByLevel: { x: number; y: number }[] = [];
+let itemsByLevel: GameItem[][] = [];       // only the Crown now — ROM objects live in the tile grid
+let objStateByLevel: LevelObjectState[] = [];
+// The DOWN-stairs tile written by ENTER at a level's marker (finding #10):
+// a transient BACKTAB word — gone once its column/row scrolls off screen.
+let openStairs: ({ col: number; row: number } | null)[] = [];
+let entry0: { x: number; y: number } = { x: 0, y: 0 };
 let fireballs: Fireball[] = [];
 let deathFx: DeathFx[] = [];
 let kills = 0;
 
 // Captured item/status mechanics (docs/HANDOVER.md ROM finding #8)
 const PICKUP_LOCK_FRAMES = 21;   // movement lock after ENTER on an object
-const MAX_IN_HAND = 6;           // manual + status screen: up to six treasures
 const STATUS_FRAMES = 227;       // keypad 0 status screen duration
 let statusTimer = 0;
 let pickupFlash = -1;            // >=0 while a pickup lock is running (no injury flash)
 let inHandValue = 0;             // value of treasures currently carried
+
+// Stairs transition (captured, finding #10): the level number changes at
+// once, "Stairs to level N" is printed in RED over row 5 of the OLD screen,
+// the Prince vanishes, everything freezes for 226 frames, then the new level
+// is drawn with the Prince at the SAME coordinates.
+const STAIRS_FRAMES = 226;
+let transition: { timer: number; toLevel: number; text: string } | null = null;
+
+// Chomping-door clock (finding #9) — all doors on a level chomp in lockstep.
+let doorClock = 0;
+let doorPhaseKey = '';
 
 const PLAYER_SCALE = 4;
 const PLAYER_ASPECT_SCALE = 1.25;
@@ -137,10 +158,11 @@ async function loadAssets() {
   const levelUrls = Array.from({ length: 4 }, (_, i) =>
     fetch(`/assets/world_level${i}.json`));
 
-  const [gramRes, gromRes, spritesRes, ...mazeResps] = await Promise.all([
+  const [gramRes, gromRes, spritesRes, objectsRes, ...mazeResps] = await Promise.all([
     fetch('/assets/gram_tiles.json'),
     fetch('/assets/grom.bin'),
     fetch('/assets/player_sprites.json'),
+    fetch('/assets/objects.json'),
     ...levelUrls,
   ]);
 
@@ -148,6 +170,8 @@ async function loadAssets() {
   const gromBuffer = await gromRes.arrayBuffer();
   const spritesData = await spritesRes.json() as { warrior: number[][] };
   playerSprites = spritesData.warrior;
+  // The ROM's object tables ($64DE/$6580/$655E) — scripts/extract_objects.mjs
+  objectTables = await objectsRes.json() as ObjectTables;
 
   const loadedMazes: Maze[] = [];
   for (const resp of mazeResps) {
@@ -222,49 +246,42 @@ function extractSerpentLair(): void {
   }
 }
 
-// Scatter enemies, items, and the key-gated stairway across each toroidal
-// level; the Serpent and the Crown of Kings wait on the last one.
+// Enemies are still scattered (spawn placement not captured yet); every
+// item, key, chest, lantern and stairway comes from the ROM's object tables
+// and is already baked into the captured tile grids at its real position.
+// The Serpent and the Crown of Kings wait on the last level.
 function populateWorld(rand: () => number) {
   enemiesByLevel = [];
   itemsByLevel = [];
-  stairsByLevel = [];
-  entryByLevel = [];
+  objStateByLevel = [];
+  openStairs = [];
   fireballs = [];
   deathFx = [];
   kills = 0;
 
   // Level 0 entry: the ROM boots with camera (2, $1A) → the Prince stands
-  // near tile (12, 32).
-  entryByLevel.push(findWalkableNear(0, 12 * TILE, 32 * TILE));
+  // near tile (12, 32) — on the treasure chest (object type 9).
+  entry0 = findWalkableNear(0, 12 * TILE, 32 * TILE);
 
   for (let i = 0; i < mazes.length; i++) {
     const m = mazes[i];
-    const entry = entryByLevel[i];
     const enemies: Enemy[] = [];
     const items: GameItem[] = [];
+    objStateByLevel.push(createObjectState());
+    openStairs.push(null);
 
     const spots: { x: number; y: number }[] = [];
     for (let r = 0; r < m.h; r++) {
       for (let c = 0; c < m.w; c++) {
-        if (!isWalkableWord(m.grid[r][c])) continue;
+        if (!isWalkableWord(m.grid[r][c]) || gramCard(m.grid[r][c]) >= 0) continue;
         const s = { x: c * TILE, y: r * TILE };
-        if (tDist(i, s.x, s.y, entry.x, entry.y) < 60) continue; // keep the entry safe
+        if (tDist(i, s.x, s.y, entry0.x, entry0.y) < 60) continue; // keep the entry safe
         spots.push(s);
       }
     }
     const take = (): { x: number; y: number } | null => {
       if (spots.length === 0) return null;
       return spots.splice(Math.floor(rand() * spots.length), 1)[0];
-    };
-    const takeFar = (minDist: number): { x: number; y: number } | null => {
-      for (let attempt = 0; attempt < 40; attempt++) {
-        const idx = Math.floor(rand() * spots.length);
-        const s = spots[idx];
-        if (s && tDist(i, s.x, s.y, entry.x, entry.y) >= minDist) {
-          return spots.splice(idx, 1)[0];
-        }
-      }
-      return take();
     };
 
     // Phantom knights — more as you descend (2/4/6/8 across the 4 levels).
@@ -281,33 +298,12 @@ function populateWorld(rand: () => number) {
       if (p) enemies.push(createEnemy(p.x, p.y, 'sorcerer'));
     }
 
-    // Items: potions, scrolls — and the key that opens this level's stairway.
-    for (let n = 0; n < 3; n++) {
-      const p = take();
-      if (p) items.push(createItem(p.x, p.y, 'potion'));
-    }
-    if (i >= 1) {
-      const p = take();
-      if (p) items.push(createItem(p.x, p.y, 'scroll'));
-    }
-
-    if (i < mazes.length - 1) {
-      const p = take();
-      if (p) items.push(createItem(p.x, p.y, 'key'));
-      const sp = takeFar(100);
-      stairsByLevel.push(sp ? { x: sp.x, y: sp.y, unlocked: false } : null);
-      // Next level's entry: descend "in place" — same coordinates, snapped to floor.
-      const stair = stairsByLevel[i];
-      entryByLevel.push(stair ? findWalkableNear(i + 1, stair.x, stair.y) : { x: entry.x, y: entry.y });
-    } else {
-      stairsByLevel.push(null);
+    if (i === mazes.length - 1 && serpentLair) {
       // The Serpent's lair at its REAL position from the level-3 map data
       // (the ziggurat chamber); the Crown of Kings lies behind its tail.
-      if (serpentLair) {
-        enemies.push(createEnemy(serpentLair.x, serpentLair.y, 'serpent'));
-        const cpos = findWalkableNear(i, serpentLair.x + SERPENT_W + 16, serpentLair.y + 8);
-        items.push(createItem(cpos.x, cpos.y, 'crown'));
-      }
+      enemies.push(createEnemy(serpentLair.x, serpentLair.y, 'serpent'));
+      const cpos = findWalkableNear(i, serpentLair.x + SERPENT_W + 16, serpentLair.y + 8);
+      items.push(createItem(cpos.x, cpos.y, 'crown'));
     }
 
     enemiesByLevel.push(enemies);
@@ -315,15 +311,115 @@ function populateWorld(rand: () => number) {
   }
 }
 
-function descend() {
-  if (state.level >= levels.length - 1) return;
-  state.level++;
-  const entry = entryByLevel[state.level];
-  state.x = entry.x;
-  state.y = entry.y;
-  state.invuln = Math.max(state.invuln, 60);
+// ROM object record at a tile of the given level, if any.
+function objectAt(level: number, col: number, row: number) {
+  return objectTables.levels[level].find(o => o.col === col && o.row === row) ?? null;
+}
+
+// What a BACKTAB regeneration from map + object data would draw at a tile
+// (L_5EC7 map word, then the L_6377 object overlay gated by G_0180).
+function regeneratedWord(level: number, col: number, row: number): number {
+  const base = levels[level].base[row][col];
+  const obj = objectAt(level, col, row);
+  if (!obj) return base;
+  if (obj.type <= TYPE_KEY && !objStateByLevel[level].present[obj.type]) return WORD_TAKEN;
+  return obj.word;
+}
+
+// Tiles that scrolled off screen come back regenerated (finding #10): this
+// is how the stairs tile disappears and how duplicate treasures of a taken
+// type vanish.
+function refreshOffscreenTiles(camX: number, camY: number) {
+  const world = lw();
+  for (const key of world.stale) {
+    const col = key % world.maze.w;
+    const row = Math.floor(key / world.maze.w);
+    const dx = wrap(col * TILE - camX, world.pixelWidth);
+    const dy = wrap(row * TILE - camY, world.pixelHeight);
+    const visible = dx < VIEW_W && dy < VIEW_H;
+    if (visible) continue;
+    world.setWord(col, row, regeneratedWord(state.level, col, row));
+    world.stale.delete(key);
+    const os = openStairs[state.level];
+    if (os && os.col === col && os.row === row) openStairs[state.level] = null;
+  }
+}
+
+function markStale(level: number, col: number, row: number) {
+  const w = levels[level];
+  if (w.maze.grid[row][col] !== regeneratedWord(level, col, row)) w.stale.add(w.key(col, row));
+  else w.stale.delete(w.key(col, row));
+}
+
+// Full BACKTAB redraw (L_5EE2) — on entering a level everything regenerates.
+function redrawLevel(level: number) {
+  const w = levels[level];
+  for (const key of w.stale) {
+    const col = key % w.maze.w;
+    const row = Math.floor(key / w.maze.w);
+    w.setWord(col, row, regeneratedWord(level, col, row));
+  }
+  w.stale.clear();
+  openStairs[level] = null;
+  applyDoorPhase(level, true);
+}
+
+function applyDoorPhase(level: number, force = false) {
+  const { c1, c2 } = doorCards(doorClock);
+  const key = c1.join() + '|' + c2.join();
+  if (!force && key === doorPhaseKey) return;
+  doorPhaseKey = key;
+  levels[level].setCardBitmap(1, c1);
+  levels[level].setCardBitmap(2, c2);
+}
+
+// Player MOB as an 8×8 world-pixel mask (the 8×16 MOB rows are half-height).
+function playerMask(): number[] {
+  const f = facingFrame(state.faceDx, state.faceDy);
+  const bytes = playerSprites[f.frame] ?? [];
+  const mask: number[] = [];
+  for (let y = 0; y < 8; y++) {
+    const r0 = f.flip ? 15 - 2 * y : 2 * y;
+    const r1 = f.flip ? 14 - 2 * y : 2 * y + 1;
+    let b = (bytes[r0] ?? 0) | (bytes[r1] ?? 0);
+    if (f.mirror) {
+      let m = 0;
+      for (let i = 0; i < 8; i++) if (b & (1 << i)) m |= 0x80 >> i;
+      b = m;
+    }
+    mask.push(b);
+  }
+  return mask;
+}
+
+// STIC MOB-vs-background collision for one tile: any sprite pixel over any
+// foreground pixel of the tile's (possibly animated) card bitmap.
+function spriteHitsTile(sx: number, sy: number, mask: number[], col: number, row: number): boolean {
+  const world = lw();
+  const bm = world.cardBitmap(gramCard(world.maze.grid[row][col]));
+  if (!bm) return false;
+  const dx = wrapDelta(sx, col * TILE, world.pixelWidth);
+  const dy = wrapDelta(sy, row * TILE, world.pixelHeight);
+  if (Math.abs(dx) >= 8 || Math.abs(dy) >= 8) return false;
+  for (let py = 0; py < 8; py++) {
+    const ty = py - dy;
+    if (ty < 0 || ty > 7) continue;
+    const srow = mask[py];
+    const trow = bm[ty] ?? 0;
+    if (!srow || !trow) continue;
+    for (let px = 0; px < 8; px++) {
+      const tx = px - dx;
+      if (tx < 0 || tx > 7) continue;
+      if ((srow >> (7 - px)) & 1 && (trow >> (7 - tx)) & 1) return true;
+    }
+  }
+  return false;
+}
+
+function changeLevel(toLevel: number) {
+  // Captured: "Stairs to level N" names the level being entered (1-based).
+  transition = { timer: STAIRS_FRAMES, toLevel, text: `Stairs to level ${toLevel + 1}` };
   fireballs = [];
-  setInfo(`Level ${state.level + 1} — the air grows colder...`, 180);
 }
 
 function initGame() {
@@ -333,12 +429,16 @@ function initGame() {
   populateWorld(mulberry32(0x5E44E27));
 
   state.level = 0;
-  state.x = entryByLevel[0].x;
-  state.y = entryByLevel[0].y;
+  state.x = entry0.x;
+  state.y = entry0.y;
+  transition = null;
+  doorClock = 0;
+  doorPhaseKey = '';
+  applyDoorPhase(0, true);
 
   gameWon = false;
   gameStarted = true;
-  setInfo('Slay foes by walking INTO them. Find the key, then the stairs (F)!', 420);
+  setInfo('Slay foes by walking INTO them. Find the key, ENTER at the checkered marker, walk onto the stairs!', 420);
 }
 
 function update() {
@@ -348,10 +448,29 @@ function update() {
 
   if (gameWon || isGameOver(state)) return;
 
+  // Stairs transition: the ROM busy-waits (L_6746) — the whole game freezes
+  // under the message, then the new level is drawn in place.
+  if (transition) {
+    transition.timer--;
+    if (transition.timer <= 0) {
+      state.level = transition.toLevel;
+      transition = null;
+      redrawLevel(state.level);
+      state.stunned = 0;
+    }
+    return;
+  }
+
+  // Chomping doors: both GRAM jaw cards follow one 148-frame clock.
+  doorClock++;
+  applyDoorPhase(state.level);
+
   const world = lw();
   const W = world.pixelWidth;
   const H = world.pixelHeight;
   const inputState = input.getInput();
+  const objState = objStateByLevel[state.level];
+  state.keys = objState.taken[TYPE_KEY] ? 1 : 0;
 
   // Captured: the fallen Prince revives IN PLACE once the disc is released.
   const discReleased = inputState.dx === 0 && inputState.dy === 0;
@@ -400,21 +519,38 @@ function update() {
     state.moving = false;
   }
 
-  // --- Stairway ---
-  const stairs = stairsByLevel[state.level];
-  if (stairs && !state.dead && tDist(state.level, state.x, state.y, stairs.x, stairs.y) < 8) {
-    if (!stairs.unlocked) {
-      if (state.keys > 0) {
-        state.keys--;
-        stairs.unlocked = true;
-        setInfo('The stairway is unlocked — press F to descend', 180);
-      } else if (infoTimer < 30) {
-        setInfo('The stairway is barred — find a key!', 60);
+  // --- Background collision → tile classifier (L_6679 → L_65FC) ---
+  // The STIC reports the player MOB touching ANY foreground pixel; the ROM
+  // then scans the 2×2 tile block under the sprite: card 9 → down a level,
+  // card 10 → up a level, cards 1/2 (door jaws) → a knight-sword-grade hit.
+  if (!state.dead) {
+    const sx = Math.floor(state.x);
+    const sy = Math.floor(state.y);
+    const block = tileBlock(sx, sy, world.maze.w, world.maze.h);
+    const mask = playerMask();
+    let bgHit = false;
+    let doorBite = false;
+    for (const t of block) {
+      if (!spriteHitsTile(sx, sy, mask, t.col, t.row)) continue;
+      bgHit = true;
+      const card = gramCard(world.maze.grid[t.row][t.col]);
+      if (card === 1 || card === 2) doorBite = true;
+    }
+    if (bgHit) {
+      const cards = block.map(t => gramCard(world.maze.grid[t.row][t.col]));
+      if (cards.includes(CARD_DOWN_STAIRS) && state.level < levels.length - 1) {
+        changeLevel(state.level + 1);
+        return;
       }
-    } else if (inputState.stairs) {
-      descend();
-    } else if (infoTimer < 30) {
-      setInfo('Press F to descend', 60);
+      if (cards.includes(CARD_UP_STAIRS) && state.level > 0) {
+        changeLevel(state.level - 1);
+        return;
+      }
+      if (doorBite && state.stunned === 0) {
+        const wasGray = state.injured;
+        injurePlayer(state);
+        setInfo(state.dead ? 'The door bit you down...' : wasGray ? 'The door bites — a life is lost!' : 'The door bites!', 90);
+      }
     }
   }
 
@@ -500,18 +636,57 @@ function update() {
         setInfo('', 0);
         continue;
       }
-      if (!wantPickup) { if (infoTimer < 30) setInfo('Press ENTER to pick up', 60); continue; }
-      if (item.kind === 'potion' && state.potions >= MAX_IN_HAND) { setInfo('You can carry no more treasure', 90); continue; }
-      item.collected = true;
-      state.stunned = PICKUP_LOCK_FRAMES;
-      pickupFlash = 0;
-      switch (item.kind) {
-        case 'key':    state.keys++;    setInfo('Found a key!', 90); break;
-        case 'potion': state.potions++; inHandValue += 50 * (state.level + 1); setInfo('Found a treasure!', 90); break;
-        case 'scroll': state.scrolls++; setInfo('Found a scroll — press R to read', 120); break;
-      }
     }
   }
+
+  // --- ENTER on a ROM object (L_63F5): first card 12..22 in the 2×2 block ---
+  if (wantPickup) {
+    const sx = Math.floor(state.x);
+    const sy = Math.floor(state.y);
+    const block = tileBlock(sx, sy, world.maze.w, world.maze.h);
+    for (const t of block) {
+      const card = gramCard(world.maze.grid[t.row][t.col]);
+      if (card < CARD_CHEST || card > CARD_KEY) continue;
+      if (card === CARD_CHEST) {
+        storeTreasures();
+      } else if (card === CARD_MARKER) {
+        // Locked stairway: with this level's key, the DOWN stairs appear in
+        // the BACKTAB word after the marker — one column to the right.
+        if (objState.taken[TYPE_KEY]) {
+          const col = wrap(t.col + 1, world.maze.w);
+          world.setWord(col, t.row, WORD_DOWN_STAIRS);
+          markStale(state.level, col, t.row);
+          openStairs[state.level] = { col, row: t.row };
+        }
+      } else if (card === CARD_LANTERN) {
+        // L_64CB: the player's colour word is reset to white — the injury is cured.
+        state.injured = false;
+      } else {
+        const type = pickupType(card);
+        if (type !== TYPE_KEY && state.potions >= MAX_IN_HAND) break; // L_643C: refused
+        world.setWord(t.col, t.row, WORD_TAKEN);
+        objState.taken[type] = true;
+        objState.present[type] = false;
+        // Other tiles of this type stay drawn until they scroll off (G_0180 gate).
+        for (const o of objectTables.levels[state.level]) {
+          if (o.type === type) markStale(state.level, o.col, o.row);
+        }
+        state.stunned = PICKUP_LOCK_FRAMES;
+        pickupFlash = 0;
+        if (type === TYPE_KEY) {
+          setInfo('Found the key!', 90);
+        } else {
+          state.potions++;
+          inHandValue += 50 * (state.level + 1);
+          setInfo('Found a treasure!', 90);
+        }
+      }
+      break;
+    }
+  }
+
+  // Tiles that left the screen come back regenerated from map + object data.
+  refreshOffscreenTiles(wrap(Math.floor(state.x) + 4 - VIEW_W / 2, W), wrap(Math.floor(state.y) + 4 - VIEW_H / 2, H));
 
   // Status screen (captured: keypad 0; shown ~227 frames)
   if (inputState.status && statusTimer === 0 && !state.dead) statusTimer = STATUS_FRAMES;
@@ -523,23 +698,23 @@ function update() {
     setInfo('The scroll reads: "The Serpent guards the Crown in the deepest dark..."', 240);
   }
 
-  // Treasure chest (Store Room, level 1 entry): ENTER stores what's in hand
-  // and shows the status screen (captured). Value per manual: 50/100/150/200
-  // by the level the treasure was found on.
-  if (state.level === 0 && wantPickup && state.potions > 0 &&
-      tDist(0, entryByLevel[0].x, entryByLevel[0].y, state.x, state.y) < 8) {
-    state.stored += state.potions;
-    const before300 = Math.floor(state.storedValue / 300);
-    state.storedValue += inHandValue;
-    // Manual: "earn an additional Reincarnation for every 300 points scored"
-    state.reincarnations += Math.floor(state.storedValue / 300) - before300;
-    inHandValue = 0;
-    state.potions = 0;
-    state.stunned = PICKUP_LOCK_FRAMES;
-    pickupFlash = 0;
-    statusTimer = STATUS_FRAMES;
-    setInfo('Treasures stored!', 90);
-  }
+}
+
+// Treasure chest (card 12, level 0 entry): ENTER stores what's in hand and
+// shows the status screen (captured; L_6472). Value 50/100/150/200 by the
+// level the treasure was found on; a Reincarnation per 300 points.
+function storeTreasures() {
+  if (state.potions === 0) return;
+  state.stored += state.potions;
+  const before300 = Math.floor(state.storedValue / 300);
+  state.storedValue += inHandValue;
+  state.reincarnations += Math.floor(state.storedValue / 300) - before300;
+  inHandValue = 0;
+  state.potions = 0;
+  state.stunned = PICKUP_LOCK_FRAMES;
+  pickupFlash = 0;
+  statusTimer = STATUS_FRAMES;
+  setInfo('Treasures stored!', 90);
 }
 
 // Draw a 1bpp sprite in a solid color. rows=16 sprites are MOBs at 2× vertical
@@ -660,26 +835,8 @@ function render(ctx: CanvasRenderingContext2D) {
     return dx > -MARGIN && dx < VIEW_W + MARGIN && dy > -MARGIN && dy < VIEW_H + MARGIN;
   };
 
-  // --- Stairway ---
-  const stairs = stairsByLevel[state.level];
-  if (stairs && onScreen(stairs.x, stairs.y)) {
-    const sx = toScreenX(stairs.x);
-    const sy = toScreenY(stairs.y);
-    const u = PLAYER_SCALE;
-    const uy = PLAYER_SCALE * PLAYER_ASPECT_SCALE;
-    // Descending steps
-    ctx.fillStyle = stairs.unlocked ? '#FFFCFF' : '#BDACC8';
-    ctx.fillRect(sx,         sy,          u * 8, uy * 2);
-    ctx.fillRect(sx + u * 2, sy + uy * 2, u * 6, uy * 2);
-    ctx.fillRect(sx + u * 4, sy + uy * 4, u * 4, uy * 2);
-    ctx.fillRect(sx + u * 6, sy + uy * 6, u * 2, uy * 2);
-    if (!stairs.unlocked) {
-      ctx.fillStyle = '#FFB41F';
-      ctx.fillRect(sx, sy + uy * 3, u * 8, uy);
-    }
-  }
-
-  // --- Items ---
+  // --- Items: every ROM object is a background tile already in the level
+  //     canvas; only the Crown (not yet captured) is drawn as a sprite ---
   const ITEM_COLORS: Record<ItemKind, string> = {
     key: '#FAEA50', potion: '#FF4E57', scroll: '#FFFCFF', crown: '#FAEA50',
   };
@@ -688,6 +845,21 @@ function render(ctx: CanvasRenderingContext2D) {
     const color = (item.kind === 'crown' && Math.floor(frameCount / 10) % 2 === 0)
       ? '#FFFCFF' : ITEM_COLORS[item.kind];
     drawBitmap(ctx, ITEM_SPRITES[item.kind], 8, toScreenX(item.x), toScreenY(item.y), color);
+  }
+
+  // --- Stairs transition (captured): row 5 of the frozen screen is cleared
+  //     to black and "Stairs to level N" printed in RED from column 2; the
+  //     Prince is hidden. Nothing else changes for 226 frames. ---
+  if (transition) {
+    const u = PLAYER_SCALE;
+    const uy = PLAYER_SCALE * PLAYER_ASPECT_SCALE;
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, Math.round(5 * TILE * uy), VIEW_W * u, Math.round(TILE * uy));
+    for (let i = 0; i < transition.text.length; i++) {
+      const card = transition.text.charCodeAt(i) - 32;
+      const bytes = Array.from(gromData.subarray(card * 8, card * 8 + 8));
+      drawBitmap(ctx, bytes, 8, (2 + i) * TILE * u, Math.round(5 * TILE * uy), FG[2]);
+    }
   }
 
   // --- Enemies ---
@@ -807,7 +979,9 @@ function render(ctx: CanvasRenderingContext2D) {
   }
 
   // --- Player (always at screen centre — the world scrolls around him) ---
-  if (state.dead) {
+  if (transition) {
+    // MOB 0 is hidden for the whole stairs message (captured).
+  } else if (state.dead) {
     if (Math.floor(frameCount / 8) % 2 === 0) {
       ctx.strokeStyle = '#FF3D10';
       ctx.lineWidth = 3;
@@ -833,7 +1007,7 @@ function render(ctx: CanvasRenderingContext2D) {
 
   // Sword — the player's own sword MOB. Captured: it cycles through the
   // palette every frame, always (a rainbow shimmer), independent of state.
-  if (!state.dead) {
+  if (!state.dead && !transition) {
     drawSword(ctx, px, py, state.faceDx, state.faceDy, SWORD_CYCLE[frameCount % SWORD_CYCLE.length]);
   }
 
@@ -859,7 +1033,7 @@ function render(ctx: CanvasRenderingContext2D) {
     const alpha = Math.max(0, 1 - (frameCount / 600));
     ctx.fillStyle = `rgba(200,200,200,${alpha * 0.5})`;
     ctx.font = '10px monospace';
-    ctx.fillText('WASD move | walk INTO foes to strike | key opens the stairs (F) | slay the Serpent', 8, scaledH - 8);
+    ctx.fillText('WASD move | walk INTO foes to strike | ENTER picks up / opens the stairs | slay the Serpent', 8, scaledH - 8);
   }
 
   const debugEl = document.getElementById('debug');
@@ -894,6 +1068,7 @@ async function main() {
   console.log('Loading Swords and Serpents (4 real fortress levels, 128×64 each)...');
   const assets = await loadAssets();
   gramData = assets.gram;
+  gromData = assets.grom;
   mazes = assets.mazes;
   extractSerpentLair();
 
@@ -918,14 +1093,21 @@ async function main() {
       fireballs: fireballs.length,
       items: itemsByLevel[state.level].filter(i => !i.collected).length }),
     teleport: (x: number, y: number) => { state.x = x; state.y = y; },
+    // Levels are entered in place (same coordinates) — like the real stairs.
     setLevel: (l: number) => {
       state.level = Math.max(0, Math.min(levels.length - 1, l));
-      const entry = entryByLevel[state.level];
-      state.x = entry.x;
-      state.y = entry.y;
+      redrawLevel(state.level);
       fireballs = [];
     },
-    giveKey: () => { state.keys++; },
+    giveKey: () => { objStateByLevel[state.level].taken[TYPE_KEY] = true; },
+    // ROM object records of the current level (col,row,type,word).
+    objects: () => objectTables.levels[state.level],
+    objectState: () => objStateByLevel[state.level],
+    marker: () => objectTables.levels[state.level].find(o => o.type === TYPE_MARKER) ?? null,
+    upStairs: () => objectTables.levels[state.level].find(o => o.type === TYPE_UP_STAIRS) ?? null,
+    tileWord: (col: number, row: number) => lw().maze.grid[row]?.[col],
+    doorClock: () => doorClock,
+    transition: () => transition,
     facing: (dx: number, dy: number, alt = false) => facingFrame(dx, dy, alt),
     info: () => infoMessage,
     // Deterministic stepping for headless verification: run N simulation
@@ -940,8 +1122,8 @@ async function main() {
         resolve();
       }, ms);
     }),
-    stairs: () => stairsByLevel[state.level],
-    entry: () => entryByLevel[state.level],
+    stairs: () => openStairs[state.level],
+    entry: () => entry0,
     nearestEnemy: () => {
       let best: Enemy | null = null;
       let bd = Infinity;

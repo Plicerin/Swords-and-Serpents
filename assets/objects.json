@@ -1,0 +1,427 @@
+{
+ "source": "Swords and Serpents.bin — tables at $64DE (positions), $6580 (types), $655E (BACKTAB words)",
+ "types": {
+  "7": "KEY (card 22) — sets G_019D bit 7 of its level; opens that level's stairs",
+  "8": "Lantern of Life (card 14) — ENTER cures (player colour -> white)",
+  "9": "treasure chest (card 12, level 0 only) — ENTER stores what is in hand",
+  "10": "locked stairway marker (card 13, checkered) — ENTER with the key writes $084B (card 9, DOWN stairs) one column to the RIGHT",
+  "11": "DOWN stairs (card 9) — never in the table; only ever written by the ENTER above",
+  "12": "UP stairs (card 10) — walk onto it: level-1",
+  "0-6": "treasures (GRAM cards 15-21); G_0180 bit = present, G_019D bit = collected",
+  "13-16": "card 11 with bits 14-15 varying (four per level; purpose not yet captured)"
+ },
+ "typeWord": [
+  7806,
+  7815,
+  7822,
+  7824,
+  7832,
+  7846,
+  7854,
+  7856,
+  7798,
+  3680,
+  2155,
+  2123,
+  7763,
+  7771,
+  24155,
+  40539,
+  56923,
+  4045
+ ],
+ "levels": [
+  [
+   {
+    "col": 20,
+    "row": 32,
+    "type": 13,
+    "word": 7771
+   },
+   {
+    "col": 108,
+    "row": 17,
+    "type": 14,
+    "word": 24155
+   },
+   {
+    "col": 76,
+    "row": 39,
+    "type": 15,
+    "word": 40539
+   },
+   {
+    "col": 76,
+    "row": 1,
+    "type": 16,
+    "word": 56923
+   },
+   {
+    "col": 108,
+    "row": 7,
+    "type": 10,
+    "word": 2155
+   },
+   {
+    "col": 58,
+    "row": 30,
+    "type": 8,
+    "word": 7798
+   },
+   {
+    "col": 92,
+    "row": 49,
+    "type": 8,
+    "word": 7798
+   },
+   {
+    "col": 12,
+    "row": 32,
+    "type": 9,
+    "word": 3680
+   },
+   {
+    "col": 38,
+    "row": 54,
+    "type": 7,
+    "word": 7856
+   },
+   {
+    "col": 51,
+    "row": 9,
+    "type": 0,
+    "word": 7806
+   },
+   {
+    "col": 79,
+    "row": 25,
+    "type": 1,
+    "word": 7815
+   },
+   {
+    "col": 12,
+    "row": 39,
+    "type": 6,
+    "word": 7854
+   },
+   {
+    "col": 47,
+    "row": 41,
+    "type": 3,
+    "word": 7824
+   },
+   {
+    "col": 113,
+    "row": 34,
+    "type": 4,
+    "word": 7832
+   },
+   {
+    "col": 6,
+    "row": 54,
+    "type": 5,
+    "word": 7846
+   },
+   {
+    "col": 43,
+    "row": 14,
+    "type": 2,
+    "word": 7822
+   }
+  ],
+  [
+   {
+    "col": 104,
+    "row": 6,
+    "type": 12,
+    "word": 7763
+   },
+   {
+    "col": 43,
+    "row": 33,
+    "type": 10,
+    "word": 2155
+   },
+   {
+    "col": 108,
+    "row": 10,
+    "type": 13,
+    "word": 7771
+   },
+   {
+    "col": 36,
+    "row": 34,
+    "type": 14,
+    "word": 24155
+   },
+   {
+    "col": 125,
+    "row": 10,
+    "type": 15,
+    "word": 40539
+   },
+   {
+    "col": 77,
+    "row": 46,
+    "type": 16,
+    "word": 56923
+   },
+   {
+    "col": 15,
+    "row": 9,
+    "type": 8,
+    "word": 7798
+   },
+   {
+    "col": 111,
+    "row": 41,
+    "type": 8,
+    "word": 7798
+   },
+   {
+    "col": 12,
+    "row": 24,
+    "type": 0,
+    "word": 7806
+   },
+   {
+    "col": 12,
+    "row": 55,
+    "type": 1,
+    "word": 7815
+   },
+   {
+    "col": 45,
+    "row": 46,
+    "type": 2,
+    "word": 7822
+   },
+   {
+    "col": 45,
+    "row": 10,
+    "type": 3,
+    "word": 7824
+   },
+   {
+    "col": 84,
+    "row": 36,
+    "type": 4,
+    "word": 7832
+   },
+   {
+    "col": 15,
+    "row": 41,
+    "type": 5,
+    "word": 7846
+   },
+   {
+    "col": 108,
+    "row": 55,
+    "type": 6,
+    "word": 7854
+   },
+   {
+    "col": 26,
+    "row": 2,
+    "type": 7,
+    "word": 7856
+   }
+  ],
+  [
+   {
+    "col": 41,
+    "row": 33,
+    "type": 12,
+    "word": 7763
+   },
+   {
+    "col": 76,
+    "row": 1,
+    "type": 10,
+    "word": 2155
+   },
+   {
+    "col": 44,
+    "row": 18,
+    "type": 13,
+    "word": 7771
+   },
+   {
+    "col": 69,
+    "row": 2,
+    "type": 14,
+    "word": 24155
+   },
+   {
+    "col": 2,
+    "row": 26,
+    "type": 15,
+    "word": 40539
+   },
+   {
+    "col": 61,
+    "row": 42,
+    "type": 16,
+    "word": 56923
+   },
+   {
+    "col": 47,
+    "row": 9,
+    "type": 8,
+    "word": 7798
+   },
+   {
+    "col": 4,
+    "row": 38,
+    "type": 2,
+    "word": 7822
+   },
+   {
+    "col": 19,
+    "row": 46,
+    "type": 0,
+    "word": 7806
+   },
+   {
+    "col": 11,
+    "row": 61,
+    "type": 1,
+    "word": 7815
+   },
+   {
+    "col": 82,
+    "row": 24,
+    "type": 2,
+    "word": 7822
+   },
+   {
+    "col": 58,
+    "row": 34,
+    "type": 3,
+    "word": 7824
+   },
+   {
+    "col": 83,
+    "row": 54,
+    "type": 4,
+    "word": 7832
+   },
+   {
+    "col": 115,
+    "row": 40,
+    "type": 5,
+    "word": 7846
+   },
+   {
+    "col": 117,
+    "row": 42,
+    "type": 6,
+    "word": 7854
+   },
+   {
+    "col": 42,
+    "row": 46,
+    "type": 7,
+    "word": 7856
+   }
+  ],
+  [
+   {
+    "col": 75,
+    "row": 1,
+    "type": 12,
+    "word": 7763
+   },
+   {
+    "col": 84,
+    "row": 1,
+    "type": 13,
+    "word": 7771
+   },
+   {
+    "col": 60,
+    "row": 48,
+    "type": 14,
+    "word": 24155
+   },
+   {
+    "col": 30,
+    "row": 16,
+    "type": 15,
+    "word": 40539
+   },
+   {
+    "col": 12,
+    "row": 46,
+    "type": 16,
+    "word": 56923
+   },
+   {
+    "col": 77,
+    "row": 23,
+    "type": 2,
+    "word": 7822
+   },
+   {
+    "col": 79,
+    "row": 23,
+    "type": 0,
+    "word": 7806
+   },
+   {
+    "col": 81,
+    "row": 23,
+    "type": 1,
+    "word": 7815
+   },
+   {
+    "col": 116,
+    "row": 4,
+    "type": 3,
+    "word": 7824
+   },
+   {
+    "col": 107,
+    "row": 15,
+    "type": 4,
+    "word": 7832
+   },
+   {
+    "col": 6,
+    "row": 22,
+    "type": 5,
+    "word": 7846
+   },
+   {
+    "col": 47,
+    "row": 25,
+    "type": 6,
+    "word": 7854
+   },
+   {
+    "col": 44,
+    "row": 7,
+    "type": 2,
+    "word": 7822
+   },
+   {
+    "col": 50,
+    "row": 58,
+    "type": 2,
+    "word": 7822
+   },
+   {
+    "col": 43,
+    "row": 60,
+    "type": 0,
+    "word": 7806
+   },
+   {
+    "col": 79,
+    "row": 56,
+    "type": 0,
+    "word": 7806
+   }
+  ]
+ ]
+}

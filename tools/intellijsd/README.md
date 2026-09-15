@@ -62,3 +62,16 @@ Screen text can be decoded from BACKTAB (`$0200`, 20×12): GROM card
   a replacement — cross-check anything surprising against jzIntv.
 - This is a third-party work; keep it under `tools/` unmodified apart from
   the hook, and credit the author if it is redistributed.
+- **Game logic is not 1 tick per frame.** The ROM's main loop takes ~16k
+  cycles idle but ~45-57k with three knights hunting (sqrt/mult/div per
+  knight), so it completes once per 1, 3 or 4 frames. Measure speeds in px
+  per *tick* (trap PC `$5D08` to count loop iterations) or make sure no
+  knights are active; disc input also lags a couple of frames under load.
+- **Ghost mode done right:** wrap `display.renderHardware` so that after the
+  real MOB pass you zero the MOB-MOB collision bits but KEEP bit `$100` of
+  `$0018` (MOB0 vs background). Zeroing everything (the first version) also
+  disables walls, doors and stairs — the tile classifier `L_65FC` only runs
+  from the background-collision dispatch.
+- If the CPU sits in the EXEC loop `$14B7-$14CD` it is waiting for BOTH
+  controllers to read `$FF` (this gates revival after a fall): release the
+  disc (`setPad(null, [])`) for a few frames.

@@ -159,6 +159,120 @@ not flee. NOTE for future fidelity work: the manual says the Fortress has
 level 3 may be reading past the real level table; the 14-level descent is a
 designed mode, not ROM truth.
 
+**ROM finding #10 — STAIRS, OBJECT TABLES, KEY, CHEST, LANTERN — SOLVED
+(2026-09-15, disassembly + live verification in Intellijsd, both directions).**
+Supersedes the "Stairs (partially solved)" paragraph of #8 below.
+  * **Object tables (ROM):** `$64DE` = 16 records per level × 4 levels, 2
+    words each **(column, row)**; `$6580` = 5-bit object TYPE per record, two
+    per word (low field = even record, `>>5` = odd), indexed by the GLOBAL
+    record number (level×16+i); `$655E` = BACKTAB word per type (2 bytes,
+    SDBD). Extracted by `scripts/extract_objects.mjs` → `assets/objects.json`
+    and verified word-for-word against the captured `world_level{N}.json`
+    grids (every object tile is baked in there at its real position).
+    Types: **0-6 treasures** (GRAM cards 15-21, fg 6 on olive), **7 = KEY**
+    (card 22), **8 = Lantern** (card 14, two per level), **9 = chest** (card
+    12, level 0 only, at (12,32) = the start), **10 = locked-stairway MARKER**
+    (card 13, the checkered `abababaaaaababab` tile, tan on black, one on
+    levels 0-2, none on 3), **11 = DOWN stairs** (card 9, `$084B`, never in
+    the table), **12 = UP stairs** (card 10 — same bitmap as 9, tan on olive,
+    one on levels 1-3), **13-16 = card 11** with bits 14-15 varying (four per
+    level; purpose not captured). Positions: L0 marker (108,7), key (38,54);
+    L1 up (104,6), marker (43,33), key (26,2); L2 up (41,33), marker (76,1),
+    key (42,46); L3 up (75,1).
+  * **Drawing (`L_6377`)** runs after every scroll/redraw: each on-screen
+    record is written over the map tile; types 0-7 only while their bit in
+    `G_0180+level` is set. `L_5EC7` builds map words from section data (tile
+    type → card via `$65A0`: 0-8 → GRAM 0-8, 9 → GROM 0, 10-19 → GRAM 24-33
+    (Serpent), …) — so cards 9/10/12-22 can ONLY come from the object system.
+  * **ENTER handler `L_63F5`** (any tile, disc released): compute the 2×2
+    tile block under the sprite (`L_6054`: TL = ((mobX-8)>>3, (mobY-8)>>3),
+    then TR, BL, BR), take the FIRST card in 12..22:
+      - card 12 (chest) → `L_6472` store: per level, each set treasure bit
+        of `G_019D` scores 50×(level+1), bits cleared (key bit 7 kept),
+        `G_01A7` stored count, `G_01A5/6` value, a reincarnation (`$017C++`)
+        per 300 points, in-hand `G_01A8 = 0`.
+      - card 13 (marker) → `L_64BC`: **if `G_019D[level] & $80` (the KEY bit)
+        write `$084B` (card 9 = DOWN STAIRS) into the BACKTAB word AFTER the
+        marker — one column to the RIGHT** (no `DECR R4` before the store).
+        Verified: marker (108,7) → `$84B` at BACKTAB `$284` from PC `$64C9`,
+        i.e. world (109,7).
+      - card 14 (lantern) → `L_64CB`: `$0335+slot` colour bits ← 7 (white):
+        the Lantern of Life CURES the injury (from code; not yet observed).
+      - cards 15-22 → `L_6445`: tile ← `$1600`, `G_019D |= 1<<type`,
+        `G_0180 &= ~(1<<type)`, `G_01A8++` (refused at 6) — **except card 22,
+        the KEY, which skips the in-hand count**. Duplicate types on level 3
+        share one bit.
+  * **Descending/ascending is a background COLLISION, not a button.** The
+    player's MOB-vs-background collision bit (`$0018` bit 8) dispatches
+    (`$5107` table → `L_6679`) into the classifier `L_65FC`, which scans the
+    same 2×2 block with four quadrant code tables (`$6632/$6639/$6640/$6647`):
+    cards 3/4/5 → wall push codes, 1/2 → `$41/$42` (door hit), **9 → `$10` →
+    `L_6717`: level+1**, **10 → `$20` → `L_671B`: level−1**, `G_02F4 ±= 8`.
+    So with the marker at (108,7) and the stairs at (109,7), walking EAST
+    descends the moment the sprite is at world x=864 (block = cols 108-109,
+    the checkered marker supplies the collision). No keypad key is involved.
+  * **Transition (captured frame by frame):** `G_019C` changes at once;
+    next frame row 5 of the CURRENT screen is overwritten with `$0000` at
+    columns 0-1 and 19 and **"Stairs to level N"** (N = new level, 1-based,
+    GROM text, **fg 2 = red**, words like `$819A`) from column 2; MOB 0 is
+    hidden from frame 2; `G_0103 = 2` and the game busy-waits (`L_6746`) —
+    **226 frames** — then `L_5EE2` redraws the new level with the camera
+    (`G_0175/6`) UNCHANGED and the Prince re-shown at the SAME screen and
+    world position (frame ~231). Level 1's up-stairs (104,6) is therefore
+    four tiles from where you arrive; on the way back up you arrive inside
+    level 0's sealed room at (108,7) (the wall push at `$5FA1` nudges you).
+  * **The stairs tile is transient:** it is a bare BACKTAB write. BACKTAB
+    column/row shifts (`L_54D8/L_54EF/L_5526/L_5539`) carry it along, but as
+    soon as its column scrolls off and back on, the column is regenerated
+    from map+objects and it is floor again (verified: walk to column 94 and
+    back → `$1603`). A level redraw (arriving on a level) also drops it.
+    ENTER at the marker simply re-creates it.
+  * **Walls are the classifier too:** `isWalkableWord` in the port now
+    follows it — only GRAM cards 3/4/5 block; the marker, chest, items,
+    lanterns and decorations 0/6/7/8 are walked over even where they are
+    drawn on black. Wall cards have transparent halves (card 3 = left 4-5 px
+    only; card 4 = top 6 rows) and the ROM only reacts to PIXEL overlap, then
+    pushes back a few px over 10 ticks (`G_034D=$0A`, `G_0108/G_010C=±$28`):
+    the push dynamics are NOT captured yet — the port still blocks by tile.
+  * **Game-logic tick ≠ frame (important for every speed in this file):**
+    the main loop (`$5D08` per iteration) waits for VBLANK but takes ~16k
+    cycles with no knight AI and ~45-57k with three active knights (sqrt/
+    mult/div per knight), i.e. **one tick per 1 / 3 / 4 frames** (measured
+    18-23 ticks per 60 frames with 3 knights near the Prince; player then
+    moves 0.33-0.37 px/frame instead of 0.5). Every "px/frame" number in
+    findings #6-#8 was captured at ~1 tick/frame; the port runs a fixed 60 Hz
+    tick. The slowdown model (ticks vs active entities) is an OPEN capture.
+  * CORRECTION to #8: `G_018C` is not a game-over marker — it is the last
+    classifier code stored by `L_668E` (`$41/$42` = door contact from the
+    left/right quadrants; the status/spell screens store `$41` too).
+  Oracle notes: the classifier only runs on a background collision, so the
+  GHOST helper now keeps bit 8 of `$0018` (MOB0-vs-background) and zeroes
+  only the MOB-MOB bits — stairs/doors/walls work, knights can't hit. When
+  the game runs at 1 tick per 3 frames, disc input lags ~2 frames: `NAV.goto`
+  re-checks the position 4 frames after releasing, and `gotoSafe` releases
+  the disc whenever the PC sits in the EXEC's controller-release wait
+  (`$14B7-$14CD`, the loop that gates revival). One-tile gaps need the
+  sprite exactly row-aligned (`(y-8)&7 == 0`).
+
+**ROM finding #9 — THE CHOMPING DOORS ARE THE MYSTERY LIFE LOSS (2026-09-15).**
+Doors are vertical pairs of GRAM cards **1** (upper jaw) and **2** (lower
+jaw) — 11 pairs on level 1, BACKTAB words `$1E0B/$1E13` never change. The
+ROM animates them by **rewriting the two GRAM cards** on a **148-frame**
+cycle (captured over two full cycles, keyframes: c2 half @36, c1 half @39,
+c1 closed @75, c2 closed @76, c1 half @111, c2 half @112, both open @148):
+open = blank; c1 half `f0f0702020000000`, closed `f0f0f0707020a0a0`; c2 half
+`00008080d0d0f0f0`, closed `a0a080d0d0f0f0f0`. Because it is GRAM, every
+door on the level chomps in lockstep. Standing in a doorway while jaw
+pixels are drawn sets MOB0's background-collision bit → classifier code
+`$41/$42` → `L_668E` → the SAME hit as a knight sword (`G_01A3`, `G_01AB`
+lock, 40-frame palette flash, white→gray); a second bite while gray → script
+`$5B94`, `$017C--` at PC `$68D4`, then `$5B9A` fallen. Ghost mode hid this
+because it zeroed the background bit along with the MOB bits. Port:
+`src/world/doors.ts` (keyframes + bitmaps), `LevelWorld.setCardBitmap`
+repaints all door tiles per phase, and the player-vs-tile PIXEL test in
+`main.ts` (`spriteHitsTile`) bites through `injurePlayer`. The cycle's phase
+at power-on was not captured (port starts a cycle at game start).
+
 **ROM finding #8 — ITEMS, STATUS, DEATH, STAIRS MECHANICS (2026-09-14).**
 Captured live in Intellijsd (real input, legitimately booted game):
   * **Pickup** = stand ON the object tile, disc released, press ENTER. The
@@ -316,11 +430,15 @@ on the test bridge exposes it for verification.
   (onto floor, so they stay reachable/killable), materialize, and fire 4-way
   axis-snapped fireballs (ROM frames `$5C4E`). Fireballs also ignore walls
   (MOBs), range-limited to ~one screen.
-- Items: keys / potions (auto-heal when injured) / scrolls per level.
-- Levels connect by a **stairway** (levels 0–2): barred until a key (one per
-  level) unlocks it, then **F** descends (manual's stairs button). You arrive
-  at the same coordinates on the next level, snapped to floor. Death respawns
-  at the current level's entry.
+- Items (ROM-exact since 2026-09-15, finding #10): every treasure, key,
+  lantern, chest and stairway is a ROM object at its real tile
+  (`assets/objects.json`), already drawn in the captured level grids.
+  ENTER on the tile picks up / stores / cures / opens; the checkered marker
+  plus this level's KEY writes the DOWN-stairs tile one column to its right,
+  and walking into it (a background collision) descends; the UP-stairs tile
+  (levels 1-3) ascends. Both in place — same coordinates, 226-frame red
+  "Stairs to level N" freeze. Chomping doors (finding #9) bite.
+- Death revives in place after the disc is released (finding #8).
 - Level 3 (the 4th): the Sinister Serpent (6×3 GRAM-card dragon at its real
   map position in the ziggurat, 6 HP, breathes fire down the approach
   corridor). The Crown of Kings cannot be taken while it lives. Slay it,
@@ -347,7 +465,8 @@ strike pad, claw-back only at close range); rAF-rate-dependent game speed
 copies `assets/`).
 
 **Test bridge** (`window.__game`): `getState teleport setLevel giveKey stairs
-entry probe rowMap nearestEnemy nearestItem sorcerers serpent crown hold info` — used for
+entry probe rowMap nearestEnemy nearestItem sorcerers serpent crown hold info
+step objects objectState marker upStairs tileWord doorClock transition` — used for
 all headless verification (movement, wall collision, wrap crossing both axes,
 wrap-seam rendering, cross-seam chase, strike/injury/death/respawn, stairs
 lock/unlock/descend, all-14-level entry sweep, fireball hit, dragon fight,

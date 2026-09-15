@@ -166,6 +166,41 @@ export function renderGridToCanvas(
 }
 
 /**
+ * Repaint ONE tile of a grid canvas built by renderGridToCanvas — the port's
+ * equivalent of a single BACKTAB word write (item pickup, the stairs tile).
+ * `cardBytes` overrides the card bitmap when given (animated GRAM: doors).
+ */
+export function paintTile(
+  canvas: HTMLCanvasElement,
+  col: number, row: number, word: number,
+  gram: Uint8Array, grom: Uint8Array,
+  cardBytes?: ArrayLike<number>,
+): void {
+  const ctx = canvas.getContext('2d')!;
+  const { card, isGram, fg, bg } = decodeFgbgWord(word);
+  const cardBase = card * 8;
+  const bytes = cardBytes ?? (isGram
+    ? gram.subarray(cardBase, cardBase + 8)
+    : grom.subarray(cardBase, cardBase + 8));
+  const fgColor = PALETTE[fg & 0xF];
+  const bgColor = PALETTE[bg & 0xF];
+  const img = ctx.createImageData(TILE_SIZE, TILE_SIZE);
+  for (let y = 0; y < TILE_SIZE; y++) {
+    const byte = bytes[y] ?? 0;
+    for (let x = 0; x < TILE_SIZE; x++) {
+      const bit = (byte >> (7 - x)) & 1;
+      const [r, g, b] = bit ? fgColor : bgColor;
+      const idx = (y * TILE_SIZE + x) * 4;
+      img.data[idx] = r;
+      img.data[idx + 1] = g;
+      img.data[idx + 2] = b;
+      img.data[idx + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, col * TILE_SIZE, row * TILE_SIZE);
+}
+
+/**
  * Create an offscreen canvas and render a room to it.
  * Returns the canvas (160×96 native resolution).
  */

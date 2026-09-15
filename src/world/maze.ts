@@ -18,9 +18,23 @@ export interface Maze {
 
 export const TILE = 8;
 
-// Walkable = floor background colour 11 (olive) — same predicate as the rooms.
+// Walkable per the ROM's tile classifier L_65FC (docs/HANDOVER.md finding
+// #10): a background collision is only acted on when the 2×2 tile block under
+// the sprite holds GRAM card 3, 4 or 5 (walls → push-back), 1 or 2 (chomping
+// doors → bite) or 9/10 (stairs). Every other card — items, the checkered
+// stairway marker (13), the chest (12), lanterns, decorations 0/6/7/8 — is
+// walked straight over even where it is drawn on a black background.
+export function gramCard(word: number): number {
+  return (word & 0x800) ? (word >> 3) & 0x3F : -1;
+}
+
+export function isWallWord(word: number): boolean {
+  const c = gramCard(word);
+  return c === 3 || c === 4 || c === 5;
+}
+
 export function isWalkableWord(word: number): boolean {
-  return ((((word >> 9) & 0xB) | ((word >> 11) & 0x4)) === 11);
+  return !isWallWord(word);
 }
 
 // Maze tile (BACKTAB word) at a world pixel position. Out of bounds → 0 (wall).
