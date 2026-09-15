@@ -148,7 +148,6 @@ function aimKnight(enemy: Enemy, player: PlayerState): void {
   enemy.sector = velocitySector(ux, uy);
   enemy.aimTimer = KNIGHT_REAIM_TICKS;
 }
-const RESPAWN_TICKS = 25;          // not yet captured (death → reappear); ~75 frames
 const HIT_GRACE_TICKS = 10;        // ~30 frames
 const KNIGHT_DEATH_TICKS = 8;      // death-flash length (captured 20-65 frames; median 24)
 // Sword MOB is 8×16 at 2× vertical resolution: reach is ~8 px along the
@@ -390,12 +389,18 @@ export function resolveContact(player: PlayerState, enemy: Enemy): CombatEvent {
   return null;
 }
 
-// Captured injury model: 40-frame stun with palette-cycling flash (movement
-// locked), then white → GRAY on the first hit. A hit while gray costs a
-// reincarnation: the Prince FALLS in place (script $5B9A — sword removed,
-// movement locked) and revives, white, on the same spot once the disc is
-// released. No natural recovery from gray. At 0 reincarnations the fall is
-// final (game over).
+// Captured injury model (findings #7, #13, #14): a hit = 40-TICK stun with a
+// random palette colour per tick (movement locked), then white → GRAY on
+// the first hit. A hit while gray runs the DEATH script ($5B94): the sword
+// vanishes and the body plays a 23-tick burst (dot 7, sparkle 7, big burst
+// 7, tail 2 — colours 9-15, one per tick); then, if a reincarnation is
+// left, $017C-- and the FALLEN script ($5B9A): twinkling remains (4 poses,
+// 4 ticks each, colours 0-7) for 61 ticks, after which the Prince stands
+// up white, in place — but only once the disc is released. With no
+// reincarnation left the burst simply ends with the Prince gone: game over
+// (screen frozen, ROM idles). No natural recovery from gray.
+export const DEATH_BURST_TICKS = 23;
+export const FALLEN_TICKS = 61;
 export function injurePlayer(player: PlayerState): void {
   if (player.dead || player.stunned > 0) return;
 
@@ -404,9 +409,10 @@ export function injurePlayer(player: PlayerState): void {
     player.injured = true;
   } else {
     player.injured = false;
-    player.reincarnations = Math.max(0, player.reincarnations - 1);
-    player.dead = true;                 // fallen
-    player.respawnTimer = RESPAWN_TICKS; // minimum fallen time before a release revives
+    player.dead = true;
+    player.deathPhase = 'dying';
+    player.deathTick = 0;
+    player.stunned = 0;
   }
 }
 
@@ -416,21 +422,46 @@ export function tickPlayerCombat(player: PlayerState, discReleased = true): bool
   if (player.stunned > 0) player.stunned--;
   if (player.invuln > 0) player.invuln--;
 
-  if (player.dead && player.reincarnations > 0) {
-    if (player.respawnTimer > 0) player.respawnTimer--;
-    if (player.respawnTimer <= 0 && discReleased) {
-      player.dead = false;
-      player.injured = false;
-      player.stunned = 0;
-      return true;
+  if (!player.dead) return false;
+  player.deathTick++;
+  if (player.deathPhase === 'dying' && player.deathTick >= DEATH_BURST_TICKS) {
+    if (player.reincarnations > 0) {
+      player.reincarnations--;          // captured: $017C-- as the fallen script starts
+      player.deathPhase = 'fallen';
+      player.deathTick = 0;
+    } else {
+      player.deathPhase = 'gone';
     }
+  } else if (player.deathPhase === 'fallen' && player.deathTick >= FALLEN_TICKS && discReleased) {
+    player.dead = false;
+    player.deathPhase = null;
+    player.injured = false;
+    player.stunned = 0;
+    return true;
   }
   return false;
 }
 
 export function isGameOver(player: PlayerState): boolean {
-  return player.reincarnations <= 0 && player.dead;
+  return player.deathPhase === 'gone';
 }
+
+// Death-script bitmaps captured from GRAM card 48 (8×16):
+export const DEATH_BURST: number[][] = [
+  [0, 0, 0, 0, 0, 0, 0, 0x18, 0x18, 0, 0, 0, 0, 0, 0, 0],                       // dot (ticks 0-6)
+  [0, 0, 0, 0, 0, 0, 0x14, 0x28, 0x08, 0x24, 0, 0, 0, 0, 0, 0],                 // sparkle (7-13)
+  [0x81, 0x04, 0x40, 0x10, 0x00, 0x41, 0x00, 0x80, 0x04, 0x00, 0x40, 0x04, 0x20, 0x00, 0x01, 0x80], // burst (14-20)
+  [0x41, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x82],                     // tail (21-22)
+];
+export function deathBurstPose(t: number): number { return t < 7 ? 0 : t < 14 ? 1 : t < 21 ? 2 : 3; }
+// Fallen remains: 4 poses cycling, 4 ticks each (row 15 = $82 throughout).
+export const FALLEN_POSES: number[][] = [
+  [0x08, 0x24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x82],
+  [0, 0, 0, 0, 0, 0, 0, 0x18, 0, 0, 0, 0, 0, 0, 0, 0x82],
+  [0x18, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x82],
+  [0, 0, 0, 0, 0, 0, 0x14, 0x28, 0, 0, 0, 0, 0, 0, 0, 0x82],
+];
+export function fallenPose(t: number): number { return Math.floor(t / 4) % 4; }
 
 // --- Sprite data (ROM-extracted, verified against binary) ---
 

@@ -1,4 +1,4 @@
-import { WIDTH, HEIGHT } from './platform/stic';
+import { WIDTH, HEIGHT, PALETTE } from './platform/stic';
 import { createInitialState, PlayerState } from './engine/state';
 import { InputHandler } from './engine/input';
 import { Maze, isWalkableWord, gramCard } from './world/maze';
@@ -20,6 +20,7 @@ import {
   KNIGHT_POSES, SWORD_BITMAPS, knightPoseSector,
   SORCERER_BODY, SORCERER_MATERIALISE, sorcererAppearPose, sorcererVanishPose,
   SORCERER_OFFSETS, KNIGHT_SPAWN_DY,
+  DEATH_BURST, deathBurstPose, FALLEN_POSES, fallenPose,
 } from './engine/combat';
 
 let state: PlayerState;
@@ -72,7 +73,6 @@ let doorPhaseKey = '';
 
 const PLAYER_SCALE = 4;
 const PLAYER_ASPECT_SCALE = 1.25;
-const PLAYER_WIDTH = 8 * PLAYER_SCALE;
 const VIEW_W = WIDTH;
 const VIEW_H = HEIGHT;
 // Real ROM walking speed: 0.5 px/frame on cardinals (1 px every 2 frames),
@@ -125,8 +125,9 @@ const SERPENT_LAYOUT: { r: number; c: number; card: number; bg: string }[] = [
 // ---------------------------------------------------------------------------
 const lw = (): LevelWorld => levels[state.level];
 
-// STIC 8-colour foreground palette (indices 0-7) as CSS.
-const FG = ['#000000', '#002DFF', '#FF3D10', '#C9CFAB', '#386B3F', '#00A756', '#FAEA50', '#FFFCFF'];
+// STIC palette as CSS (FG = the 8 foreground colours, PALETTE16 = all 16).
+const PALETTE16 = PALETTE.map(([r, g, b]) => `rgb(${r},${g},${b})`);
+const FG = PALETTE16.slice(0, 8);
 // Captured colour sequences (fg index per frame) — see HANDOVER finding #7.
 // Player body while stunned (samples every ~2 frames over the 40-frame stun):
 const STUN_CYCLE = [5, 4, 2, 1, 4, 5, 0, 1, 0, 3, 7, 5, 0, 4, 2, 1, 3, 4, 6, 5, 2, 3, 4].map(i => FG[i]);
@@ -1077,16 +1078,16 @@ function render(ctx: CanvasRenderingContext2D) {
     return;
   }
 
-  // --- Game over screen ---
+  // --- Game over (captured, finding #14): the Prince's death burst ends
+  //     with him simply gone; the maze stays frozen on screen and the ROM
+  //     idles waiting for a game-select key. Only the HUD (a port addition)
+  //     says so. ---
   if (isGameOver(state)) {
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(0, 0, scaledW, 20);
     ctx.fillStyle = '#FF3D10';
-    ctx.font = 'bold 28px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('GAME OVER', scaledW / 2, scaledH / 2);
-    ctx.fillStyle = '#FFF';
-    ctx.font = 'bold 13px monospace';
-    ctx.fillText(`Foes slain: ${kills}`, scaledW / 2, scaledH / 2 + 24);
-    ctx.textAlign = 'left';
+    ctx.font = 'bold 11px monospace';
+    ctx.fillText(`The Prince has fallen for the last time — foes slain: ${kills}. Refresh to quest again.`, 8, 14);
     return;
   }
 
@@ -1094,13 +1095,13 @@ function render(ctx: CanvasRenderingContext2D) {
   if (transition) {
     // MOB 0 is hidden for the whole stairs message (captured).
   } else if (state.dead) {
-    if (Math.floor(frameCount / 8) % 2 === 0) {
-      ctx.strokeStyle = '#FF3D10';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(px, py); ctx.lineTo(px + PLAYER_WIDTH, py + PLAYER_WIDTH);
-      ctx.moveTo(px + PLAYER_WIDTH, py); ctx.lineTo(px, py + PLAYER_WIDTH);
-      ctx.stroke();
+    // Captured death script: 23-tick burst in colours 9-15 (one random
+    // colour per tick), then the twinkling remains in colours 0-7.
+    const h = ((tickCount * 2654435761) >>> 0) % 16;
+    if (state.deathPhase === 'dying') {
+      drawBitmap(ctx, DEATH_BURST[deathBurstPose(state.deathTick)], 16, px, py, PALETTE16[9 + (h % 7)]);
+    } else if (state.deathPhase === 'fallen') {
+      drawBitmap(ctx, FALLEN_POSES[fallenPose(state.deathTick)], 16, px, py, PALETTE16[h % 8]);
     }
   } else {
     const facingF = facingFrame(state.faceDx, state.faceDy);

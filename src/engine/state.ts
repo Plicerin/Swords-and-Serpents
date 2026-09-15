@@ -35,8 +35,10 @@ export interface PlayerState {
   injured: boolean;        // lost half a life this reincarnation (white -> gray)
   stunned: number;         // frames remaining stunned after a hit ("cannot move")
   invuln: number;          // i-frames: no new injury while > 0 (escape window)
-  dead: boolean;           // currently in death/respawn pause (flashing X)
-  respawnTimer: number;    // frames until reappear after a death
+  dead: boolean;           // death script running (dying burst / fallen remains / gone)
+  deathPhase: 'dying' | 'fallen' | 'gone' | null;  // captured phases (HANDOVER #14)
+  deathTick: number;       // ticks elapsed in the current death phase
+  respawnTimer: number;    // legacy (unused)
 
   // --- Wall push-back (captured, HANDOVER finding #12): after a background
   // collision the classifier sets G_0108/G_010C to ±40 for G_034D = 10
@@ -85,6 +87,8 @@ export function createInitialState(): PlayerState {
     stunned: 0,
     invuln: 0,
     dead: false,
+    deathPhase: null,
+    deathTick: 0,
     respawnTimer: 0,
     pushTimer: 0,
     pushVx: 0,

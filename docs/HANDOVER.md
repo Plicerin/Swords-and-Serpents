@@ -159,6 +159,30 @@ not flee. NOTE for future fidelity work: the manual says the Fortress has
 level 3 may be reading past the real level table; the 14-level descent is a
 designed mode, not ROM truth.
 
+**ROM finding #14 — DEATH, THE FALL, REVIVAL, GAME OVER (2026-09-15,
+Intellijsd, per-frame MOB/GRAM/script capture of two full deaths).**
+  * Fatal hit (gray + hit) at tick T: script `$5B94`, sword MOB hidden,
+    every foe and fireball wiped, `G_01AB=1`. GRAM card 48 (the body) is
+    rewritten: **dot** `00…18 18…` ticks T+1..7, **sparkle** `…14 28 08 24…`
+    +8..14, **big burst** `81 04 40 10 00 41 00 80 04 00 40 04 20 00 01 80`
+    +15..21, tail `41 80 … 82` 2 ticks; colour = a random 9-15 each tick.
+  * At T+23 (26 ticks after the hit): `$017C--` and script `$5B9A` (FALLEN):
+    twinkling remains — 4 poses of 2-px dots (`08 24…82`, `…18(row7)…82`,
+    `18(row0)…82`, `…14 28(rows 6-7)…82`; row 15 = `82` throughout) cycling
+    every 4 ticks, colour random 0-7 per tick, **for 61 ticks** (738f →
+    918f = 180 frames) — then script `$5B28`, white, sword back, same spot
+    (MOB hidden for 2 frames). The EXEC controller-release wait (`$14B7`)
+    is only entered if the disc is HELD at that moment; released = instant.
+  * **Game over is one fall later than the port had it:** `$017C` 1 → 0 on a
+    fall and the Prince still revives (lives shows 0); the NEXT fatal hit
+    plays the burst (25 ticks) and then everything disappears (all MOBs
+    off, script 0), the maze stays frozen and the CPU idles at `$15AA`
+    awaiting a game-select key. No text, no piling MOBs (the old #8 note
+    about "MOBs pile on" was wrong).
+  * Port: `deathPhase` dying/fallen/gone with the captured bitmaps and tick
+    counts (`DEATH_BURST`, `FALLEN_POSES`), reincarnation decremented at
+    the fall, game over only when a fatal hit lands at 0 reincarnations.
+
 **ROM finding #13 — THE GAME TICK (2026-09-15, Intellijsd: per-pass cycle
 counts of the main loop `$5D08`, 5,800 passes over mixed play).**
   * The main loop **never waits for VBLANK**. Each pass simply costs CPU
