@@ -293,12 +293,19 @@ Supersedes the "Stairs (partially solved)" paragraph of #8 below.
 **ROM finding #9 — THE CHOMPING DOORS ARE THE MYSTERY LIFE LOSS (2026-09-15).**
 Doors are vertical pairs of GRAM cards **1** (upper jaw) and **2** (lower
 jaw) — 11 pairs on level 1, BACKTAB words `$1E0B/$1E13` never change. The
-ROM animates them by **rewriting the two GRAM cards** on a **148-frame**
-cycle (captured over two full cycles, keyframes: c2 half @36, c1 half @39,
-c1 closed @75, c2 closed @76, c1 half @111, c2 half @112, both open @148):
-open = blank; c1 half `f0f0702020000000`, closed `f0f0f0707020a0a0`; c2 half
-`00008080d0d0f0f0`, closed `a0a080d0d0f0f0f0`. Because it is GRAM, every
-door on the level chomps in lockstep. Standing in a doorway while jaw
+ROM animates them by **rewriting the two GRAM cards** (writer `$529E`, the
+animated-card scheduler at `$5270`: per-card word `$02F2`/`$02F3`, low
+nibble = frame 0-3 open/half/closed/half from `$62D6`/`$62F8` + 8×frame,
+high byte = countdown reloaded to `$16`, stepped by 2 about every 5 frames;
+G_0104 round-robins cards 0-3 one per frame, so card 2 changes 1 frame
+after card 1; card 0 is the animated red decoration, 4 frames every 8-12
+frames). **Phase = 48-60 frames, mean 55; period ≈ 220 frames** (17
+consecutive phases from a fresh boot, no knights; with knights hunting a
+phase stretches to 60-73 frames). The first estimate of 148 frames was
+wrong (owner: "closing too fast"). Bitmaps: open = blank; c1 half
+`f0f0702020000000`, closed `f0f0f0707020a0a0`; c2 half `00008080d0d0f0f0`,
+closed `a0a080d0d0f0f0f0`. Because it is GRAM, every door on the level
+chomps in lockstep. Standing in a doorway while jaw
 pixels are drawn sets MOB0's background-collision bit → classifier code
 `$41/$42` → `L_668E` → the SAME hit as a knight sword (`G_01A3`, `G_01AB`
 lock, 40-frame palette flash, white→gray); a second bite while gray → script
