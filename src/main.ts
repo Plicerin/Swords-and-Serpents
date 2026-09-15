@@ -5,11 +5,12 @@ import { Maze, isWalkableWord, gramCard } from './world/maze';
 import { LevelWorld, wrap, wrapDelta, TILE } from './world/torus';
 import {
   ObjectTables, LevelObjectState, createObjectState, tileBlock, pickupType,
-  TYPE_KEY, TYPE_MARKER, TYPE_UP_STAIRS, CARD_DOWN_STAIRS, CARD_UP_STAIRS,
+  TYPE_KEY, TYPE_MARKER, TYPE_UP_STAIRS,
   CARD_CHEST, CARD_MARKER, CARD_LANTERN, CARD_KEY, WORD_DOWN_STAIRS, WORD_TAKEN,
   MAX_IN_HAND,
 } from './world/objects';
 import { doorCards } from './world/doors';
+import { quadrantCode, pushVector, PUSH_FRAMES } from './world/classifier';
 import {
   Enemy, Fireball, GameItem, ItemKind,
   createEnemy, createItem, updateEnemy, resolveContact,
@@ -510,7 +511,14 @@ function update() {
   }
 
   // --- Player movement (torus: coordinates wrap, camera stays centred) ---
-  if (!state.dead && state.stunned === 0) {
+  // Captured (finding #12): walls never block a move. The Prince walks
+  // freely; a background PIXEL collision then pushes him back (below).
+  if (state.pushTimer > 0) {
+    state.pushTimer--;
+    state.x = wrap(state.x + state.pushVx, W);
+    state.y = wrap(state.y + state.pushVy, H);
+    state.moving = false;
+  } else if (!state.dead && state.stunned === 0) {
     let mvx = 0;
     let mvy = 0;
     if (inputState.backUp && (state.faceDx !== 0 || state.faceDy !== 0)) {
@@ -532,18 +540,8 @@ function update() {
     }
     if (mvx !== 0 || mvy !== 0) {
       if (mvx !== 0 && mvy !== 0) { mvx *= 0.7071; mvy *= 0.7071; }
-      const nx = state.x + mvx * MOVE_SPEED;
-      const ny = state.y + mvy * MOVE_SPEED;
-      if (world.canWalk(nx + 4, ny + 4)) {
-        state.x = nx;
-        state.y = ny;
-      } else if (mvx !== 0 && world.canWalk(nx + 4, state.y + 4)) {
-        state.x = nx;
-      } else if (mvy !== 0 && world.canWalk(state.x + 4, ny + 4)) {
-        state.y = ny;
-      }
-      state.x = wrap(state.x, W);
-      state.y = wrap(state.y, H);
+      state.x = wrap(state.x + mvx * MOVE_SPEED, W);
+      state.y = wrap(state.y + mvy * MOVE_SPEED, H);
     }
   } else {
     state.moving = false;
@@ -553,33 +551,36 @@ function update() {
   // The STIC reports the player MOB touching ANY foreground pixel; the ROM
   // then scans the 2×2 tile block under the sprite: card 9 → down a level,
   // card 10 → up a level, cards 1/2 (door jaws) → a knight-sword-grade hit.
-  if (!state.dead) {
+  // The MOB's collision flag is off while a push runs (finding #12).
+  if (!state.dead && state.pushTimer === 0) {
     const sx = Math.floor(state.x);
     const sy = Math.floor(state.y);
     const block = tileBlock(sx, sy, world.maze.w, world.maze.h);
     const mask = playerMask();
-    let bgHit = false;
-    let doorBite = false;
-    for (const t of block) {
-      if (!spriteHitsTile(sx, sy, mask, t.col, t.row)) continue;
-      bgHit = true;
-      const card = gramCard(world.maze.grid[t.row][t.col]);
-      if (card === 1 || card === 2) doorBite = true;
-    }
+    const bgHit = block.some(t => spriteHitsTile(sx, sy, mask, t.col, t.row));
     if (bgHit) {
-      const cards = block.map(t => gramCard(world.maze.grid[t.row][t.col]));
-      if (cards.includes(CARD_DOWN_STAIRS) && state.level < levels.length - 1) {
-        changeLevel(state.level + 1);
-        return;
-      }
-      if (cards.includes(CARD_UP_STAIRS) && state.level > 0) {
-        changeLevel(state.level - 1);
-        return;
-      }
-      if (doorBite && state.stunned === 0) {
-        const wasGray = state.injured;
-        injurePlayer(state);
-        setInfo(state.dead ? 'The door bit you down...' : wasGray ? 'The door bites — a life is lost!' : 'The door bites!', 90);
+      let code = 0;
+      block.forEach((t, q) => { code |= quadrantCode(q, gramCard(world.maze.grid[t.row][t.col])); });
+      if (code === 0x10) {
+        if (state.level < levels.length - 1) { changeLevel(state.level + 1); return; }
+      } else if (code > 0x10 && code < 0x40) {
+        if (state.level > 0) { changeLevel(state.level - 1); return; }
+      } else if (code !== 0) {
+        if (code >= 0x40) {
+          // Door contact: the same hit as a knight's sword, then the push.
+          if (state.stunned === 0) {
+            const wasGray = state.injured;
+            injurePlayer(state);
+            setInfo(state.dead ? 'The door bit you down...' : wasGray ? 'The door bites — a life is lost!' : 'The door bites!', 90);
+          }
+          code ^= 0x40;
+        }
+        const push = pushVector(code);
+        if (push.vx !== 0 || push.vy !== 0) {
+          state.pushTimer = PUSH_FRAMES;
+          state.pushVx = push.vx;
+          state.pushVy = push.vy;
+        }
       }
     }
   }

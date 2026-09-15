@@ -38,6 +38,14 @@ export interface PlayerState {
   dead: boolean;           // currently in death/respawn pause (flashing X)
   respawnTimer: number;    // frames until reappear after a death
 
+  // --- Wall push-back (captured, HANDOVER finding #12): after a background
+  // collision the classifier sets G_0108/G_010C to ±40 for G_034D = 10
+  // frames, input is ignored (G_0179 bit 0) and the MOB's collision bit is
+  // off until the push ends.
+  pushTimer: number;
+  pushVx: number;
+  pushVy: number;
+
   // --- Inventory (captured: status screen INHAND / STORED / VALUE) ---
   keys: number;            // keys collected
   potions: number;         // treasures IN HAND (max 6)
@@ -78,6 +86,9 @@ export function createInitialState(): PlayerState {
     invuln: 0,
     dead: false,
     respawnTimer: 0,
+    pushTimer: 0,
+    pushVx: 0,
+    pushVy: 0,
     keys: 0,
     potions: 0,
     scrolls: 0,

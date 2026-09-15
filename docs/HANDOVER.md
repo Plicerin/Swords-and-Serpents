@@ -159,6 +159,37 @@ not flee. NOTE for future fidelity work: the manual says the Fortress has
 level 3 may be reading past the real level table; the 14-level descent is a
 designed mode, not ROM truth.
 
+**ROM finding #12 — WALLS: PIXEL COLLISION + PUSH-BACK (2026-09-15,
+Intellijsd, per-frame `G_0108/G_010C/G_0179/G_034D` + classifier trap).**
+  * Walls never block a move. The disc handler (`$56F9`) turns the disc
+    direction into a velocity pair `G_0108/G_010C` (walking: ±50 = 0.5
+    px/frame — sign convention: +G_0108 moves LEFT, −G_010C moves DOWN) that
+    the frame code applies every frame. The Prince walks into anything.
+  * When the STIC reports MOB0 touching a background pixel, the classifier
+    (finding #10) ORs a code over the 2×2 block: bit0 push EAST, bit1 WEST,
+    bit2 SOUTH, bit3 NORTH (tables: card 3 in a left tile → east, right tile
+    → west; card 4 in a top tile → south, bottom tile → north; card 5 both).
+    `L_669C`: `RRC` precedence — bit0 beats bit1, bit2 beats bit3 — sets
+    `G_0108/G_010C = ±40`, `G_0179 |= 1` (disc IGNORED), clears bit 8 of the
+    X word (MOB collision OFF) and `G_034D = 10`, counted down ONCE PER
+    FRAME; at 0 velocity = 0, flag/collision restored (`$5D67`). Measured:
+    bump at x=1092 → 1095 over frames 83-93: **3 px in 10 frames**, then
+    control returns; holding into a wall bounces every ~15-20 frames.
+  * Wall cards are half transparent (card 3 `f0f8e878f0f8f8f8` = left 4-5
+    px; card 4 `f7ffffffefe60000` = top 6 rows; card 5 corner), so the
+    Prince can stand in the empty half of a wall tile — corridors are
+    effectively 3-4 px wider than the tiles suggest.
+  * **Doors bite by BLOCK, not by jaw pixels:** with a BLANK (open) card 1
+    poked into the block, touching the neighbouring wall gave code `$43` →
+    `G_01A3=1, G_01A4=40` (the hit) and a 3-px push. So any background
+    contact while a door card is in the 2×2 block is a bite; a clean pass
+    through the middle of an open doorway touches nothing and is safe.
+  * Port: `src/world/classifier.ts` (tables, `pushVector`, 10 frames ×
+    0.3 px), `PlayerState.pushTimer/pushVx/pushVy`; `canWalk` no longer
+    gates the player. NOT modelled: the ROM only classifies once per game
+    tick (~3.6 frames), so it penetrates ~1 px deeper before the push; the
+    bump sound (`L_6932`).
+
 **ROM finding #11 — KNIGHT CHARGES, 16 POSES, SORCERER/FIREBALL AIM
 (2026-09-15, Intellijsd, per-frame MOB/GRAM/velocity capture; owner
 reported the port's knights "zig-zag").** Supersedes the "axis-locked"
