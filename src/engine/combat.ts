@@ -11,10 +11,18 @@ export interface Enemy {
   hitCd: number;            // frames of post-strike grace (multi-hit enemies)
   homeX: number;            // spawn point (dragon guards it)
   homeY: number;
-  // facing (unit-ish vector toward the player) — knights hold their sword
-  // 8 px ahead along this; captured behaviour is axis-locked movement.
+  // facing (unit-ish vector) — knights hold their sword ~8 px ahead along this.
   faceDx: number;
   faceDy: number;
+  // Knight charge (finding #11): straight-line velocity in px/frame, re-aimed
+  // at the player every KNIGHT_REAIM_FRAMES; `aimTimer` counts down to it.
+  vx: number;
+  vy: number;
+  aimTimer: number;
+  // Sword-swing sweep: 16-direction sector of the charge, and the sweep phase
+  // clock (pose = sector, sector+1, sector, sector-1 — 15 frames each).
+  sector: number;
+  swingClock: number;
   dying: number;            // >0: death-flash frames remaining (still drawn, harmless)
   // sorcerer-specific state
   visibleTimer: number;     // frames until vanish (sorcerer)
@@ -48,8 +56,13 @@ export type CanWalkFn = (x: number, y: number) => boolean;
 // COMBAT — captured from the real game under real input in the Intellijsd
 // oracle, reading the STIC MOB-collision registers ($0018-$001F) every
 // frame (docs/HANDOVER.md ROM finding #7):
-//  * Knights walk at 0.5 px/frame — the same speed as the player. They hold
-//    a black sword MOB 8 px ahead of the body in their facing direction.
+//  * Knights CHARGE in straight lines (finding #11, 2026-09-15): every 90
+//    frames the velocity is re-aimed at the player's current position with
+//    magnitude 30/64 px/frame (velocity components are integers in 1/64 px
+//    units, e.g. (28,-11) for a 37×-15 offset). Nothing steers in between —
+//    a knight overshoots ~20 px past a standing Prince, then turns back on
+//    the next re-aim. The body faces the nearest of 16 directions of its
+//    velocity and SWEEPS its sword pose ±1 sixteenth (see KNIGHT_POSES).
 //  * Hit detection is PIXEL collision between SWORD MOBs and BODY MOBs:
 //      knight-sword pixels ∩ player-body pixels  → the player is hit
 //      player-sword pixels ∩ knight-body pixels  → the knight dies
@@ -65,8 +78,72 @@ export type CanWalkFn = (x: number, y: number) => boolean;
 //  * A slain knight runs a short death script ($5B94): its colour flashes
 //    (black→white→blue) for ~20-65 frames, then it despawns.
 // ---------------------------------------------------------------------------
-const KNIGHT_SPEED = 0.5;
+const KNIGHT_SPEED_UNITS = 30;      // captured: |v| = 30 in 1/64 px/frame ≈ 0.469 px/frame
+const KNIGHT_REAIM_FRAMES = 90;     // captured: re-aim every 90 frames (30 ticks @ 3 frames/tick)
+export const KNIGHT_POSE_FRAMES = 15; // captured: each sword pose held ~15 frames
 const STUN_FRAMES = 40;
+
+// 16-direction facing table (sector 0 = E, counter-clockwise with screen-y
+// up, i.e. sector 4 = N, 8 = W, 12 = S). Captured from the knight's GRAM
+// rewrite + MOB Y-register flip bits alongside its velocity: body frame
+// F0..F4 with flips exactly like the player's own scheme, and the sword MOB
+// offset/bitmap per direction:
+//   h   = $FF row 7            v   = $10 column rows 2-15
+//   d45 = 04 04 08 08 10 10 20 20 40 40 80 80 (rows 4-15)
+//   d63 = 08 08 08 08 10 10 10 10 20 20 20 20 (rows 4-15)
+//   d27 = 06 0c 30 60 c0 (rows 5-9)
+export interface KnightPose { frame: number; mirror: boolean; flip: boolean; sx: number; sy: number; sword: 'h' | 'v' | 'd45' | 'd63' | 'd27'; smirror: boolean; sflip: boolean; }
+export const KNIGHT_POSES: KnightPose[] = [
+  { frame: 0, mirror: false, flip: false, sx:  8, sy:  0, sword: 'h',   smirror: false, sflip: false }, // E
+  { frame: 1, mirror: false, flip: false, sx:  8, sy: -2, sword: 'd27', smirror: false, sflip: false }, // ENE
+  { frame: 2, mirror: false, flip: false, sx:  7, sy: -7, sword: 'd45', smirror: false, sflip: false }, // NE
+  { frame: 3, mirror: false, flip: false, sx:  3, sy: -8, sword: 'd63', smirror: false, sflip: false }, // NNE
+  { frame: 4, mirror: true,  flip: false, sx:  0, sy: -8, sword: 'v',   smirror: true,  sflip: false }, // N
+  { frame: 3, mirror: true,  flip: false, sx: -3, sy: -8, sword: 'd63', smirror: true,  sflip: false }, // NNW
+  { frame: 2, mirror: true,  flip: false, sx: -7, sy: -7, sword: 'd45', smirror: true,  sflip: false }, // NW
+  { frame: 1, mirror: true,  flip: false, sx: -8, sy: -2, sword: 'd27', smirror: true,  sflip: false }, // WNW
+  { frame: 0, mirror: true,  flip: true,  sx: -8, sy:  0, sword: 'h',   smirror: true,  sflip: true  }, // W
+  { frame: 1, mirror: true,  flip: true,  sx: -8, sy:  2, sword: 'd27', smirror: true,  sflip: true  }, // WSW
+  { frame: 2, mirror: true,  flip: true,  sx: -7, sy:  7, sword: 'd45', smirror: true,  sflip: true  }, // SW
+  { frame: 3, mirror: true,  flip: true,  sx: -3, sy:  8, sword: 'd63', smirror: true,  sflip: true  }, // SSW
+  { frame: 4, mirror: false, flip: true,  sx:  0, sy:  8, sword: 'v',   smirror: false, sflip: true  }, // S
+  { frame: 3, mirror: false, flip: true,  sx:  3, sy:  8, sword: 'd63', smirror: false, sflip: true  }, // SSE
+  { frame: 2, mirror: false, flip: true,  sx:  7, sy:  7, sword: 'd45', smirror: false, sflip: true  }, // SE
+  { frame: 1, mirror: false, flip: true,  sx:  8, sy:  2, sword: 'd27', smirror: false, sflip: true  }, // ESE
+];
+export const SWORD_BITMAPS: Record<KnightPose['sword'], number[]> = {
+  h:   [0, 0, 0, 0, 0, 0, 0, 0xFF, 0, 0, 0, 0, 0, 0, 0, 0],
+  v:   [0, 0, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10],
+  d45: [0, 0, 0, 0, 0x04, 0x04, 0x08, 0x08, 0x10, 0x10, 0x20, 0x20, 0x40, 0x40, 0x80, 0x80],
+  d63: [0, 0, 0, 0, 0x08, 0x08, 0x08, 0x08, 0x10, 0x10, 0x10, 0x10, 0x20, 0x20, 0x20, 0x20],
+  d27: [0, 0, 0, 0, 0, 0x06, 0x0C, 0x30, 0x60, 0xC0, 0, 0, 0, 0, 0, 0],
+};
+
+/** Nearest 16-direction sector of a velocity (screen y down). */
+export function velocitySector(vx: number, vy: number): number {
+  const a = Math.atan2(-vy, vx);
+  return ((Math.round(a / (Math.PI / 8)) % 16) + 16) % 16;
+}
+
+/** Current sword-swing pose sector: main, +1, main, -1 (15 frames each). */
+export function knightPoseSector(enemy: Enemy): number {
+  const step = Math.floor(enemy.swingClock / KNIGHT_POSE_FRAMES) % 4;
+  const off = [0, 1, 0, -1][step];
+  return ((enemy.sector + off) % 16 + 16) % 16;
+}
+
+function aimKnight(enemy: Enemy, player: PlayerState): void {
+  const dx = player.x - enemy.x;
+  const dy = player.y - enemy.y;
+  const dist = Math.hypot(dx, dy) || 1;
+  // Integer 1/64-px components, magnitude 30 (e.g. (28,-11) captured).
+  const ux = Math.round(KNIGHT_SPEED_UNITS * dx / dist);
+  const uy = Math.round(KNIGHT_SPEED_UNITS * dy / dist);
+  enemy.vx = ux / 64;
+  enemy.vy = uy / 64;
+  enemy.sector = velocitySector(ux, uy);
+  enemy.aimTimer = KNIGHT_REAIM_FRAMES;
+}
 const RESPAWN_FRAMES = 75;         // not yet captured (death → reappear)
 const HIT_GRACE_FRAMES = 30;
 const KNIGHT_DEATH_FRAMES = 24;    // death-flash length (captured 20-65; median)
@@ -82,7 +159,7 @@ const SORCERER_APPEAR_DELAY = 300;   // frames between wizard appearances
 const SORCERER_VISIBLE_FRAMES = 180; // how long wizard stays visible
 const SORCERER_FIRE_INTERVAL = 60;   // frames between fireballs
 const SORCERER_APPEAR_TIME = 30;     // frames for appear animation
-const FIREBALL_SPEED = 0.8;        // vs player 0.25 — dodgeable but dangerous
+const FIREBALL_SPEED = 100 / 64;   // captured: 100 units of 1/64 px/frame
 
 const SERPENT_HP = 6;
 const SERPENT_FIRE_INTERVAL = 80;
@@ -107,6 +184,11 @@ export function createEnemy(x: number, y: number, type: EnemyType): Enemy {
     homeY: y,
     faceDx: 0,
     faceDy: -1,
+    vx: 0,
+    vy: 0,
+    aimTimer: 0,
+    sector: 0,
+    swingClock: 0,
     dying: 0,
     visibleTimer: 0,
     fireTimer: type === 'serpent' ? SERPENT_FIRST_SHOT : SORCERER_FIRE_INTERVAL,
@@ -119,17 +201,14 @@ export function createItem(x: number, y: number, kind: ItemKind): GameItem {
   return { x, y, kind, collected: false };
 }
 
-// Fireballs fly 4-way along the dominant axis (like the ROM's MOB fireballs) —
-// free-angle shots die instantly in the 1-tile-wide corridors. Spawned at the
-// shooter's own position, which is known-walkable.
+// Captured (finding #11): a sorcerer's fireball is aimed STRAIGHT at the
+// player at any angle — the same normalise-to-N-units aim as the knights,
+// magnitude 100/64 ≈ 1.56 px/frame — and flies through walls off screen.
 function aimedFireball(ex: number, ey: number, player: PlayerState, speed: number): Fireball {
   const ddx = player.x - ex;
   const ddy = player.y - ey;
-  let dx = 0;
-  let dy = 0;
-  if (Math.abs(ddx) >= Math.abs(ddy)) dx = Math.sign(ddx) || 1;
-  else dy = Math.sign(ddy) || 1;
-  return { x: ex, y: ey, dx, dy, speed, alive: true, age: 0 };
+  const dist = Math.hypot(ddx, ddy) || 1;
+  return { x: ex, y: ey, dx: ddx / dist, dy: ddy / dist, speed, alive: true, age: 0 };
 }
 
 // Enemies do NOT collide with walls. In the ROM, only the two player slots run
@@ -148,14 +227,16 @@ export function updateEnemy(enemy: Enemy, player: PlayerState, canWalk: CanWalkF
   if (enemy.hitCd > 0) enemy.hitCd--;
 
   if (enemy.type === 'phantom_knight') {
-    // Captured: knights move axis-locked along the dominant axis toward the
-    // player at 0.5 px/frame, sword held ahead in the facing direction.
-    const dx = player.x - enemy.x;
-    const dy = player.y - enemy.y;
-    if (Math.abs(dx) >= Math.abs(dy)) { enemy.faceDx = Math.sign(dx) || 1; enemy.faceDy = 0; }
-    else { enemy.faceDx = 0; enemy.faceDy = Math.sign(dy) || 1; }
-    enemy.x += enemy.faceDx * KNIGHT_SPEED;
-    enemy.y += enemy.faceDy * KNIGHT_SPEED;
+    // Captured: straight-line charge, re-aimed every 90 frames, 30/64 px/frame.
+    if (enemy.aimTimer <= 0) aimKnight(enemy, player);
+    enemy.aimTimer--;
+    enemy.x += enemy.vx;
+    enemy.y += enemy.vy;
+    enemy.swingClock++;
+    // The sword hit box follows the current swing pose.
+    const pose = KNIGHT_POSES[knightPoseSector(enemy)];
+    enemy.faceDx = Math.sign(pose.sx);
+    enemy.faceDy = Math.sign(pose.sy);
     return null;
   }
 
@@ -261,6 +342,29 @@ function swordHitsBody(
   return cx + hw > bx && cx - hw < bx + bw && cy + hh > by && cy - hh < by + bh;
 }
 
+// The knight's sword MOB (8×16, half-height rows) in its current pose against
+// an 8×8 body box — per-pixel on the sword side, which is what matters for a
+// 1-px-thick blade.
+function knightSwordHitsBox(enemy: Enemy, bx: number, by: number): boolean {
+  const pose = KNIGHT_POSES[knightPoseSector(enemy)];
+  const bm = SWORD_BITMAPS[pose.sword];
+  const ox = enemy.x + pose.sx;
+  const oy = enemy.y + pose.sy;
+  for (let r = 0; r < 16; r++) {
+    const byte = bm[pose.sflip ? 15 - r : r];
+    if (!byte) continue;
+    const wy = oy + r / 2;
+    if (wy < by || wy >= by + 8) continue;
+    for (let c = 0; c < 8; c++) {
+      const bit = pose.smirror ? (byte >> c) & 1 : (byte >> (7 - c)) & 1;
+      if (!bit) continue;
+      const wx = ox + c;
+      if (wx >= bx && wx < bx + 8) return true;
+    }
+  }
+  return false;
+}
+
 export function resolveContact(player: PlayerState, enemy: Enemy): CombatEvent {
   if (!enemy.alive || enemy.dying > 0 || player.dead) return null;
   // Sorcerers can only be fought while materialized.
@@ -287,7 +391,7 @@ export function resolveContact(player: PlayerState, enemy: Enemy): CombatEvent {
   // 2) Enemy's sword on the player body → the player is hit. Only knights
   //    carry a sword; the Serpent bites at close range; sorcerers use fire.
   if (enemy.type === 'phantom_knight') {
-    if (swordHitsBody(enemy.x, enemy.y, enemy.faceDx, enemy.faceDy, player.x, player.y, 8, 8)) return 'player_injured';
+    if (knightSwordHitsBox(enemy, player.x, player.y)) return 'player_injured';
     return null;
   }
   if (enemy.type === 'serpent') {

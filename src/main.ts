@@ -16,6 +16,7 @@ import {
   injurePlayer, tickPlayerCombat, isGameOver,
   SORCERER_SPRITES, SERPENT_W, SERPENT_H,
   FIREBALL_FRAMES, SPAWN_EFFECT, ITEM_SPRITES,
+  KNIGHT_POSES, SWORD_BITMAPS, knightPoseSector,
 } from './engine/combat';
 
 let state: PlayerState;
@@ -599,7 +600,7 @@ function update() {
     fb.age++;
     fb.x = wrap(fb.x + fb.dx * fb.speed, W);
     fb.y = wrap(fb.y + fb.dy * fb.speed, H);
-    if (fb.age > 200) { // ~one screen of travel at 0.8 px/frame
+    if (fb.age > 80) { // captured: flew 80 frames (~125 px) and vanished with its sorcerer
       fb.alive = false;
       continue;
     }
@@ -874,17 +875,18 @@ function render(ctx: CanvasRenderingContext2D) {
     const flash = enemy.hitCd > 0 && Math.floor(frameCount / 3) % 2 === 0;
 
     if (enemy.type === 'phantom_knight') {
-      // The player's own knight figure in BLACK, facing its (axis-locked)
-      // movement direction, with its black sword MOB 8 px ahead. A slain
-      // knight plays a captured death flash (black → white → blue) before
-      // vanishing.
-      const f = facingFrame(enemy.faceDx, enemy.faceDy, true);
-      const bytes = playerSprites[f.frame];
+      // The player's own knight figure in BLACK in one of 16 captured poses
+      // (body frame + sword MOB offset/bitmap, finding #11), sweeping ±1
+      // sixteenth around its charge direction. A slain knight plays a
+      // captured death flash (black → white → blue) before vanishing.
+      const pose = KNIGHT_POSES[knightPoseSector(enemy)];
+      const bytes = playerSprites[pose.frame];
       let color = '#000000';
       if (enemy.dying > 0) color = ['#FFFCFF', '#002DFF', '#000000'][Math.floor(frameCount / 4) % 3];
       else if (flash) color = '#FFFCFF';
-      if (bytes) drawBitmap(ctx, bytes, 16, ex, ey, color, f.mirror, f.flip);
-      drawSword(ctx, ex, ey, enemy.faceDx, enemy.faceDy, color);
+      if (bytes) drawBitmap(ctx, bytes, 16, ex, ey, color, pose.mirror, pose.flip);
+      drawBitmap(ctx, SWORD_BITMAPS[pose.sword], 16,
+        toScreenX(enemy.x + pose.sx), toScreenY(enemy.y + pose.sy), color, pose.smirror, pose.sflip);
     } else if (enemy.type === 'sorcerer') {
       if (enemy.phase === 'hidden') continue;
       const blink = (enemy.phase === 'appearing' || enemy.phase === 'vanishing')

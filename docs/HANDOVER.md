@@ -159,6 +159,42 @@ not flee. NOTE for future fidelity work: the manual says the Fortress has
 level 3 may be reading past the real level table; the 14-level descent is a
 designed mode, not ROM truth.
 
+**ROM finding #11 — KNIGHT CHARGES, 16 POSES, SORCERER/FIREBALL AIM
+(2026-09-15, Intellijsd, per-frame MOB/GRAM/velocity capture; owner
+reported the port's knights "zig-zag").** Supersedes the "axis-locked"
+knight movement of #7.
+  * **Straight-line charges.** A knight's velocity (per slot, integer
+    components in 1/64 px/frame) is re-aimed at the player's CURRENT position
+    every **90 frames** (30 ticks at the observed 3 frames/tick; whether the
+    ROM counts ticks or frames is undetermined) with magnitude **30** →
+    0.469 px/frame (e.g. (28,-11) for a 37×-15 offset; E charge 41 px per 91
+    frames). Nothing steers in between, so it overshoots a standing Prince by
+    ~20 px and turns back at the next re-aim — a pendulum through him.
+    Movement is applied per FRAME (the tick slowdown only delays decisions).
+  * **Facing = nearest of 16 directions of the velocity** (checked for 12
+    distinct velocity vectors), body frames F0/F1/F2/F3/F4 = E/ENE/NE/NNE/N
+    with the player's flip scheme (N = F4 x-flip, W = F0 xy, …; flips live
+    in the MOB **Y register** bits 10/11, not the A register — the A register
+    is always `$987`/`$99x`, the ROM rewrites GRAM cards 52-55 instead).
+    The sword MOB per direction (offset, 16-row bitmap, flips): E (8,0) $FF
+    row; ENE (8,-2) `06 0c 30 60 c0` rows 5-9; NE (7,-7) the 45° blade; NNE
+    (3,-8) `08×4 10×4 20×4` rows 4-15; N (0,-8) $10 column, x-flipped;
+    mirrored for the other quadrants (south half inferred from the shared
+    scheme; 2 samples each). **The pose sweeps main, +1, main, −1 with each
+    pose held ~15 frames** — the "sword swing".
+  * **Red Sorcerer (level 1, ~374 frames after the start!):** slot 2 script
+    `$5B76` appears WHITE with a 3-pose materialise (small diamond
+    `18243c66663c2418`, large `42 18 24 24 5a 5a 24 24 18 42`, sparkle
+    `18 00 42 00 18 bd bd 18 00 42 00 18`, ~12 frames each), turns RED
+    (`$5B7C`, body `507038703af572fbdeced6d747fd3000`) for ~61 frames and
+    fires ONE fireball (slot 3, `$5B82`, 3 bitmaps cycling every 4 frames,
+    fg 6/10 alternating) **aimed straight at the player at any angle,
+    magnitude 100/64 ≈ 1.56 px/frame**, then goes white, reverses the
+    materialise and is gone ~147 frames after appearing; the fireball dies
+    with it. Reappeared 83 frames later at another spot near the player.
+    Port: fireball aim/speed done; the sorcerer timeline/spawn is NOT yet
+    implemented (port keeps its own phases and level-2+ gating).
+
 **ROM finding #10 — STAIRS, OBJECT TABLES, KEY, CHEST, LANTERN — SOLVED
 (2026-09-15, disassembly + live verification in Intellijsd, both directions).**
 Supersedes the "Stairs (partially solved)" paragraph of #8 below.
