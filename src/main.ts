@@ -301,17 +301,28 @@ function populateWorld(rand: () => number) {
 const SPAWN_ROLL_FRAMES = 230;
 const SPAWN_CHANCE = 0.2;
 const MAX_LIVE_FOES = 3;
+// Captured: the first foe of a game is a Red Sorcerer 374 frames after the
+// quest starts (two identical boots), at offset (-10, 26) from the Prince.
+const FIRST_SPAWN_FRAME = 374;
 let spawnClock = 0;
+let firstSpawnDone = false;
 let rng: () => number = Math.random;
 
 function spawnDirector() {
   spawnClock++;
+  const foes = enemiesByLevel[state.level];
+  const world = lw();
+  if (!firstSpawnDone) {
+    if (spawnClock < FIRST_SPAWN_FRAME) return;
+    firstSpawnDone = true;
+    spawnClock = 0;
+    foes.push(createEnemy(wrap(state.x - 10, world.pixelWidth), wrap(state.y + 26, world.pixelHeight), 'sorcerer'));
+    return;
+  }
   if (spawnClock < SPAWN_ROLL_FRAMES) return;
   spawnClock = 0;
-  const foes = enemiesByLevel[state.level];
   const live = foes.filter(e => e.alive && e.type !== 'serpent').length;
   if (live >= MAX_LIVE_FOES || rng() >= SPAWN_CHANCE) return;
-  const world = lw();
   if (rng() < 0.5) {
     const off = SORCERER_OFFSETS[Math.floor(rng() * SORCERER_OFFSETS.length)];
     foes.push(createEnemy(wrap(state.x + off[0], world.pixelWidth), wrap(state.y + off[1], world.pixelHeight), 'sorcerer'));
@@ -445,6 +456,7 @@ function initGame() {
   rng = mulberry32(0x5E44E27);
   populateWorld(rng);
   spawnClock = 0;
+  firstSpawnDone = false;
 
   state.level = 0;
   state.x = entry0.x;
