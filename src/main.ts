@@ -21,6 +21,7 @@ import {
   SORCERER_BODY, SORCERER_MATERIALISE, sorcererAppearPose, sorcererVanishPose,
   SORCERER_OFFSETS, KNIGHT_SPAWN_DY,
   DEATH_BURST, deathBurstPose, FALLEN_POSES, fallenPose,
+  playerSwordHitsBox, knightDeathPose,
 } from './engine/combat';
 
 let state: PlayerState;
@@ -705,6 +706,12 @@ function update() {
       fb.alive = false;
       continue;
     }
+    // Captured (finding #15): the Prince's sword parries — sword pixels on
+    // the fireball destroy it with no harm done.
+    if (playerSwordHitsBox(state, state.x + wrapDelta(state.x, fb.x, W), state.y + wrapDelta(state.y, fb.y, H))) {
+      fb.alive = false;
+      continue;
+    }
     if (!state.dead && tDist(state.level, fb.x, fb.y, state.x, state.y) < 5) {
       fb.alive = false;
       if (state.stunned === 0) {
@@ -986,11 +993,15 @@ function render(ctx: CanvasRenderingContext2D) {
       // (body frame + sword MOB offset/bitmap, finding #11), sweeping ±1
       // sixteenth around its charge direction. A slain knight plays a
       // captured death flash (black → white → blue) before vanishing.
+      if (enemy.dying > 0) {
+        // Captured death burst (same script as the Prince's), random colour 0-7 per tick, no sword.
+        const h = (((tickCount + enemy.sector * 7) * 2654435761) >>> 0) % 8;
+        drawBitmap(ctx, DEATH_BURST[knightDeathPose(enemy.dying)], 16, ex, ey, PALETTE16[h]);
+        continue;
+      }
       const pose = KNIGHT_POSES[knightPoseSector(enemy)];
       const bytes = playerSprites[pose.frame];
-      let color = '#000000';
-      if (enemy.dying > 0) color = ['#FFFCFF', '#002DFF', '#000000'][Math.floor(frameCount / 4) % 3];
-      else if (flash) color = '#FFFCFF';
+      const color = flash ? '#FFFCFF' : '#000000';
       if (bytes) drawBitmap(ctx, bytes, 16, ex, ey, color, pose.mirror, pose.flip);
       drawBitmap(ctx, SWORD_BITMAPS[pose.sword], 16,
         toScreenX(enemy.x + pose.sx), toScreenY(enemy.y + pose.sy), color, pose.smirror, pose.sflip);

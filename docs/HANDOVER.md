@@ -159,6 +159,23 @@ not flee. NOTE for future fidelity work: the manual says the Fortress has
 level 3 may be reading past the real level table; the 14-level descent is a
 designed mode, not ROM truth.
 
+**ROM finding #15 — SORCERER IMMUNITY, SWORD PARRY, KNIGHT DEATH (2026-09-15,
+Intellijsd, collision-register capture).**
+  * The Prince's sword MOB sat on the Red Sorcerer's body (`$0019` bit 2
+    set continuously) for 80 frames, red and then white: **no effect** — the
+    sorcerer cannot be struck; it finishes its timeline regardless.
+  * The fireball launched into the sword: on the very next frame the
+    fireball's script went to 0 and it vanished (`$0019` = sword∩fireball,
+    `$001B` = fireball∩sword) with the Prince unhurt — **the sword parries
+    fireballs**.
+  * A knight that runs into the sword dies (`$0019` bit 2, then `$5B94`):
+    the same burst as the Prince's death — dot 8 ticks, sparkle 8, big
+    burst 2-3 — with a random colour 0-7 each tick and no sword MOB, gone
+    19 ticks after the killing tick. (The old "20-65 frames, black→white→
+    blue" note came from frame sampling without the tick model.)
+  * Port: sorcerers skipped by the strike test, `playerSwordHitsBox` kills
+    fireballs, knights use `DEATH_BURST` for 19 ticks.
+
 **ROM finding #14 — DEATH, THE FALL, REVIVAL, GAME OVER (2026-09-15,
 Intellijsd, per-frame MOB/GRAM/script capture of two full deaths).**
   * Fatal hit (gray + hit) at tick T: script `$5B94`, sword MOB hidden,

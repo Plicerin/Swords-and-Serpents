@@ -149,7 +149,14 @@ function aimKnight(enemy: Enemy, player: PlayerState): void {
   enemy.aimTimer = KNIGHT_REAIM_TICKS;
 }
 const HIT_GRACE_TICKS = 10;        // ~30 frames
-const KNIGHT_DEATH_TICKS = 8;      // death-flash length (captured 20-65 frames; median 24)
+// Captured (finding #15): a slain knight runs the same $5B94 burst as the
+// Prince — dot 8 ticks, sparkle 8, big burst 2-3 — with a random colour 0-7
+// per tick, then despawns (19 ticks after the killing tick).
+export const KNIGHT_DEATH_TICKS = 19;
+export function knightDeathPose(ticksLeft: number): number {
+  const t = KNIGHT_DEATH_TICKS - ticksLeft;
+  return t < 8 ? 0 : t < 16 ? 1 : 2;
+}
 // Sword MOB is 8×16 at 2× vertical resolution: reach is ~8 px along the
 // facing axis; the blade is 1 px thick on the perpendicular axis (a single
 // row/column) so the perpendicular tolerance is small.
@@ -352,6 +359,13 @@ function knightSwordHitsBox(enemy: Enemy, bx: number, by: number): boolean {
   return false;
 }
 
+/** Captured (finding #15): the Prince's sword pixels destroy a fireball. */
+export function playerSwordHitsBox(player: PlayerState, bx: number, by: number): boolean {
+  if (player.dead) return false;
+  const pfx = player.faceDx || (player.faceDy ? 0 : 1);
+  return swordHitsBody(player.x, player.y, pfx, player.faceDy, bx, by, 8, 8);
+}
+
 export function resolveContact(player: PlayerState, enemy: Enemy): CombatEvent {
   if (!enemy.alive || enemy.dying > 0 || player.dead) return null;
   // Sorcerers can only be fought while materialized.
@@ -363,9 +377,11 @@ export function resolveContact(player: PlayerState, enemy: Enemy): CombatEvent {
 
   // 1) Player's sword on the enemy body → the enemy is struck. Captured:
   //    this wins ties with the enemy's own strike on the same frame.
+  //    Captured (finding #15): the SORCERER is immune — the sword sat on its
+  //    body for 80 frames, red and white, with no effect.
   const pfx = player.faceDx || (player.faceDy ? 0 : 1);
   const pfy = player.faceDy;
-  if (!player.dead && swordHitsBody(player.x, player.y, pfx, pfy, enemy.x, enemy.y, bw, bh)) {
+  if (!player.dead && enemy.type !== 'sorcerer' && swordHitsBody(player.x, player.y, pfx, pfy, enemy.x, enemy.y, bw, bh)) {
     enemy.hp--;
     enemy.hitCd = HIT_GRACE_TICKS;
     if (enemy.hp <= 0) {
