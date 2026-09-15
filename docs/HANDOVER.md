@@ -159,6 +159,35 @@ not flee. NOTE for future fidelity work: the manual says the Fortress has
 level 3 may be reading past the real level table; the 14-level descent is a
 designed mode, not ROM truth.
 
+**ROM finding #13 — THE GAME TICK (2026-09-15, Intellijsd: per-pass cycle
+counts of the main loop `$5D08`, 5,800 passes over mixed play).**
+  * The main loop **never waits for VBLANK**. Each pass simply costs CPU
+    cycles and the ISR (velocities, screen shift, GRAM animation scheduler)
+    steals ~1.4k of each frame's 14.9k. So frames-per-tick = work / ~13.6k:
+    ~37k cycles with three foes alive (2.7 frames), ~41k with all slots
+    empty (+1.4k per empty slot; 3.0 frames), and **+35k on any pass where
+    the camera scrolled a column/row** (5-5.5 frames). Knight AI and the
+    sorcerer add nothing measurable. (The earlier "3.6 frames/tick, slower
+    with knights" note in #10 was the same thing measured badly — it
+    included the ISR/spawn-search overhead of empty slots.)
+  * What runs per TICK: controller read (→ velocity latch, so disc input
+    lags up to a tick), collision dispatch + classifier (walls/doors/stairs/
+    sword hits), ENTER handling, `G_01A4` stun/pickup countdowns (**the stun
+    is 40 TICKS ≈ 117 frames, not 40 frames**; pickup lock 21 ticks), the
+    stun palette flash (one colour per tick), knight re-aim (30 ticks) and
+    sword pose sweep (~5 ticks), the sorcerer timeline (11 / 17 with the
+    fireball at +7 / 13 ticks), the `$0163` spawn countdown (64), the first
+    spawn at tick 101. What runs per FRAME: all MOB velocities (player 0.5,
+    knight 30/64, fireball 100/64 px/frame), the wall push (`G_034D`), the
+    door GRAM phases (48-60 frames), the stairs (226) and status (227)
+    screens, `G_0103` waits.
+  * Port: `tickDue()` in main.ts models exactly that cost function
+    (`CYCLES_PER_FRAME 13600`, base 37000, +1400/empty slot, +35000/scroll);
+    `update()` is split into frame work and `doTick` work; combat/knight/
+    sorcerer/spawn timers are in ticks; `g.ticks()` on the bridge. Verified:
+    3.0 frames/tick idle, 6-frame scroll ticks, a 40-tick stun = 121 frames.
+    Not modelled: per-pass cycle jitter beyond those three terms.
+
 **ROM finding #12 — WALLS: PIXEL COLLISION + PUSH-BACK (2026-09-15,
 Intellijsd, per-frame `G_0108/G_010C/G_0179/G_034D` + classifier trap).**
   * Walls never block a move. The disc handler (`$56F9`) turns the disc
@@ -318,14 +347,9 @@ Supersedes the "Stairs (partially solved)" paragraph of #8 below.
     only; card 4 = top 6 rows) and the ROM only reacts to PIXEL overlap, then
     pushes back a few px over 10 ticks (`G_034D=$0A`, `G_0108/G_010C=±$28`):
     the push dynamics are NOT captured yet — the port still blocks by tile.
-  * **Game-logic tick ≠ frame (important for every speed in this file):**
-    the main loop (`$5D08` per iteration) waits for VBLANK but takes ~16k
-    cycles with no knight AI and ~45-57k with three active knights (sqrt/
-    mult/div per knight), i.e. **one tick per 1 / 3 / 4 frames** (measured
-    18-23 ticks per 60 frames with 3 knights near the Prince; player then
-    moves 0.33-0.37 px/frame instead of 0.5). Every "px/frame" number in
-    findings #6-#8 was captured at ~1 tick/frame; the port runs a fixed 60 Hz
-    tick. The slowdown model (ticks vs active entities) is an OPEN capture.
+  * **Game-logic tick ≠ frame:** SUPERSEDED by finding #13 (the loop never
+    waits for VBLANK; ~3 frames per tick, ~5.5 on a scroll; MOB motion is
+    per frame so px/frame speeds stand).
   * CORRECTION to #8: `G_018C` is not a game-over marker — it is the last
     classifier code stored by `L_668E` (`$41/$42` = door contact from the
     left/right quadrants; the status/spell screens store `$41` too).

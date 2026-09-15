@@ -15,7 +15,7 @@ export interface Enemy {
   faceDx: number;
   faceDy: number;
   // Knight charge (finding #11): straight-line velocity in px/frame, re-aimed
-  // at the player every KNIGHT_REAIM_FRAMES; `aimTimer` counts down to it.
+  // at the player every KNIGHT_REAIM_TICKS; `aimTimer` counts down to it.
   vx: number;
   vy: number;
   aimTimer: number;
@@ -79,10 +79,13 @@ export type CanWalkFn = (x: number, y: number) => boolean;
 //  * A slain knight runs a short death script ($5B94): its colour flashes
 //    (black→white→blue) for ~20-65 frames, then it despawns.
 // ---------------------------------------------------------------------------
+// TIME UNITS (finding #13): everything below counts GAME TICKS — one pass of
+// the ROM main loop, ~2.7-3.7 frames each — except px/frame speeds, which
+// the ROM's frame code applies every frame.
 const KNIGHT_SPEED_UNITS = 30;      // captured: |v| = 30 in 1/64 px/frame ≈ 0.469 px/frame
-const KNIGHT_REAIM_FRAMES = 90;     // captured: re-aim every 90 frames (30 ticks @ 3 frames/tick)
-export const KNIGHT_POSE_FRAMES = 15; // captured: each sword pose held ~15 frames
-const STUN_FRAMES = 40;
+const KNIGHT_REAIM_TICKS = 30;      // captured: re-aim every 30 ticks (90 frames at 3/tick)
+export const KNIGHT_POSE_TICKS = 5; // captured: each sword pose held ~15 frames ≈ 5 ticks
+const STUN_TICKS = 40;              // captured: G_01A4 = 40, decremented once per tick (~117 frames)
 
 // 16-direction facing table (sector 0 = E, counter-clockwise with screen-y
 // up, i.e. sector 4 = N, 8 = W, 12 = S). Captured from the knight's GRAM
@@ -128,7 +131,7 @@ export function velocitySector(vx: number, vy: number): number {
 
 /** Current sword-swing pose sector: main, +1, main, -1 (15 frames each). */
 export function knightPoseSector(enemy: Enemy): number {
-  const step = Math.floor(enemy.swingClock / KNIGHT_POSE_FRAMES) % 4;
+  const step = Math.floor(enemy.swingClock / KNIGHT_POSE_TICKS) % 4;
   const off = [0, 1, 0, -1][step];
   return ((enemy.sector + off) % 16 + 16) % 16;
 }
@@ -143,11 +146,11 @@ function aimKnight(enemy: Enemy, player: PlayerState): void {
   enemy.vx = ux / 64;
   enemy.vy = uy / 64;
   enemy.sector = velocitySector(ux, uy);
-  enemy.aimTimer = KNIGHT_REAIM_FRAMES;
+  enemy.aimTimer = KNIGHT_REAIM_TICKS;
 }
-const RESPAWN_FRAMES = 75;         // not yet captured (death → reappear)
-const HIT_GRACE_FRAMES = 30;
-const KNIGHT_DEATH_FRAMES = 24;    // death-flash length (captured 20-65; median)
+const RESPAWN_TICKS = 25;          // not yet captured (death → reappear); ~75 frames
+const HIT_GRACE_TICKS = 10;        // ~30 frames
+const KNIGHT_DEATH_TICKS = 8;      // death-flash length (captured 20-65 frames; median 24)
 // Sword MOB is 8×16 at 2× vertical resolution: reach is ~8 px along the
 // facing axis; the blade is 1 px thick on the perpendicular axis (a single
 // row/column) so the perpendicular tolerance is small.
@@ -159,8 +162,8 @@ export const RESPAWN_INVULN = 120;
 const FIREBALL_SPEED = 100 / 64;   // captured: 100 units of 1/64 px/frame
 
 const SERPENT_HP = 6;
-const SERPENT_FIRE_INTERVAL = 80;
-const SERPENT_FIRST_SHOT = 15;      // fires almost immediately on aggro
+const SERPENT_FIRE_INTERVAL = 27;  // ticks (~80 frames); not captured
+const SERPENT_FIRST_SHOT = 5;       // ticks; fires almost immediately on aggro
 const SERPENT_RANGE = 110;          // fires when the player is this close
 
 // The Serpent's body: 6 cards wide × 3 tall (GRAM cards 24-33), captured from
@@ -215,6 +218,16 @@ function aimedFireball(ex: number, ey: number, player: PlayerState, speed: numbe
 // calling L_6054); enemy MOBs are driven by animation-script velocities with
 // no BACKTAB lookup — phantom knights chase straight through walls.
 
+/** Per-FRAME motion: the ROM's frame code applies each MOB's velocity. */
+export function moveEnemy(enemy: Enemy): void {
+  if (!enemy.alive || enemy.dying > 0) return;
+  if (enemy.type === 'phantom_knight') {
+    enemy.x += enemy.vx;
+    enemy.y += enemy.vy;
+  }
+}
+
+/** Per-TICK decisions (the ROM main loop, finding #13). */
 export function updateEnemy(enemy: Enemy, player: PlayerState, _canWalk: CanWalkFn): Fireball | null {
   if (!enemy.alive) return null;
   if (enemy.dying > 0) {
@@ -226,11 +239,9 @@ export function updateEnemy(enemy: Enemy, player: PlayerState, _canWalk: CanWalk
   if (enemy.hitCd > 0) enemy.hitCd--;
 
   if (enemy.type === 'phantom_knight') {
-    // Captured: straight-line charge, re-aimed every 90 frames, 30/64 px/frame.
+    // Captured: straight-line charge, re-aimed every 30 ticks, 30/64 px/frame.
     if (enemy.aimTimer <= 0) aimKnight(enemy, player);
     enemy.aimTimer--;
-    enemy.x += enemy.vx;
-    enemy.y += enemy.vy;
     enemy.swingClock++;
     // The sword hit box follows the current swing pose.
     const pose = KNIGHT_POSES[knightPoseSector(enemy)];
@@ -357,9 +368,9 @@ export function resolveContact(player: PlayerState, enemy: Enemy): CombatEvent {
   const pfy = player.faceDy;
   if (!player.dead && swordHitsBody(player.x, player.y, pfx, pfy, enemy.x, enemy.y, bw, bh)) {
     enemy.hp--;
-    enemy.hitCd = HIT_GRACE_FRAMES;
+    enemy.hitCd = HIT_GRACE_TICKS;
     if (enemy.hp <= 0) {
-      enemy.dying = KNIGHT_DEATH_FRAMES;
+      enemy.dying = KNIGHT_DEATH_TICKS;
       return 'enemy_slain';
     }
     return 'player_strikes';
@@ -388,14 +399,14 @@ export function resolveContact(player: PlayerState, enemy: Enemy): CombatEvent {
 export function injurePlayer(player: PlayerState): void {
   if (player.dead || player.stunned > 0) return;
 
-  player.stunned = STUN_FRAMES;
+  player.stunned = STUN_TICKS;
   if (!player.injured) {
     player.injured = true;
   } else {
     player.injured = false;
     player.reincarnations = Math.max(0, player.reincarnations - 1);
     player.dead = true;                 // fallen
-    player.respawnTimer = RESPAWN_FRAMES; // minimum fallen time before a release revives
+    player.respawnTimer = RESPAWN_TICKS; // minimum fallen time before a release revives
   }
 }
 
@@ -452,12 +463,12 @@ export const SORCERER_MATERIALISE: number[][] = [
 //   RED body 61 frames, ONE fireball launched at +27          (61)
 //   white body 22 → sparkle 12 → large 12 → gone             (46)
 // Half the visits chained straight into a second appearance at a new spot.
-export const SORCERER_APPEAR = 40;
-export const SORCERER_RED = 61;
-export const SORCERER_FIRE_AT = 27;
-export const SORCERER_VANISH = 46;
-export function sorcererAppearPose(t: number): number { return t < 20 ? 0 : t < 32 ? 1 : 2; }
-export function sorcererVanishPose(t: number): number { return t < 22 ? -1 : t < 34 ? 2 : 1; } // -1 = body
+export const SORCERER_APPEAR = 11;   // ticks (captured 10-12; 40 frames)
+export const SORCERER_RED = 17;      // ticks (61 frames)
+export const SORCERER_FIRE_AT = 7;   // ticks into red (captured 7-8)
+export const SORCERER_VANISH = 13;   // ticks (captured 13-14; 46 frames)
+export function sorcererAppearPose(t: number): number { return t < 6 ? 0 : t < 9 ? 1 : 2; }
+export function sorcererVanishPose(t: number): number { return t < 6 ? -1 : t < 10 ? 2 : 1; } // -1 = body
 // Legacy 2-frame array kept for the debug view; frame 0 is the real body.
 export const SORCERER_SPRITES: number[][] = [SORCERER_BODY, SORCERER_BODY];
 

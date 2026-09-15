@@ -13,7 +13,7 @@ import { doorCards } from './world/doors';
 import { quadrantCode, pushVector, PUSH_FRAMES } from './world/classifier';
 import {
   Enemy, Fireball, GameItem, ItemKind,
-  createEnemy, createItem, updateEnemy, resolveContact,
+  createEnemy, createItem, updateEnemy, moveEnemy, resolveContact,
   injurePlayer, tickPlayerCombat, isGameOver,
   SERPENT_W, SERPENT_H,
   FIREBALL_FRAMES, SPAWN_EFFECT, ITEM_SPRITES,
@@ -52,7 +52,8 @@ let deathFx: DeathFx[] = [];
 let kills = 0;
 
 // Captured item/status mechanics (docs/HANDOVER.md ROM finding #8)
-const PICKUP_LOCK_FRAMES = 21;   // movement lock after ENTER on an object
+const PICKUP_LOCK_TICKS = 21;    // movement lock after ENTER on an object (G_01A4, per tick)
+const FIREBALL_TICKS = 23;       // a fireball dies with its sorcerer ~23 ticks after launch
 const STATUS_FRAMES = 227;       // keypad 0 status screen duration
 let statusTimer = 0;
 let pickupFlash = -1;            // >=0 while a pickup lock is running (no injury flash)
@@ -291,6 +292,48 @@ function populateWorld(rand: () => number) {
   }
 }
 
+// --- Game tick (finding #13) ---
+// The ROM main loop never waits for VBLANK: each pass costs CPU cycles and
+// the VBLANK interrupt (which applies velocities and shifts the screen)
+// steals ~1.4k of every frame's 14.9k. Measured per pass (Intellijsd,
+// 5,800 ticks over mixed play): ~37k cycles with three foes, ~41k with all
+// three slots empty (+1.4k per empty slot), and +35k on any pass in which
+// the camera scrolled a column or row (BACKTAB shift + redraw). That gives
+// 2.7-3.0 frames per tick normally and 5-5.5 on a scroll tick; the ROM
+// reads the controller, classifies collisions, aims knights, steps the
+// sorcerer/stun/pickup timers and rolls spawns once per tick.
+const CYCLES_PER_FRAME = 13600;
+const TICK_BASE_CYCLES = 37000;
+const TICK_EMPTY_SLOT_CYCLES = 1400;
+const TICK_SCROLL_CYCLES = 35000;
+let tickBudget = 0;          // cycles available, refilled each frame
+let tickCost = TICK_BASE_CYCLES;
+let tickCount = 0;
+let lastCamCol = -1;
+let lastCamRow = -1;
+let tickInput: ReturnType<InputHandler['getInput']> = {
+  direction: 'none', dx: 0, dy: 0, backUp: false, pickup: false, stairs: false,
+  readScroll: false, status: false, enter: false, select: null,
+};
+let moveVx = 0;             // velocity latched by the last tick (px/frame)
+let moveVy = 0;
+let stickyBgHit = false;    // the STIC's latched MOB0-vs-background bit
+
+function tickDue(): boolean {
+  tickBudget += CYCLES_PER_FRAME;
+  if (tickBudget < tickCost) return false;
+  tickBudget -= tickCost;
+  // Cost of the pass that starts now.
+  const camCol = Math.floor(wrap(Math.floor(state.x) + 4 - VIEW_W / 2, lw().pixelWidth) / TILE);
+  const camRow = Math.floor(wrap(Math.floor(state.y) + 4 - VIEW_H / 2, lw().pixelHeight) / TILE);
+  const scrolled = lastCamCol >= 0 && (camCol !== lastCamCol || camRow !== lastCamRow);
+  lastCamCol = camCol;
+  lastCamRow = camRow;
+  const live = enemiesByLevel[state.level].filter(e => e.alive && e.type !== 'serpent').length;
+  tickCost = TICK_BASE_CYCLES + Math.max(0, 3 - live) * TICK_EMPTY_SLOT_CYCLES + (scrolled ? TICK_SCROLL_CYCLES : 0);
+  return true;
+}
+
 // --- Spawn director (finding #11) ---
 // Captured: enemies appear around the Prince during play, never pre-placed.
 // Sorcerers materialise at a small offset from him (observed offsets in
@@ -299,12 +342,12 @@ function populateWorld(rand: () => number) {
 // events (first one 314-374 frames in), i.e. roughly one per 5 rolls of the
 // ROM's 64-tick (~230-frame) spawn timer — the exact roll/odds are NOT
 // captured; 20 % per roll, 50/50 knight vs sorcerer, at most 3 live foes.
-const SPAWN_ROLL_FRAMES = 230;
+const SPAWN_ROLL_TICKS = 64;      // the $0163 countdown, decremented per tick
 const SPAWN_CHANCE = 0.2;
 const MAX_LIVE_FOES = 3;
-// Captured: the first foe of a game is a Red Sorcerer 374 frames after the
-// quest starts (two identical boots), at offset (-10, 26) from the Prince.
-const FIRST_SPAWN_FRAME = 374;
+// Captured: the first foe of a game is a Red Sorcerer at tick 101 (374
+// frames) after the quest starts (two identical boots), at (-10, 26).
+const FIRST_SPAWN_TICK = 101;
 let spawnClock = 0;
 let firstSpawnDone = false;
 let rng: () => number = Math.random;
@@ -314,13 +357,13 @@ function spawnDirector() {
   const foes = enemiesByLevel[state.level];
   const world = lw();
   if (!firstSpawnDone) {
-    if (spawnClock < FIRST_SPAWN_FRAME) return;
+    if (spawnClock < FIRST_SPAWN_TICK) return;
     firstSpawnDone = true;
     spawnClock = 0;
     foes.push(createEnemy(wrap(state.x - 10, world.pixelWidth), wrap(state.y + 26, world.pixelHeight), 'sorcerer'));
     return;
   }
-  if (spawnClock < SPAWN_ROLL_FRAMES) return;
+  if (spawnClock < SPAWN_ROLL_TICKS) return;
   spawnClock = 0;
   const live = foes.filter(e => e.alive && e.type !== 'serpent').length;
   if (live >= MAX_LIVE_FOES || rng() >= SPAWN_CHANCE) return;
@@ -458,6 +501,14 @@ function initGame() {
   populateWorld(rng);
   spawnClock = 0;
   firstSpawnDone = false;
+  tickBudget = 0;
+  tickCost = TICK_BASE_CYCLES;
+  tickCount = 0;
+  lastCamCol = -1;
+  lastCamRow = -1;
+  moveVx = 0;
+  moveVy = 0;
+  stickyBgHit = false;
 
   state.level = 0;
   state.x = entry0.x;
@@ -492,73 +543,86 @@ function update() {
     return;
   }
 
-  // Chomping doors: both GRAM jaw cards follow one 148-frame clock.
+  // Chomping doors: both GRAM jaw cards follow one frame clock (finding #9).
   doorClock++;
   applyDoorPhase(state.level);
 
   const world = lw();
   const W = world.pixelWidth;
   const H = world.pixelHeight;
-  const inputState = input.getInput();
   const objState = objStateByLevel[state.level];
   state.keys = objState.taken[TYPE_KEY] ? 1 : 0;
 
+  // --- Game tick (finding #13): the ROM main loop is NOT frame-locked ---
+  const doTick = tickDue();
+  if (doTick) {
+    tickCount++;
+    tickInput = input.getInput();   // the controller is only read once per tick
+  }
+  const inputState = tickInput;
+
   // Captured: the fallen Prince revives IN PLACE once the disc is released.
   const discReleased = inputState.dx === 0 && inputState.dy === 0;
-  const respawned = tickPlayerCombat(state, discReleased);
-  if (respawned) {
-    setInfo('Reincarnated!', 90);
+  if (doTick) {
+    const respawned = tickPlayerCombat(state, discReleased);
+    if (respawned) setInfo('Reincarnated!', 90);
   }
 
   // --- Player movement (torus: coordinates wrap, camera stays centred) ---
-  // Captured (finding #12): walls never block a move. The Prince walks
-  // freely; a background PIXEL collision then pushes him back (below).
+  // Captured (finding #12): walls never block a move. The disc sets a
+  // velocity ONCE PER TICK; the frame code applies it every frame. A
+  // background PIXEL collision then pushes him back (below).
+  if (doTick) {
+    moveVx = 0;
+    moveVy = 0;
+    if (!state.dead && state.stunned === 0 && state.pushTimer === 0) {
+      let mvx = 0;
+      let mvy = 0;
+      if (inputState.backUp && (state.faceDx !== 0 || state.faceDy !== 0)) {
+        mvx = -state.faceDx;
+        mvy = -state.faceDy;
+      } else if (inputState.dx !== 0 || inputState.dy !== 0) {
+        mvx = inputState.dx;
+        mvy = inputState.dy;
+        state.faceDx = inputState.dx;
+        state.faceDy = inputState.dy;
+        if (inputState.dx > 0) state.facing = 'right';
+        else if (inputState.dx < 0) state.facing = 'left';
+        else if (inputState.dy < 0) state.facing = 'up';
+        else if (inputState.dy > 0) state.facing = 'down';
+      }
+      if (mvx !== 0 && mvy !== 0) { mvx *= 0.7071; mvy *= 0.7071; }
+      moveVx = mvx * MOVE_SPEED;
+      moveVy = mvy * MOVE_SPEED;
+    }
+  }
   if (state.pushTimer > 0) {
     state.pushTimer--;
     state.x = wrap(state.x + state.pushVx, W);
     state.y = wrap(state.y + state.pushVy, H);
     state.moving = false;
   } else if (!state.dead && state.stunned === 0) {
-    let mvx = 0;
-    let mvy = 0;
-    if (inputState.backUp && (state.faceDx !== 0 || state.faceDy !== 0)) {
-      mvx = -state.faceDx;
-      mvy = -state.faceDy;
-      state.moving = true;
-    } else if (inputState.dx !== 0 || inputState.dy !== 0) {
-      mvx = inputState.dx;
-      mvy = inputState.dy;
-      state.faceDx = inputState.dx;
-      state.faceDy = inputState.dy;
-      if (inputState.dx > 0) state.facing = 'right';
-      else if (inputState.dx < 0) state.facing = 'left';
-      else if (inputState.dy < 0) state.facing = 'up';
-      else if (inputState.dy > 0) state.facing = 'down';
-      state.moving = true;
-    } else {
-      state.moving = false;
-    }
-    if (mvx !== 0 || mvy !== 0) {
-      if (mvx !== 0 && mvy !== 0) { mvx *= 0.7071; mvy *= 0.7071; }
-      state.x = wrap(state.x + mvx * MOVE_SPEED, W);
-      state.y = wrap(state.y + mvy * MOVE_SPEED, H);
-    }
+    state.x = wrap(state.x + moveVx, W);
+    state.y = wrap(state.y + moveVy, H);
+    state.moving = moveVx !== 0 || moveVy !== 0;
   } else {
     state.moving = false;
   }
 
   // --- Background collision → tile classifier (L_6679 → L_65FC) ---
-  // The STIC reports the player MOB touching ANY foreground pixel; the ROM
-  // then scans the 2×2 tile block under the sprite: card 9 → down a level,
-  // card 10 → up a level, cards 1/2 (door jaws) → a knight-sword-grade hit.
+  // The STIC latches "MOB0 touched a background pixel" every frame; the ROM
+  // reads (and clears) it once per tick, then scans the 2×2 tile block under
+  // the sprite: card 9 → down a level, card 10 → up a level, cards 1/2
+  // (door jaws) → a knight-sword-grade hit, cards 3/4/5 → push-back.
   // The MOB's collision flag is off while a push runs (finding #12).
   if (!state.dead && state.pushTimer === 0) {
     const sx = Math.floor(state.x);
     const sy = Math.floor(state.y);
     const block = tileBlock(sx, sy, world.maze.w, world.maze.h);
     const mask = playerMask();
-    const bgHit = block.some(t => spriteHitsTile(sx, sy, mask, t.col, t.row));
-    if (bgHit) {
+    if (block.some(t => spriteHitsTile(sx, sy, mask, t.col, t.row))) stickyBgHit = true;
+    if (doTick && stickyBgHit) {
+      stickyBgHit = false;
       let code = 0;
       block.forEach((t, q) => { code |= quadrantCode(q, gramCard(world.maze.grid[t.row][t.col])); });
       if (code === 0x10) {
@@ -586,10 +650,15 @@ function update() {
   }
 
   // --- Enemies (current level only; targets use shortest torus path) ---
-  if (!state.dead) spawnDirector();
+  if (doTick && !state.dead) spawnDirector();
   const walkFn = (x: number, y: number) => world.canWalk(x, y);
   for (const enemy of enemiesByLevel[state.level]) {
     if (!enemy.alive) continue;
+    // Frame: motion. Tick: decisions and sword contact.
+    moveEnemy(enemy);
+    enemy.x = wrap(enemy.x, W);
+    enemy.y = wrap(enemy.y, H);
+    if (!doTick) continue;
     const dx = wrapDelta(enemy.x, state.x, W);
     const dy = wrapDelta(enemy.y, state.y, H);
     // The Serpent is static lair art — its own fire range gates it instead.
@@ -628,10 +697,10 @@ function update() {
   // --- Fireballs (MOBs — no wall test in the ROM; range-limited instead) ---
   for (const fb of fireballs) {
     if (!fb.alive) continue;
-    fb.age++;
+    if (doTick) fb.age++;
     fb.x = wrap(fb.x + fb.dx * fb.speed, W);
     fb.y = wrap(fb.y + fb.dy * fb.speed, H);
-    if (fb.age > 80) { // captured: flew 80 frames (~125 px) and vanished with its sorcerer
+    if (fb.age > FIREBALL_TICKS) { // captured: vanishes with its sorcerer ~23 ticks after launch
       fb.alive = false;
       continue;
     }
@@ -652,8 +721,16 @@ function update() {
   for (const fx of deathFx) fx.t--;
   deathFx = deathFx.filter(fx => fx.t > 0);
 
+  // Tiles that left the screen come back regenerated from map + object data.
+  refreshOffscreenTiles(wrap(Math.floor(state.x) + 4 - VIEW_W / 2, W), wrap(Math.floor(state.y) + 4 - VIEW_H / 2, H));
+  if (statusTimer > 0) statusTimer--;
+  if (pickupFlash >= 0 && state.stunned === 0) pickupFlash = -1;
+
+  // Everything below is the ROM main loop's button handling: once per tick.
+  if (!doTick) return;
+
   // --- Items (captured: stand ON the tile, release the disc, press ENTER;
-  //     the tile vanishes 2 frames later with a 21-frame movement lock) ---
+  //     the tile vanishes 2 frames later with a 21-tick movement lock) ---
   const wantPickup = (inputState.enter || inputState.pickup) && discReleased && !state.dead && state.stunned === 0;
   for (const item of itemsByLevel[state.level]) {
     if (item.collected) continue;
@@ -706,7 +783,7 @@ function update() {
         for (const o of objectTables.levels[state.level]) {
           if (o.type === type) markStale(state.level, o.col, o.row);
         }
-        state.stunned = PICKUP_LOCK_FRAMES;
+        state.stunned = PICKUP_LOCK_TICKS;
         pickupFlash = 0;
         if (type === TYPE_KEY) {
           setInfo('Found the key!', 90);
@@ -720,13 +797,8 @@ function update() {
     }
   }
 
-  // Tiles that left the screen come back regenerated from map + object data.
-  refreshOffscreenTiles(wrap(Math.floor(state.x) + 4 - VIEW_W / 2, W), wrap(Math.floor(state.y) + 4 - VIEW_H / 2, H));
-
   // Status screen (captured: keypad 0; shown ~227 frames)
   if (inputState.status && statusTimer === 0 && !state.dead) statusTimer = STATUS_FRAMES;
-  if (statusTimer > 0) statusTimer--;
-  if (pickupFlash >= 0 && state.stunned === 0) pickupFlash = -1;
 
   // Read scroll
   if (inputState.readScroll && state.scrolls > 0 && infoTimer < 30) {
@@ -746,7 +818,7 @@ function storeTreasures() {
   state.reincarnations += Math.floor(state.storedValue / 300) - before300;
   inHandValue = 0;
   state.potions = 0;
-  state.stunned = PICKUP_LOCK_FRAMES;
+  state.stunned = PICKUP_LOCK_TICKS;
   pickupFlash = 0;
   statusTimer = STATUS_FRAMES;
   setInfo('Treasures stored!', 90);
@@ -1038,7 +1110,7 @@ function render(ctx: CanvasRenderingContext2D) {
     // once injured. The 21-frame pickup lock does not flash.
     const hitFlash = state.stunned > 0 && pickupFlash < 0;
     const playerColor = hitFlash
-      ? STUN_CYCLE[Math.floor(frameCount / 2) % STUN_CYCLE.length]
+      ? STUN_CYCLE[tickCount % STUN_CYCLE.length]
       : (state.injured ? '#BDACC8' : '#FFFCFF');
     if (spriteBytes) {
       drawBitmap(ctx, spriteBytes, 16, px, py, playerColor, facingF.mirror, facingF.flip);
@@ -1148,6 +1220,7 @@ async function main() {
     tileWord: (col: number, row: number) => lw().maze.grid[row]?.[col],
     doorClock: () => doorClock,
     transition: () => transition,
+    ticks: () => tickCount,
     facing: (dx: number, dy: number, alt = false) => facingFrame(dx, dy, alt),
     info: () => infoMessage,
     // Deterministic stepping for headless verification: run N simulation
