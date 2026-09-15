@@ -192,8 +192,25 @@ knight movement of #7.
     magnitude 100/64 ≈ 1.56 px/frame**, then goes white, reverses the
     materialise and is gone ~147 frames after appearing; the fireball dies
     with it. Reappeared 83 frames later at another spot near the player.
-    Port: fireball aim/speed done; the sorcerer timeline/spawn is NOT yet
-    implemented (port keeps its own phases and level-2+ gating).
+    Three more appearances (frames 604/754/5443/5587 idle) agreed: appear
+    small-diamond 20 → large 12 → sparkle 8 (40 frames), RED 61 frames with
+    the fireball at +27..31, white body 22 → sparkle 12 → large 12 → gone
+    (46); 2 of 4 visits chained straight into a second appearance at a new
+    offset. **A fireball that touches the Prince** (collision bit 3) vanishes
+    and is the same hit as a sword (`G_01A3/G_01A4=40`, white→gray); when
+    the Prince FALLS every foe and fireball is wiped at once.
+  * **Spawns (idle, level 1, ghost):** sorcerer at 374 (offset (-10,26)),
+    604 (-20,20) chained to 754 (-20,-20); knights at 1557 (0,50), 4229
+    (0,51), 5850 (0,51); sorcerer 5438 (0,28) chained (26,11). Wandering:
+    sorcerer 314 (-9,28), knights 2553 (2,55), 3549 (2,-53), 4156 (1,-52).
+    So sorcerers materialise ~20-30 px from the Prince, knights at the top or
+    bottom screen edge above/below him. A per-tick countdown at `$0163`
+    reloads to 64 (≈230 frames) — the spawn roll — but the odds/selection
+    were not captured (10 events in ~13k frames ≈ 1 in 5 rolls). Port:
+    `spawnDirector()` in main.ts implements exactly that (20 %/roll, 50/50,
+    ≤3 live foes) and the captured sorcerer timeline; the old pre-placed
+    knight/sorcerer scatter is gone. Whether a sorcerer can be struck by the
+    sword is NOT captured (port lets you, while it is red).
 
 **ROM finding #10 — STAIRS, OBJECT TABLES, KEY, CHEST, LANTERN — SOLVED
 (2026-09-15, disassembly + live verification in Intellijsd, both directions).**

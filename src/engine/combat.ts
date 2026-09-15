@@ -24,11 +24,12 @@ export interface Enemy {
   sector: number;
   swingClock: number;
   dying: number;            // >0: death-flash frames remaining (still drawn, harmless)
-  // sorcerer-specific state
-  visibleTimer: number;     // frames until vanish (sorcerer)
-  fireTimer: number;        // frames until next fireball
+  // sorcerer-specific state (captured timeline, finding #11)
+  visibleTimer: number;     // unused (kept for the bridge)
+  fireTimer: number;        // serpent: frames until next breath
   phase: 'hidden' | 'appearing' | 'active' | 'vanishing';
-  phaseTimer: number;
+  phaseTimer: number;       // frames elapsed in the current phase
+  visits: number;           // appearances left in this visit (1 or 2)
 }
 
 export interface Fireball {
@@ -155,10 +156,6 @@ const SWORD_HALF_WIDTH = 3;
 
 export const RESPAWN_INVULN = 120;
 
-const SORCERER_APPEAR_DELAY = 300;   // frames between wizard appearances
-const SORCERER_VISIBLE_FRAMES = 180; // how long wizard stays visible
-const SORCERER_FIRE_INTERVAL = 60;   // frames between fireballs
-const SORCERER_APPEAR_TIME = 30;     // frames for appear animation
 const FIREBALL_SPEED = 100 / 64;   // captured: 100 units of 1/64 px/frame
 
 const SERPENT_HP = 6;
@@ -191,9 +188,11 @@ export function createEnemy(x: number, y: number, type: EnemyType): Enemy {
     swingClock: 0,
     dying: 0,
     visibleTimer: 0,
-    fireTimer: type === 'serpent' ? SERPENT_FIRST_SHOT : SORCERER_FIRE_INTERVAL,
-    phase: isSorcerer ? 'hidden' : 'active',
-    phaseTimer: isSorcerer ? Math.floor(Math.random() * 180) : 0,
+    fireTimer: type === 'serpent' ? SERPENT_FIRST_SHOT : 0,
+    phase: isSorcerer ? 'appearing' : 'active',
+    phaseTimer: 0,
+    // Captured: half the sorcerer visits chained into a second appearance.
+    visits: isSorcerer ? (Math.random() < 0.5 ? 2 : 1) : 1,
   };
 }
 
@@ -216,7 +215,7 @@ function aimedFireball(ex: number, ey: number, player: PlayerState, speed: numbe
 // calling L_6054); enemy MOBs are driven by animation-script velocities with
 // no BACKTAB lookup — phantom knights chase straight through walls.
 
-export function updateEnemy(enemy: Enemy, player: PlayerState, canWalk: CanWalkFn): Fireball | null {
+export function updateEnemy(enemy: Enemy, player: PlayerState, _canWalk: CanWalkFn): Fireball | null {
   if (!enemy.alive) return null;
   if (enemy.dying > 0) {
     // Death flash plays out, then the knight is removed.
@@ -260,68 +259,46 @@ export function updateEnemy(enemy: Enemy, player: PlayerState, canWalk: CanWalkF
   }
 
   if (enemy.type === 'sorcerer') {
-    if (enemy.phase === 'hidden') {
-      if (enemy.phaseTimer <= 0) {
-        // Warp near the player — onto a walkable tile.
-        for (let attempt = 0; attempt < 12; attempt++) {
-          const angle = Math.random() * Math.PI * 2;
-          const dist = 40 + Math.random() * 30;
-          const wx = player.x + Math.cos(angle) * dist;
-          const wy = player.y + Math.sin(angle) * dist;
-          if (canWalk(wx + 4, wy + 4)) {
-            enemy.x = wx;
-            enemy.y = wy;
-            enemy.phase = 'appearing';
-            enemy.phaseTimer = SORCERER_APPEAR_TIME;
-            enemy.fireTimer = SORCERER_FIRE_INTERVAL;
-            enemy.visibleTimer = SORCERER_VISIBLE_FRAMES;
-            break;
-          }
-        }
-        if (enemy.phase === 'hidden') enemy.phaseTimer = 60; // no spot found, retry soon
-      } else {
-        enemy.phaseTimer--;
-      }
-      return null;
-    }
-
+    // Captured timeline (finding #11). phaseTimer counts UP within a phase.
+    enemy.phaseTimer++;
     if (enemy.phase === 'appearing') {
-      enemy.phaseTimer--;
-      if (enemy.phaseTimer <= 0) {
-        enemy.phase = 'active';
-      }
+      if (enemy.phaseTimer >= SORCERER_APPEAR) { enemy.phase = 'active'; enemy.phaseTimer = 0; }
       return null;
     }
-
     if (enemy.phase === 'active') {
-      enemy.visibleTimer--;
-      if (enemy.visibleTimer <= 0) {
-        enemy.phase = 'vanishing';
-        enemy.phaseTimer = 15;
-        return null;
-      }
-      if (enemy.fireTimer > 0) {
-        enemy.fireTimer--;
-      }
-      if (enemy.fireTimer <= 0) {
-        enemy.fireTimer = SORCERER_FIRE_INTERVAL;
+      if (enemy.phaseTimer === SORCERER_FIRE_AT) {
         return aimedFireball(enemy.x, enemy.y, player, FIREBALL_SPEED);
       }
+      if (enemy.phaseTimer >= SORCERER_RED) { enemy.phase = 'vanishing'; enemy.phaseTimer = 0; }
+      return null;
     }
-
     if (enemy.phase === 'vanishing') {
-      enemy.phaseTimer--;
-      if (enemy.phaseTimer <= 0) {
-        enemy.phase = 'hidden';
-        enemy.phaseTimer = SORCERER_APPEAR_DELAY;
+      if (enemy.phaseTimer >= SORCERER_VANISH) {
+        enemy.visits--;
+        if (enemy.visits > 0) {
+          // Chained appearance at a fresh spot near the player (captured
+          // offsets: one of the observed spawn offsets).
+          const off = SORCERER_OFFSETS[Math.floor(Math.random() * SORCERER_OFFSETS.length)];
+          enemy.x = player.x + off[0];
+          enemy.y = player.y + off[1];
+          enemy.phase = 'appearing';
+          enemy.phaseTimer = 0;
+        } else {
+          enemy.alive = false;
+        }
       }
+      return null;
     }
-
     return null;
   }
 
   return null;
 }
+
+// Observed sorcerer spawn offsets from the Prince (screen px), 6 samples:
+export const SORCERER_OFFSETS: [number, number][] = [[-10, 26], [-20, 20], [-20, -20], [0, 28], [26, 11], [-9, 28]];
+// Observed knight spawn: at the top or bottom edge of the screen, x ≈ Prince
+export const KNIGHT_SPAWN_DY = 52;
 
 export type CombatEvent = 'player_strikes' | 'enemy_slain' | 'player_injured' | null;
 
@@ -454,18 +431,35 @@ export function isGameOver(player: PlayerState): boolean {
 // (horizontal) or $10 column (vertical). The old "$5C1C walk frames" were
 // wrong data and have been removed.
 
-// Red Sorcerer — ROM $6677/$6687, 2 frames (8×16 each); the scattered pixels
-// read as the manual's "puffs of sulphuric smoke"
-export const SORCERER_SPRITES: number[][] = [
-  [// frame 0 — $6677
-    0xB0, 0xB7, 0x75, 0x04, 0x64, 0xFC, 0x89, 0x04,
-    0x4A, 0x79, 0x10, 0x05, 0x15, 0x0E, 0x02, 0x00,
-  ],
-  [// frame 1 — $6687
-    0x8F, 0x79, 0x40, 0x0D, 0x02, 0x00, 0x8D, 0x41,
-    0x8C, 0x04, 0x64, 0x13, 0x81, 0x8C, 0xF9, 0x40,
-  ],
+// Red Sorcerer — captured from the live GRAM card the sorcerer MOB uses
+// (finding #11; the earlier "$6677/$6687" bytes were code, not a sprite).
+// One body bitmap; it is white while materialising/dematerialising and red
+// (fg 2) while active.
+export const SORCERER_BODY: number[] = [
+  0x50, 0x70, 0x38, 0x70, 0x3A, 0xF5, 0x72, 0xFB,
+  0xDE, 0xCE, 0xD6, 0xD7, 0x47, 0xFD, 0x30, 0x00,
 ];
+// Materialise poses (white), captured in order: small diamond, large
+// diamond, sparkle. Dematerialise plays sparkle → large → gone.
+export const SORCERER_MATERIALISE: number[][] = [
+  [0x00, 0x00, 0x00, 0x00, 0x18, 0x24, 0x3C, 0x66, 0x66, 0x3C, 0x24, 0x18, 0x00, 0x00, 0x00, 0x00],
+  [0x00, 0x00, 0x00, 0x42, 0x18, 0x24, 0x24, 0x5A, 0x5A, 0x24, 0x24, 0x18, 0x42, 0x00, 0x00, 0x00],
+  [0x00, 0x00, 0x18, 0x00, 0x42, 0x00, 0x18, 0xBD, 0xBD, 0x18, 0x00, 0x42, 0x00, 0x18, 0x00, 0x00],
+];
+// Captured timeline of one appearance (frames at the observed ~3.6
+// frames/tick; three instances agreed to ±4 frames):
+//   materialise  small 20 → large 12 → sparkle 8         (40)
+//   RED body 61 frames, ONE fireball launched at +27          (61)
+//   white body 22 → sparkle 12 → large 12 → gone             (46)
+// Half the visits chained straight into a second appearance at a new spot.
+export const SORCERER_APPEAR = 40;
+export const SORCERER_RED = 61;
+export const SORCERER_FIRE_AT = 27;
+export const SORCERER_VANISH = 46;
+export function sorcererAppearPose(t: number): number { return t < 20 ? 0 : t < 32 ? 1 : 2; }
+export function sorcererVanishPose(t: number): number { return t < 22 ? -1 : t < 34 ? 2 : 1; } // -1 = body
+// Legacy 2-frame array kept for the debug view; frame 0 is the real body.
+export const SORCERER_SPRITES: number[][] = [SORCERER_BODY, SORCERER_BODY];
 
 // The Sinister Serpent — ROM $5C9E/$5CAE, 2 frames (8×16 each), green
 export const SERPENT_SPRITES: number[][] = [
@@ -479,12 +473,13 @@ export const SERPENT_SPRITES: number[][] = [
   ],
 ];
 
-// Fireball — ROM $5C4E, 4 frames (8×8 each), yellow palette
+// Fireball — captured from the live GRAM card of the sorcerer's projectile
+// MOB (8×16): three bitmaps cycling every 4 frames, colour alternating
+// yellow (6) / orange (10). (The earlier "$5C4E" 8×8 frames were wrong data.)
 export const FIREBALL_FRAMES: number[][] = [
-  [0x84, 0x56, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
-  [0x00, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
-  [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x06],
-  [0x0C, 0x30, 0x60, 0xC0, 0x00, 0x00, 0x00, 0x00],
+  [0x00, 0x24, 0x11, 0x3A, 0xAE, 0x7B, 0x6E, 0xFE, 0x7F, 0x7C, 0xFE, 0x5C, 0x88, 0x24, 0x00, 0x00],
+  [0x00, 0x01, 0x54, 0x1E, 0x7F, 0xFA, 0x7F, 0x7B, 0xFE, 0x7E, 0xB6, 0x5D, 0x24, 0x40, 0x10, 0x00],
+  [0x10, 0x00, 0x20, 0x1C, 0x5F, 0x7E, 0x7E, 0xFB, 0x5E, 0x7B, 0xBE, 0x7C, 0x8A, 0x10, 0x00, 0x00],
 ];
 
 // Spawn effect — ROM $5AE6, 2 frames (8×16 each), red/yellow palette

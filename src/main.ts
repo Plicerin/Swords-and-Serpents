@@ -14,9 +14,11 @@ import {
   Enemy, Fireball, GameItem, ItemKind,
   createEnemy, createItem, updateEnemy, resolveContact,
   injurePlayer, tickPlayerCombat, isGameOver,
-  SORCERER_SPRITES, SERPENT_W, SERPENT_H,
+  SERPENT_W, SERPENT_H,
   FIREBALL_FRAMES, SPAWN_EFFECT, ITEM_SPRITES,
   KNIGHT_POSES, SWORD_BITMAPS, knightPoseSector,
+  SORCERER_BODY, SORCERER_MATERIALISE, sorcererAppearPose, sorcererVanishPose,
+  SORCERER_OFFSETS, KNIGHT_SPAWN_DY,
 } from './engine/combat';
 
 let state: PlayerState;
@@ -271,33 +273,9 @@ function populateWorld(rand: () => number) {
     objStateByLevel.push(createObjectState());
     openStairs.push(null);
 
-    const spots: { x: number; y: number }[] = [];
-    for (let r = 0; r < m.h; r++) {
-      for (let c = 0; c < m.w; c++) {
-        if (!isWalkableWord(m.grid[r][c]) || gramCard(m.grid[r][c]) >= 0) continue;
-        const s = { x: c * TILE, y: r * TILE };
-        if (tDist(i, s.x, s.y, entry0.x, entry0.y) < 60) continue; // keep the entry safe
-        spots.push(s);
-      }
-    }
-    const take = (): { x: number; y: number } | null => {
-      if (spots.length === 0) return null;
-      return spots.splice(Math.floor(rand() * spots.length), 1)[0];
-    };
-
-    // Phantom knights — more as you descend (2/4/6/8 across the 4 levels).
-    const knightCount = 2 + i * 2;
-    for (let k = 0; k < knightCount; k++) {
-      const p = take();
-      if (p) enemies.push(createEnemy(p.x, p.y, 'phantom_knight'));
-    }
-
-    // Red Sorcerers from level 2 down.
-    const sorcererCount = i === 0 ? 0 : i;
-    for (let w = 0; w < sorcererCount; w++) {
-      const p = take();
-      if (p) enemies.push(createEnemy(p.x, p.y, 'sorcerer'));
-    }
+    // Knights and sorcerers are not pre-placed: the ROM spawns them around
+    // the Prince as the game runs (see spawnDirector).
+    void m; void rand;
 
     if (i === mazes.length - 1 && serpentLair) {
       // The Serpent's lair at its REAL position from the level-3 map data
@@ -310,6 +288,43 @@ function populateWorld(rand: () => number) {
     enemiesByLevel.push(enemies);
     itemsByLevel.push(items);
   }
+}
+
+// --- Spawn director (finding #11) ---
+// Captured: enemies appear around the Prince during play, never pre-placed.
+// Sorcerers materialise at a small offset from him (observed offsets in
+// SORCERER_OFFSETS); knights appear at the TOP or BOTTOM screen edge, x ≈
+// his. Over ~13,000 idle/wandering frames on level 1 there were 10 spawn
+// events (first one 314-374 frames in), i.e. roughly one per 5 rolls of the
+// ROM's 64-tick (~230-frame) spawn timer — the exact roll/odds are NOT
+// captured; 20 % per roll, 50/50 knight vs sorcerer, at most 3 live foes.
+const SPAWN_ROLL_FRAMES = 230;
+const SPAWN_CHANCE = 0.2;
+const MAX_LIVE_FOES = 3;
+let spawnClock = 0;
+let rng: () => number = Math.random;
+
+function spawnDirector() {
+  spawnClock++;
+  if (spawnClock < SPAWN_ROLL_FRAMES) return;
+  spawnClock = 0;
+  const foes = enemiesByLevel[state.level];
+  const live = foes.filter(e => e.alive && e.type !== 'serpent').length;
+  if (live >= MAX_LIVE_FOES || rng() >= SPAWN_CHANCE) return;
+  const world = lw();
+  if (rng() < 0.5) {
+    const off = SORCERER_OFFSETS[Math.floor(rng() * SORCERER_OFFSETS.length)];
+    foes.push(createEnemy(wrap(state.x + off[0], world.pixelWidth), wrap(state.y + off[1], world.pixelHeight), 'sorcerer'));
+  } else {
+    const dy = rng() < 0.5 ? KNIGHT_SPAWN_DY : -KNIGHT_SPAWN_DY;
+    foes.push(createEnemy(wrap(state.x + Math.round(rng() * 2), world.pixelWidth), wrap(state.y + dy, world.pixelHeight), 'phantom_knight'));
+  }
+}
+
+// Captured: when the Prince falls, every knight/sorcerer/fireball vanishes.
+function clearFoes() {
+  for (const e of enemiesByLevel[state.level]) if (e.type !== 'serpent') e.alive = false;
+  fireballs = [];
 }
 
 // ROM object record at a tile of the given level, if any.
@@ -427,7 +442,9 @@ function initGame() {
   state = createInitialState();
   input = new InputHandler();
 
-  populateWorld(mulberry32(0x5E44E27));
+  rng = mulberry32(0x5E44E27);
+  populateWorld(rng);
+  spawnClock = 0;
 
   state.level = 0;
   state.x = entry0.x;
@@ -556,6 +573,7 @@ function update() {
   }
 
   // --- Enemies (current level only; targets use shortest torus path) ---
+  if (!state.dead) spawnDirector();
   const walkFn = (x: number, y: number) => world.canWalk(x, y);
   for (const enemy of enemiesByLevel[state.level]) {
     if (!enemy.alive) continue;
@@ -613,6 +631,9 @@ function update() {
     }
   }
   fireballs = fireballs.filter(fb => fb.alive);
+
+  // Captured: the moment the Prince falls, every foe and fireball vanishes.
+  if (state.dead && enemiesByLevel[state.level].some(e => e.alive && e.type !== 'serpent')) clearFoes();
 
   // --- Death effects ---
   for (const fx of deathFx) fx.t--;
@@ -888,12 +909,15 @@ function render(ctx: CanvasRenderingContext2D) {
       drawBitmap(ctx, SWORD_BITMAPS[pose.sword], 16,
         toScreenX(enemy.x + pose.sx), toScreenY(enemy.y + pose.sy), color, pose.smirror, pose.sflip);
     } else if (enemy.type === 'sorcerer') {
+      // Captured: white materialise poses → red body (fires once) → white
+      // body → dematerialise poses.
       if (enemy.phase === 'hidden') continue;
-      const blink = (enemy.phase === 'appearing' || enemy.phase === 'vanishing')
-        && Math.floor(frameCount / 4) % 2 === 0;
-      if (blink) continue;
-      const frame = SORCERER_SPRITES[Math.floor(frameCount / 12) % 2];
-      drawBitmap(ctx, frame, 16, ex, ey, flash ? '#FFFCFF' : '#FF3D10');
+      let bytes: number[] = SORCERER_BODY;
+      let color = FG[7];
+      if (enemy.phase === 'appearing') bytes = SORCERER_MATERIALISE[sorcererAppearPose(enemy.phaseTimer)];
+      else if (enemy.phase === 'active') color = flash ? FG[7] : FG[2];
+      else { const p = sorcererVanishPose(enemy.phaseTimer); if (p >= 0) bytes = SORCERER_MATERIALISE[p]; }
+      drawBitmap(ctx, bytes, 16, ex, ey, color);
     } else if (enemy.type === 'serpent') {
       const color = flash ? '#FFFCFF' : '#00A756';
       const tw = TILE * PLAYER_SCALE;
@@ -916,9 +940,10 @@ function render(ctx: CanvasRenderingContext2D) {
   // --- Fireballs ---
   for (const fb of fireballs) {
     if (!fb.alive || !onScreen(fb.x, fb.y)) continue;
-    const frame = FIREBALL_FRAMES[Math.floor(fb.age / 6) % 4];
-    drawBitmap(ctx, frame, 8, toScreenX(fb.x), toScreenY(fb.y),
-      Math.floor(fb.age / 4) % 2 === 0 ? '#FFB41F' : '#FAEA50');
+    // Captured: 3 bitmaps every 4 frames; yellow/orange alternating ~5 frames.
+    const frame = FIREBALL_FRAMES[Math.floor(fb.age / 4) % 3];
+    drawBitmap(ctx, frame, 16, toScreenX(fb.x), toScreenY(fb.y),
+      Math.floor(fb.age / 5) % 2 === 0 ? FG[6] : '#FFB41F');
   }
 
   // --- Death effects ---
