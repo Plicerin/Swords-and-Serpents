@@ -19,7 +19,6 @@ import {
   FIREBALL_FRAMES, SPAWN_EFFECT, ITEM_SPRITES,
   KNIGHT_POSES, SWORD_BITMAPS, knightPoseSector,
   SORCERER_BODY, SORCERER_MATERIALISE, sorcererAppearPose, sorcererVanishPose,
-  SORCERER_OFFSETS, KNIGHT_SPAWN_DY,
   DEATH_BURST, deathBurstPose, FALLEN_POSES, fallenPose,
   playerSwordHitsBox, knightDeathPose,
 } from './engine/combat';
@@ -317,48 +316,51 @@ function tickDue(): boolean {
   return true;
 }
 
-// --- Spawn director (finding #11) ---
-// Captured: enemies appear around the Prince during play, never pre-placed.
-// Sorcerers materialise at a small offset from him (observed offsets in
-// SORCERER_OFFSETS); knights appear at the TOP or BOTTOM screen edge, x ≈
-// his. Over ~13,000 idle/wandering frames on level 1 there were 10 spawn
-// events (first one 314-374 frames in), i.e. roughly one per 5 rolls of the
-// ROM's 64-tick (~230-frame) spawn timer — the exact roll/odds are NOT
-// captured; 20 % per roll, 50/50 knight vs sorcerer, at most 3 live foes.
-const SPAWN_ROLL_TICKS = 64;      // the $0163 countdown, decremented per tick
-const SPAWN_CHANCE = 0.2;
+// --- Spawn director (finding #17: the ROM's own rule, read from L_69FA) ---
+// A countdown at $0163 (per tick) fires a ROLL. Its reload is 35 + G_0184
+// ticks: G_0184 starts at 30 and drops by 1 every 4 rolls (the first drop
+// after 9), so rolls come every 65 ticks at first and every 35 once the
+// ramp is spent. Each roll: rand(5 − level) == 0 → a spawn (1/5, 1/4, 1/3,
+// 1/2 by level) if one of the three foe slots is free; then rand(5 − level)
+// == 0 → a Red Sorcerer, else a Phantom Knight. A sorcerer materialises
+// 28 px from the Prince in one of 16 random directions (L_6AF9: rand(16),
+// the 16-direction velocity table at magnitude 28); a knight appears at one
+// of four fixed SCREEN spots, rand(4) into the table at $6AA6 — MOB (0,52),
+// (88,0), (168,52), (88,107): the left, top, right or bottom edge. The ROM's
+// first roll comes at tick 36 after ENTER.
+const SPAWN_FIRST_ROLL_TICK = 36;
+const SPAWN_BASE_TICKS = 35;
+const SPAWN_RAMP_START = 30;
+const SPAWN_RAMP_FIRST = 9;
+const SPAWN_RAMP_EVERY = 4;
 const MAX_LIVE_FOES = 3;
-// Captured: the first foe of a game is a Red Sorcerer at tick 101 (374
-// frames) after the quest starts (two identical boots), at (-10, 26).
-const FIRST_SPAWN_TICK = 101;
-let spawnClock = 0;
-let firstSpawnDone = false;
+const SORCERER_RADIUS = 28;
+// Knight spawn spots relative to the Prince's MOB position (88,56).
+const KNIGHT_SPOTS: [number, number][] = [[-88, -4], [0, -56], [80, -4], [0, 51]];
+let spawnTimer = SPAWN_FIRST_ROLL_TICK;
+let spawnRamp = SPAWN_RAMP_START;
+let spawnRampCounter = SPAWN_RAMP_FIRST;
 let rng: () => number = Math.random;
 
 function spawnDirector() {
-  spawnClock++;
+  if (--spawnTimer > 0) return;
+  // reload (L_6A0A..6A0E), with the ramp
+  if (spawnRamp > 0 && --spawnRampCounter === 0) { spawnRamp--; spawnRampCounter = SPAWN_RAMP_EVERY; }
+  spawnTimer = SPAWN_BASE_TICKS + spawnRamp;
+  const n = 5 - state.level;
+  if (Math.floor(rng() * n) !== 0) return;
   const foes = enemiesByLevel[state.level];
+  if (foes.filter(e => e.alive && e.type !== 'serpent').length >= MAX_LIVE_FOES) return;
   const world = lw();
-  if (!firstSpawnDone) {
-    if (spawnClock < FIRST_SPAWN_TICK) return;
-    firstSpawnDone = true;
-    spawnClock = 0;
-    foes.push(createEnemy(wrap(state.x - 10, world.pixelWidth), wrap(state.y + 26, world.pixelHeight), 'sorcerer'));
-    return;
-  }
-  if (spawnClock < SPAWN_ROLL_TICKS) return;
-  spawnClock = 0;
-  const live = foes.filter(e => e.alive && e.type !== 'serpent').length;
-  if (live >= MAX_LIVE_FOES || rng() >= SPAWN_CHANCE) return;
-  if (rng() < 0.5) {
-    const off = SORCERER_OFFSETS[Math.floor(rng() * SORCERER_OFFSETS.length)];
-    foes.push(createEnemy(wrap(state.x + off[0], world.pixelWidth), wrap(state.y + off[1], world.pixelHeight), 'sorcerer'));
+  if (Math.floor(rng() * n) === 0) {
+    const a = Math.floor(rng() * 16) * Math.PI / 8;
+    const dx = Math.round(Math.cos(a) * SORCERER_RADIUS), dy = Math.round(Math.sin(a) * SORCERER_RADIUS);
+    foes.push(createEnemy(wrap(state.x + dx, world.pixelWidth), wrap(state.y + dy, world.pixelHeight), 'sorcerer'));
   } else {
-    const dy = rng() < 0.5 ? KNIGHT_SPAWN_DY : -KNIGHT_SPAWN_DY;
-    foes.push(createEnemy(wrap(state.x + Math.round(rng() * 2), world.pixelWidth), wrap(state.y + dy, world.pixelHeight), 'phantom_knight'));
+    const [dx, dy] = KNIGHT_SPOTS[Math.floor(rng() * 4)];
+    foes.push(createEnemy(wrap(state.x + dx, world.pixelWidth), wrap(state.y + dy, world.pixelHeight), 'phantom_knight'));
   }
 }
-
 // Captured: when the Prince falls, every knight/sorcerer/fireball vanishes.
 function clearFoes() {
   for (const e of enemiesByLevel[state.level]) if (e.type !== 'serpent') e.alive = false;
@@ -487,8 +489,9 @@ function initGame() {
 
   rng = mulberry32(0x5E44E27);
   populateWorld(rng);
-  spawnClock = 0;
-  firstSpawnDone = false;
+  spawnTimer = SPAWN_FIRST_ROLL_TICK;
+  spawnRamp = SPAWN_RAMP_START;
+  spawnRampCounter = SPAWN_RAMP_FIRST;
   tickBudget = 0;
   tickCost = TICK_BASE_CYCLES;
   tickCount = 0;

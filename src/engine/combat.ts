@@ -293,11 +293,11 @@ export function updateEnemy(enemy: Enemy, player: PlayerState, _canWalk: CanWalk
       if (enemy.phaseTimer >= SORCERER_VANISH) {
         enemy.visits--;
         if (enemy.visits > 0) {
-          // Chained appearance at a fresh spot near the player (captured
-          // offsets: one of the observed spawn offsets).
-          const off = SORCERER_OFFSETS[Math.floor(Math.random() * SORCERER_OFFSETS.length)];
-          enemy.x = player.x + off[0];
-          enemy.y = player.y + off[1];
+          // Chained appearance at a fresh spot: 28 px from the player in one
+          // of 16 directions (L_6AF9, finding #17).
+          const a = Math.floor(Math.random() * 16) * Math.PI / 8;
+          enemy.x = player.x + Math.round(Math.cos(a) * 28);
+          enemy.y = player.y + Math.round(Math.sin(a) * 28);
           enemy.phase = 'appearing';
           enemy.phaseTimer = 0;
         } else {
@@ -312,10 +312,7 @@ export function updateEnemy(enemy: Enemy, player: PlayerState, _canWalk: CanWalk
   return null;
 }
 
-// Observed sorcerer spawn offsets from the Prince (screen px), 6 samples:
-export const SORCERER_OFFSETS: [number, number][] = [[-10, 26], [-20, 20], [-20, -20], [0, 28], [26, 11], [-9, 28]];
-// Observed knight spawn: at the top or bottom edge of the screen, x ≈ Prince
-export const KNIGHT_SPAWN_DY = 52;
+// Spawn placement is the ROM's rule (finding #17), see spawnDirector in main.ts.
 
 export type CombatEvent = 'player_strikes' | 'enemy_slain' | 'player_injured' | null;
 

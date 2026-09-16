@@ -159,6 +159,31 @@ not flee. NOTE for future fidelity work: the manual says the Fortress has
 level 3 may be reading past the real level table; the 14-level descent is a
 designed mode, not ROM truth.
 
+**ROM finding #17 — THE SPAWN RULE, EXACT (2026-09-16, disassembly of
+`L_69FA` confirmed by tracing its RNG calls live).** Supersedes the
+estimates in #11.
+  * `$0163` counts down once per tick; at 0 the timer table (`$5566`)
+    reloads it with 35 and calls `L_69FA`, which adds `G_0184` (starts 30):
+    **rolls every 65 ticks**. Every 4th roll (the first after 9) `G_0184--`
+    until 0, so the interval ramps 65 → 35 ticks over the first ~120 rolls
+    (`G_017E` is the 9/4 counter). First roll at tick 36 after ENTER; the
+    cold-boot RNG is deterministic, which is why two boots both spawned a
+    sorcerer at tick 101 — a human's ENTER timing changes it.
+  * Roll: `X_RAND2(5 − level) == 0` → spawn: **1/5, 1/4, 1/3, 1/2** on
+    levels 1-4. Needs a free slot among 2/4/6 (`G_017B` bits) — max 3 foes.
+  * Type: `X_RAND2(5 − level) == 0` → **Red Sorcerer**, else Phantom Knight
+    (`L_6A7D`: record `$5AB4` knight, `$5AB4+$1C` sorcerer).
+  * Sorcerer position (`L_6AF9`): `X_RAND2(16)` → `G_01A1` direction, the
+    16-direction velocity table at magnitude 28 (`L_6046`, R1 = −28) added
+    to (88,56): **28 px from the Prince in one of 16 directions** (all six
+    observed offsets in #11 are on that circle).
+  * Knight position (`L_6A8F`): `X_RAND2(4)` into the table at `$6AA6` —
+    MOB (0,52), (88,0), (168,52), (88,107): **the left, top, right or bottom
+    screen edge** (observed: bottom ×3, top ×1, right ×1).
+  * Port: `spawnDirector()` in main.ts now runs exactly this (timer, ramp,
+    odds, slots, placements); the tick-101 pin and the offset lists are
+    gone. Chained sorcerer reappearances use the same 16×28 rule.
+
 **ROM finding #16 — LEVEL 3: THE SERPENT IS INERT, ITS FIRE IS THE GATE,
 NO CROWN, NO WIN IN 1-PLAYER MODE (2026-09-15/16, Intellijsd; descended
 via poked stairs tiles, walked to the ziggurat).**
