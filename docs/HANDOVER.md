@@ -159,6 +159,9 @@ not flee. NOTE for future fidelity work: the manual says the Fortress has
 level 3 may be reading past the real level table; the 14-level descent is a
 designed mode, not ROM truth.
 
+**Gamepad (2026-09-16, port feature, not a ROM finding):** the Gamepad API is polled every input snapshot (src/engine/input.ts): left stick or d-pad = disc (8-way, 0.4 dead zone), A/Start = ENTER, B = back up, X = read scroll (keypad C), Y = status (keypad 0); the keyboard wins for the disc while any direction key is held. Verified headless with a stubbed 
+avigator.getGamepads. Audio still needs one key press or click to unlock (browser autoplay policy; a pad press does not count).
+
 **ROM finding #19 — THE SCROLLS (2026-09-16, owner asked what the object
 next to the start says; Intellijsd + `$59FF` in the disassembly).**
   * The card-11 objects (types 13-16, four per level — the word's bits 14-15

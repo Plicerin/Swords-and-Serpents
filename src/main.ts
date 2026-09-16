@@ -1204,7 +1204,7 @@ function render(ctx: CanvasRenderingContext2D) {
     const alpha = Math.max(0, 1 - (frameCount / 600));
     ctx.fillStyle = `rgba(200,200,200,${alpha * 0.5})`;
     ctx.font = '10px monospace';
-    ctx.fillText('WASD move | walk INTO foes to strike | ENTER picks up / opens the stairs | store treasures in the chest', 8, scaledH - 8);
+    ctx.fillText('WASD/arrows or gamepad stick move | walk INTO foes to strike | ENTER (A) picks up / opens the stairs | C (X) reads a scroll | 0 (Y) status', 8, scaledH - 8);
   }
 
   const debugEl = document.getElementById('debug');

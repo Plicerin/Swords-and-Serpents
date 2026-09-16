@@ -80,22 +80,44 @@ export class InputHandler {
     if (action) { this.actions[action] = false; }
   };
 
+  // Gamepad (standard mapping), polled on every snapshot and merged with
+  // the keyboard. Disc = left stick or d-pad (8-way). Buttons:
+  //   A (0) = ENTER (pick up / store / open the stairs)
+  //   B (1) = back up            X (2) = read scroll (keypad C)
+  //   Y (3) = status (keypad 0)  Start (9) = ENTER too
+  private padState(): { dx: number; dy: number; enter: boolean; backUp: boolean; readScroll: boolean; status: boolean } {
+    const none = { dx: 0, dy: 0, enter: false, backUp: false, readScroll: false, status: false };
+    if (typeof navigator === 'undefined' || !navigator.getGamepads) return none;
+    const pad = Array.from(navigator.getGamepads()).find(p => p && p.connected);
+    if (!pad) return none;
+    const b = (i: number) => !!pad.buttons[i] && pad.buttons[i].pressed;
+    const ax = pad.axes[0] ?? 0, ay = pad.axes[1] ?? 0;
+    const DEAD = 0.4;
+    let dx = ax > DEAD ? 1 : ax < -DEAD ? -1 : 0;
+    let dy = ay > DEAD ? 1 : ay < -DEAD ? -1 : 0;
+    if (b(12)) dy = -1; if (b(13)) dy = 1; if (b(14)) dx = -1; if (b(15)) dx = 1;
+    return { dx, dy, enter: b(0) || b(9), backUp: b(1), readScroll: b(2), status: b(3) };
+  }
+
   // Snapshot the current input. `select` is edge-triggered (consumed once).
   getInput(): InputState {
-    let direction: Direction = 'none';
-    // Priority order when multiple held (no diagonals yet): up > down > left > right.
-    if (this.keys.has('up')) direction = 'up';
-    else if (this.keys.has('down')) direction = 'down';
-    else if (this.keys.has('left')) direction = 'left';
-    else if (this.keys.has('right')) direction = 'right';
+    const pad = this.padState();
+    const held = (d: Direction) => this.keys.has(d);
 
-    // 8-way movement vector from held keys (allows diagonals).
-    let dx = 0;
-    let dy = 0;
-    if (this.keys.has('left')) dx -= 1;
-    if (this.keys.has('right')) dx += 1;
-    if (this.keys.has('up')) dy -= 1;
-    if (this.keys.has('down')) dy += 1;
+    // 8-way movement vector: keyboard when any key is held (opposites
+    // cancel, as before), otherwise the pad.
+    const kdx = (held('right') ? 1 : 0) - (held('left') ? 1 : 0);
+    const kdy = (held('down') ? 1 : 0) - (held('up') ? 1 : 0);
+    const keyboardHeld = held('left') || held('right') || held('up') || held('down');
+    const dx = keyboardHeld ? kdx : pad.dx;
+    const dy = keyboardHeld ? kdy : pad.dy;
+
+    let direction: Direction = 'none';
+    // Priority order when multiple held: up > down > left > right.
+    if (dy < 0) direction = 'up';
+    else if (dy > 0) direction = 'down';
+    else if (dx < 0) direction = 'left';
+    else if (dx > 0) direction = 'right';
 
     const select = this.selectKey;
     this.selectKey = null;
@@ -104,12 +126,12 @@ export class InputHandler {
       direction,
       dx,
       dy,
-      backUp: !!this.actions['backUp'],
+      backUp: !!this.actions['backUp'] || pad.backUp,
       pickup: !!this.actions['pickup'],
       stairs: !!this.actions['stairs'],
-      readScroll: !!this.actions['readScroll'],
-      status: !!this.actions['status'],
-      enter: !!this.actions['enter'],
+      readScroll: !!this.actions['readScroll'] || pad.readScroll,
+      status: !!this.actions['status'] || pad.status,
+      enter: !!this.actions['enter'] || pad.enter,
       select,
     };
   }
