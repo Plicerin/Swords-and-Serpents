@@ -11,6 +11,9 @@ import {
 } from './world/objects';
 import { animatedCards, DOOR_PERIOD_TICKS } from './world/doors';
 import { quadrantCode, pushVector, PUSH_FRAMES } from './world/classifier';
+import { Sfx } from './audio/sfx';
+import { renderRms } from './audio/psg';
+import { FOOTSTEP, SORCERER_APPEAR, HIT, DEATH } from './audio/sounds';
 import {
   Enemy, Fireball, GameItem, ItemKind,
   createEnemy, updateEnemy, moveEnemy, resolveContact,
@@ -300,6 +303,10 @@ let tickInput: ReturnType<InputHandler['getInput']> = {
 let moveVx = 0;             // velocity latched by the last tick (px/frame)
 let moveVy = 0;
 let stickyBgHit = false;    // the STIC's latched MOB0-vs-background bit
+// Sound (finding #18): the ROM's PSG register scripts, one voice.
+const sfx = new Sfx();
+let footstepTicks = 0;      // footsteps every 8 ticks while walking
+let fireballFlight = -1;    // frames the live fireball has flown, or -1
 
 function tickDue(): boolean {
   tickBudget += CYCLES_PER_FRAME;
@@ -486,6 +493,9 @@ function changeLevel(toLevel: number) {
 function initGame() {
   state = createInitialState();
   input = new InputHandler();
+  const unlock = () => { void sfx.start(); window.removeEventListener('keydown', unlock); window.removeEventListener('pointerdown', unlock); };
+  window.addEventListener('keydown', unlock);
+  window.addEventListener('pointerdown', unlock);
 
   rng = mulberry32(0x5E44E27);
   populateWorld(rng);
@@ -624,6 +634,7 @@ function update() {
           if (state.stunned === 0) {
             const wasGray = state.injured;
             injurePlayer(state);
+            sfx.play(state.dead ? DEATH : HIT);
             setInfo(state.dead ? 'The door bit you down...' : wasGray ? 'The door bites — a life is lost!' : 'The door bites!', 90);
           }
           code ^= 0x40;
@@ -657,6 +668,8 @@ function update() {
     // Present the player at their nearest torus representation.
     const shim: PlayerState = { ...state, x: enemy.x + dx, y: enemy.y + dy };
     const shot = updateEnemy(enemy, shim, walkFn);
+    // The materialise whoosh plays on the first tick of every appearance (spawn or chained).
+    if (enemy.type === 'sorcerer' && enemy.phase === 'appearing' && enemy.phaseTimer === 1) sfx.play(SORCERER_APPEAR);
     enemy.x = wrap(enemy.x, W);
     enemy.y = wrap(enemy.y, H);
     if (shot) {
@@ -668,6 +681,7 @@ function update() {
     const event = resolveContact(shim, enemy);
     if (event === 'enemy_slain') {
       kills++;
+      if (enemy.type === 'phantom_knight') sfx.play(DEATH);
       if (enemy.type !== 'phantom_knight') deathFx.push({ x: enemy.x, y: enemy.y, t: 24 });
       if (enemy.type === 'serpent') setInfo('THE SERPENT IS SLAIN! Claim the Crown!', 300);
       else if (enemy.type === 'sorcerer') setInfo('Red Sorcerer vanquished!', 90);
@@ -678,6 +692,7 @@ function update() {
       if (state.stunned === 0 && !state.dead) {
         const wasGray = state.injured;
         injurePlayer(state);
+        sfx.play(state.dead ? DEATH : HIT);
         setInfo(state.dead ? 'You have fallen...' : wasGray ? 'A life is lost!' : 'Injured! (half a life)', 90);
       }
     }
@@ -703,11 +718,19 @@ function update() {
       fb.alive = false;
       if (state.stunned === 0) {
         injurePlayer(state);
+        sfx.play(DEATH);
         setInfo(state.dead ? 'Burned down...' : 'Scorched by a fireball!', 90);
       }
     }
   }
   fireballs = fireballs.filter(fb => fb.alive);
+
+  // --- Sound (finding #18) ---
+  if (doTick) {
+    if (state.moving) { if (++footstepTicks >= 8) { footstepTicks = 0; sfx.play(FOOTSTEP); } } else footstepTicks = 0;
+  }
+  fireballFlight = fireballs.length ? fireballFlight + 1 : -1;
+  sfx.tick(fireballFlight);
 
   // Captured: the moment the Prince falls, every foe and fireball vanishes.
   if (state.dead && enemiesByLevel[state.level].some(e => e.alive && e.type !== 'serpent')) clearFoes();
@@ -1220,6 +1243,8 @@ async function main() {
     doorPeriod: () => DOOR_PERIOD_TICKS,
     transition: () => transition,
     ticks: () => tickCount,
+    audioRms: (regs: number[], seconds?: number) => renderRms(regs, seconds),
+    sounds: () => ({ FOOTSTEP, SORCERER_APPEAR, HIT, DEATH }),
     facing: (dx: number, dy: number, alt = false) => facingFrame(dx, dy, alt),
     info: () => infoMessage,
     // Deterministic stepping for headless verification: run N simulation

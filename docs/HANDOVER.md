@@ -159,6 +159,39 @@ not flee. NOTE for future fidelity work: the manual says the Fortress has
 level 3 may be reading past the real level table; the 14-level descent is a
 designed mode, not ROM truth.
 
+**ROM finding #18 — SOUND (2026-09-16, Intellijsd: PSG register snapshot
+every frame — `ijsd.psg.registers` — across every event, plus a trap on
+the ROM's sound call `L_6932`).** The ROM plays effects through the EXEC's
+sound processor (writers at `$1Cxx/$1Dxx`), one effect at a time; a new
+effect cuts the old. Everything is on PSG channel B. Register order
+A_lo B_lo C_lo E_lo A_hi B_hi C_hi E_hi enable noise shape volA volB volC:
+  * **Silent:** title screen, game start, keypad 1/ENTER, pickup, chest
+    store, status screen, wall bump (`L_6699` calls sound 0 = nothing),
+    the stairs message/transition, knight spawn and charge, sorcerer
+    vanish, revive. Wall bumps being silent surprised me; verified twice.
+  * **Footstep** — every 8 ticks while walking: 2 frames, E period `$080`,
+    shape 0, noise B enveloped (`enable $2F`, `volB $30`), noise period 0
+    then 1, then off.
+  * **Sorcerer materialise** (each appearance, not the red phase): 33
+    frames, E period `$CF8`, shape `$F` (attack + hold), noise `$F`, volB env.
+  * **Fireball flight**: fixed volume 15 noise, period `$1F` for 7 frames
+    then −1 per frame, for as long as the fireball lives (cut by the hit).
+  * **Hit** (ROM sound 7 — knight sword and door): tone B + noise B
+    (`enable $2D`), E `$A00`, shape 0, noise `$B`, tone period alternating
+    `$20`/`$40` (17/8/2/5 frames), 32 frames.
+  * **Death burst** — the Prince's fall, a slain knight, a landing fireball
+    (the fireball hit plays this, not sound 7): shape `$E`, E `$200` for 9
+    frames then `$F00`, noise 0 then 1, volB env; 74 frames (a fireball
+    hit's instance was cut at 43 by the sorcerer's despawn write).
+  * Envelope rate: one step per 16 × EP clocks of the 1.79 MHz PSG clock
+    (a full 16-step ramp = 256 × EP) — with the wrong 256× the swells
+    rendered as silence.
+  * Port: `src/audio/psg.ts` (AudioWorklet AY-3-8914 model: 3 tones, LFSR
+    noise, envelope shapes, log DAC), `sounds.ts` (the scripts above),
+    `sfx.ts` (one-voice sequencer with the fireball as the idle-priority
+    sound). Audio unlocks on the first key/pointer. `g.audioRms(regs, s)`
+    renders a register image offline for verification.
+
 **ROM finding #17 — THE SPAWN RULE, EXACT (2026-09-16, disassembly of
 `L_69FA` confirmed by tracing its RNG calls live).** Supersedes the
 estimates in #11.
