@@ -162,6 +162,32 @@ designed mode, not ROM truth.
 **Gamepad (2026-09-16, port feature, not a ROM finding):** the Gamepad API is polled every input snapshot (src/engine/input.ts): left stick or d-pad = disc (8-way, 0.4 dead zone), A/Start = ENTER, B = back up, X = read scroll (keypad C), Y = status (keypad 0); the keyboard wins for the disc while any direction key is held. Verified headless with a stubbed 
 avigator.getGamepads. Audio still needs one key press or click to unlock (browser autoplay policy; a pad press does not count).
 
+**ROM finding #21 — TITLE SCREEN AND STATUS SCREEN, TILE FOR TILE (2026-09-16,
+Intellijsd BACKTAB/GRAM/MOB dumps after a cold boot and after keypad 0).**
+  * **Title** (FG/BG mode, every tile $1603 = olive bg, text = GROM ASCII
+    cards (char − 32) in fg 3 tan; nothing animates, the disc is ignored):
+    row 2 cols 2-18 `SWORDS & SERPENTS`; row 4: col 5 = **GRAM card 23**
+    (the © glyph `3c 42 99 91 91 99 42 3c`), cols 7-12 `IMAGIC`, cols 14-17
+    `1982`; row 9 cols 2-19 `ENTER GAME (1,2,3)`. MOBs: the Prince at MOB
+    (88,56) = screen (80,48), white, facing east, with the blue ($FF-row,
+    fg 1) sword at x+8. Pressing 1/2/3 writes row 11: col 3 = `1` (mode 1)
+    or `2` (modes 2 and 3), cols 5-10 `PLAYER`, mode 3 adds `/MAGIC` at
+    cols 11-16; re-pressing replaces the line. **ENTER alone does nothing** —
+    a mode must be chosen first; ENTER after a mode starts the game (the
+    port only offers mode 1's behaviour whichever digit is pressed).
+  * **Status screen** (keypad 0) goes through the same L_59CF message path
+    as #20: whole BACKTAB cleared, MOBs off, Color Stack mode, black screen,
+    225 frames (G_0104 = $E1 — the 227 measured in #8 included the entry
+    frames), all text **fg 2 red** in 8-bit GROM cards (lower case): row 2
+    cols 2-15 `Reincarnations`; row 3 cols 4-10 `Knight:` and the count
+    right-aligned in two cells ending at col 13; row 6 cols 2-10
+    `Treasures`; rows 7/8 cols 4-10 `Inhand:` / `Stored:` with the digit at
+    col 12; row 9 cols 5-10 `Value:` with the number from col 12 (longer
+    numbers extend right — X_PRNUM_RGT). Port: `renderTitle`/`drawText` in
+    src/main.ts draw exactly these with the ROM's GROM/GRAM glyphs; the
+    browser-font status screen is gone. The title also serves as the audio
+    unlock (the first key press starts the AudioContext).
+
 **ROM finding #20 — WHAT THE MESSAGE SCREENS LOOK LIKE (2026-09-16, $59A4/
 $59CF in the disassembly, confirmed from live BACKTAB/STIC state).** Both
 the stairs message and a scroll's text go through L_59CF: it X_FILL_ZEROs
@@ -776,7 +802,8 @@ crown gating, win). Keep it.
 **Deliberately NOT ROM-exact:** enemy/item placement, keys-and-stairs
 progression, Serpent HP/fire rate, the 14-level depth (manual says 4).
 ROM-exact combat/RNG/HUD (P2/P3 in the runbook) remain open if the goal ever
-returns to 1:1. Audio (P4) and title/menu (P5) are still unimplemented. The
+returns to 1:1. Audio (P4) and title/menu (P5) are still unimplemented
+[superseded: both done 2026-09-16, findings #18 and #21]. The
 ROM's own stair placement/level-connection data has not been extracted — the
 stairway locations here are generated.
 

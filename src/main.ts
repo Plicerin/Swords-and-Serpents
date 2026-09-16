@@ -29,6 +29,10 @@ import {
 let state: PlayerState;
 let input: InputHandler;
 let gameStarted = false;
+// Title screen (captured, finding #21): shown until a game mode (1/2/3) is
+// chosen and ENTER pressed; ENTER alone does nothing, the disc does nothing.
+let atTitle = true;
+let titleSelection = 0;
 let gameWon = false;
 let playerSprites: number[][] = [];
 let frameCount = 0;
@@ -58,7 +62,7 @@ let kills = 0;
 // Captured item/status mechanics (docs/HANDOVER.md ROM finding #8)
 const PICKUP_LOCK_TICKS = 21;    // movement lock after ENTER on an object (G_01A4, per tick)
 const FIREBALL_TICKS = 23;       // a fireball dies with its sorcerer ~23 ticks after launch
-const STATUS_FRAMES = 227;       // keypad 0 status screen duration
+const STATUS_FRAMES = 225;       // keypad 0 status screen: the standard G_0104 = $E1 message wait
 let statusTimer = 0;
 let pickupFlash = -1;            // >=0 while a pickup lock is running (no injury flash)
 let inHandValue = 0;             // value of treasures currently carried
@@ -544,6 +548,12 @@ function initGame() {
 
 function update() {
   if (!gameStarted || levels.length === 0) return;
+  if (atTitle) {
+    const inp = input.getInput();
+    if (inp.select) titleSelection = inp.select;
+    if (inp.enter && titleSelection) { atTitle = false; initGame(); }
+    return;
+  }
   frameCount++;
   if (infoTimer > 0) infoTimer--;
 
@@ -878,6 +888,39 @@ function storeTreasures() {
   setInfo('Treasures stored!', 90);
 }
 
+// GROM text: card = ASCII − 32 (the ROM's own font, both cases).
+function drawText(ctx: CanvasRenderingContext2D, text: string, col: number, row: number, color: string): void {
+  const u = PLAYER_SCALE;
+  const uy = PLAYER_SCALE * PLAYER_ASPECT_SCALE;
+  for (let i = 0; i < text.length; i++) {
+    const card = text.charCodeAt(i) - 32;
+    if (card <= 0) continue;
+    drawBitmap(ctx, Array.from(gromData.subarray(card * 8, card * 8 + 8)), 8, (col + i) * TILE * u, Math.round(row * TILE * uy), color);
+  }
+}
+
+// Title screen, captured tile for tile (finding #21): olive background,
+// tan text in the GROM font, the © glyph is GRAM card 23, the Prince (white,
+// facing east, blue sword) parked at screen (80,48); nothing animates.
+function renderTitle(ctx: CanvasRenderingContext2D): void {
+  const scaledW = VIEW_W * PLAYER_SCALE;
+  const scaledH = Math.round(VIEW_H * PLAYER_SCALE * PLAYER_ASPECT_SCALE);
+  const u = PLAYER_SCALE;
+  const uy = PLAYER_SCALE * PLAYER_ASPECT_SCALE;
+  ctx.fillStyle = PALETTE16[11];
+  ctx.fillRect(0, 0, scaledW, scaledH);
+  const tan = FG[3];
+  drawText(ctx, 'SWORDS & SERPENTS', 2, 2, tan);
+  drawBitmap(ctx, Array.from(gramData.subarray(23 * 8, 23 * 8 + 8)), 8, 5 * TILE * u, Math.round(4 * TILE * uy), tan);
+  drawText(ctx, 'IMAGIC', 7, 4, tan);
+  drawText(ctx, '1982', 14, 4, tan);
+  drawText(ctx, 'ENTER GAME (1,2,3)', 2, 9, tan);
+  if (titleSelection) drawText(ctx, ['1 PLAYER', '2 PLAYER', '2 PLAYER/MAGIC'][titleSelection - 1], 3, 11, tan);
+  const bytes = playerSprites[0];
+  if (bytes) drawBitmap(ctx, bytes, 16, 80 * u, Math.round(48 * uy), FG[7]);
+  drawSword(ctx, 80 * u, Math.round(48 * uy), 1, 0, FG[1]);
+}
+
 // Draw a 1bpp sprite in a solid color. rows=16 sprites are MOBs at 2× vertical
 // resolution (16 rows = 8 world px); rows=8 sprites are tile-sized.
 function drawBitmap(
@@ -947,6 +990,7 @@ function render(ctx: CanvasRenderingContext2D) {
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, scaledW, scaledH);
   if (!gameStarted || levels.length === 0) return;
+  if (atTitle) { renderTitle(ctx); return; }
 
   const world = lw();
   const W = world.pixelWidth;
@@ -1102,21 +1146,23 @@ function render(ctx: CanvasRenderingContext2D) {
   const px = toScreenX(state.x);
   const py = toScreenY(state.y);
 
-  // --- Status screen (captured layout: keypad 0, black screen, game font) ---
+  // --- Status screen (captured, finding #21): the message routine clears
+  //     the screen (black, Color Stack mode, MOBs off) and prints in RED
+  //     with the GROM font at these exact tiles; numbers via X_PRNUM_RGT. ---
   if (statusTimer > 0) {
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, scaledW, scaledH);
-    ctx.fillStyle = '#FFFCFF';
-    ctx.font = `bold ${PLAYER_SCALE * 7}px monospace`;
-    ctx.textAlign = 'left';
-    const row = (r: number) => Math.round((r * 8 + 7) * PLAYER_SCALE * PLAYER_ASPECT_SCALE);
-    const col = (c: number) => c * 8 * PLAYER_SCALE;
-    ctx.fillText('REINCARNATIONS', col(2), row(2));
-    ctx.fillText(`KNIGHT:  ${state.reincarnations}`, col(4), row(3));
-    ctx.fillText('TREASURES', col(2), row(6));
-    ctx.fillText(`INHAND: ${state.potions}`, col(4), row(7));
-    ctx.fillText(`STORED: ${state.stored}`, col(4), row(8));
-    ctx.fillText(` VALUE: ${state.storedValue}`, col(4), row(9));
+    const red = FG[2];
+    drawText(ctx, 'Reincarnations', 2, 2, red);
+    drawText(ctx, 'Knight:', 4, 3, red);
+    drawText(ctx, String(state.reincarnations).padStart(2, ' '), 12, 3, red);
+    drawText(ctx, 'Treasures', 2, 6, red);
+    drawText(ctx, 'Inhand:', 4, 7, red);
+    drawText(ctx, String(state.potions), 12, 7, red);
+    drawText(ctx, 'Stored:', 4, 8, red);
+    drawText(ctx, String(state.stored), 12, 8, red);
+    drawText(ctx, 'Value:', 5, 9, red);
+    drawText(ctx, String(state.storedValue), 12, 9, red);
     return;
   }
 
