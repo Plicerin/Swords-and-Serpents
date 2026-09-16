@@ -41,7 +41,8 @@ const ACTION_KEYS: Record<string, string> = {
   b: 'backUp', B: 'backUp',          // Warrior Prince backs up
   ' ': 'pickup',                     // Pick up / store / open (= ENTER on the real pad)
   f: 'stairs', F: 'stairs',          // Stairs; use Lantern of Life
-  r: 'readScroll', R: 'readScroll',  // Read Scroll
+  c: 'readScroll', C: 'readScroll',  // keypad C = Read Scroll (captured)
+  r: 'readScroll', R: 'readScroll',  // alias
   Tab: 'status', '0': 'status',      // Call up Status Screen (captured: keypad 0)
   Enter: 'enter',                    // ENTER: pick up / store / open
 };

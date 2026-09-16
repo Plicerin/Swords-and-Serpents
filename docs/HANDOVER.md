@@ -159,6 +159,34 @@ not flee. NOTE for future fidelity work: the manual says the Fortress has
 level 3 may be reading past the real level table; the 14-level descent is a
 designed mode, not ROM truth.
 
+**ROM finding #19 — THE SCROLLS (2026-09-16, owner asked what the object
+next to the start says; Intellijsd + `$59FF` in the disassembly).**
+  * The card-11 objects (types 13-16, four per level — the word's bits 14-15
+    give the kind 0-3) are SCROLLS. **Keypad C = "Read Scroll"** while one is
+    in the 2×2 block: the text is printed on row 5 (GROM cards, fg 0) and
+    the game freezes ~220 frames (`G_0103 = 2`, like the stairs message).
+    ENTER does nothing on them; they are not consumed.
+  * Kinds 0 and 1 read **"ye read, ye move"** and TELEPORT: `$59FF` loads the
+    camera from the per-level table at `$5A17` (kind 0 / kind 1) and puts
+    the MOB at (88,56), so the Prince lands 10 tiles right and 6 below the
+    entry. Table (camera col,row → landing tile): L1 kind0 (98,11)→(108,17)
+    = the kind-1 scroll; kind1 (12,26)→(22,32), two tiles right of the
+    kind-0 scroll. L2: (27,28)→(37,34) beside kind 1 at (36,34); (98,4)→
+    (108,10) = kind 0. L3: (59,60)→(69,2) = kind 1; (34,12)→(44,18) = kind 0.
+    L4: both (97,9)→(107,15) = the treasure at (107,15). Verified live on
+    level 1 in both directions.
+  * Kinds 2 and 3 read **"2 Fireball"** and **"3 Heal"** — the MAGIC-mode
+    Wizard's spell scrolls (keypad 2/3 presumably); no effect for the Prince.
+  * UNVERIFIED: the on-screen colours during the message. The ROM's message
+    ISR leaves the STIC in Color Stack mode (the EXEC path reads `$21`) with
+    the text at fg 0; Intellijsd renders that mode as a blank frame and the
+    stack registers read back [0,3,0,0], which would make black text
+    invisible — so either the readback is wrong or the hardware shows the
+    maze as coloured-squares blocks with the text on the stack colour. The
+    port prints black on the olive floor colour; check on jzIntv/hardware.
+  * Port: keypad C (`c`, with `r` kept as an alias), `SCROLL_TEXT`,
+    `SCROLL_DEST`, the 220-frame freeze via the transition mechanism.
+
 **ROM finding #18 — SOUND (2026-09-16, Intellijsd: PSG register snapshot
 every frame — `ijsd.psg.registers` — across every event, plus a trap on
 the ROM's sound call `L_6932`).** The ROM plays effects through the EXEC's

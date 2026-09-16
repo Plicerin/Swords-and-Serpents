@@ -68,7 +68,25 @@ let inHandValue = 0;             // value of treasures currently carried
 // the Prince vanishes, everything freezes for 226 frames, then the new level
 // is drawn with the Prince at the SAME coordinates.
 const STAIRS_FRAMES = 226;
-let transition: { timer: number; toLevel: number; text: string } | null = null;
+let transition: { timer: number; toLevel: number; text: string; fg: string; bg: string; hidePrince: boolean } | null = null;
+
+// Scrolls (finding #19): GRAM card 11 objects (types 13-16). Keypad C ("Read
+// Scroll") while one is in the 2x2 block prints the scroll's text on row 5
+// for ~220 frames with the game frozen. Types 13/14 (word bits 14-15 = 0/1)
+// read "ye read, ye move" and TELEPORT the Prince: the camera is set from
+// the per-level table at $5A17 and the MOB to (88,56), i.e. the Prince lands
+// 10 tiles right and 6 tiles below the table entry. Types 15/16 read
+// "2 Fireball" / "3 Heal" — the Wizard's spell scrolls, no effect for the
+// Prince.
+const SCROLL_FRAMES = 220;
+const SCROLL_TEXT = ['ye read, ye move', 'ye read, ye move', '2 Fireball', '3 Heal'];
+// $5A17: camera (col,row) per level for scroll kinds 0 and 1.
+const SCROLL_DEST: [number, number][][] = [
+  [[98, 11], [12, 26]],
+  [[27, 28], [98, 4]],
+  [[59, 60], [34, 12]],
+  [[97, 9], [97, 9]],
+];
 
 // Animated-card state (finding #9/#16) — all doors/flames on a level animate in lockstep.
 let doorPhaseKey = '';
@@ -303,6 +321,7 @@ let tickInput: ReturnType<InputHandler['getInput']> = {
 let moveVx = 0;             // velocity latched by the last tick (px/frame)
 let moveVy = 0;
 let stickyBgHit = false;    // the STIC's latched MOB0-vs-background bit
+let readScrollHeld = false; // keypad C edge detection
 // Sound (finding #18): the ROM's PSG register scripts, one voice.
 const sfx = new Sfx();
 let footstepTicks = 0;      // footsteps every 8 ticks while walking
@@ -486,7 +505,7 @@ function spriteHitsTile(sx: number, sy: number, mask: number[], col: number, row
 
 function changeLevel(toLevel: number) {
   // Captured: "Stairs to level N" names the level being entered (1-based).
-  transition = { timer: STAIRS_FRAMES, toLevel, text: `Stairs to level ${toLevel + 1}` };
+  transition = { timer: STAIRS_FRAMES, toLevel, text: `Stairs to level ${toLevel + 1}`, fg: FG[2], bg: '#000000', hidePrince: true };
   fireballs = [];
 }
 
@@ -535,9 +554,10 @@ function update() {
   if (transition) {
     transition.timer--;
     if (transition.timer <= 0) {
+      const changed = transition.toLevel !== state.level;
       state.level = transition.toLevel;
       transition = null;
-      redrawLevel(state.level);
+      if (changed) redrawLevel(state.level);
       state.stunned = 0;
     }
     return;
@@ -818,10 +838,27 @@ function update() {
   // Status screen (captured: keypad 0; shown ~227 frames)
   if (inputState.status && statusTimer === 0 && !state.dead) statusTimer = STATUS_FRAMES;
 
-  // Read scroll
-  if (inputState.readScroll && state.scrolls > 0 && infoTimer < 30) {
-    setInfo('The scroll reads: "The Serpent guards the Crown in the deepest dark..."', 240);
+  // Read scroll (keypad C): the first card-11 tile in the 2x2 block
+  if (inputState.readScroll && !readScrollHeld && !state.dead) {
+    const sx = Math.floor(state.x), sy = Math.floor(state.y);
+    for (const t of tileBlock(sx, sy, world.maze.w, world.maze.h)) {
+      const w = world.maze.grid[t.row][t.col];
+      if (gramCard(w) !== 11) continue;
+      const kind = (w >> 14) & 3;
+      // Black text on the floor colour: the ROM prints fg 0 in Color Stack
+      // mode; the stack colour it lands on could not be verified (Intellijsd
+      // renders that mode blank), so this is the readable choice, flagged.
+      transition = { timer: SCROLL_FRAMES, toLevel: state.level, text: SCROLL_TEXT[kind], fg: FG[0], bg: PALETTE16[11], hidePrince: false };
+      if (kind < 2) {
+        const [cc, cr] = SCROLL_DEST[state.level][kind];
+        state.x = wrap((cc + 10) * TILE, W);
+        state.y = wrap((cr + 6) * TILE, H);
+        moveVx = 0; moveVy = 0; state.pushTimer = 0;
+      }
+      break;
+    }
   }
+  readScrollHeld = inputState.readScroll;
 
 }
 
@@ -978,12 +1015,12 @@ function render(ctx: CanvasRenderingContext2D) {
   if (transition) {
     const u = PLAYER_SCALE;
     const uy = PLAYER_SCALE * PLAYER_ASPECT_SCALE;
-    ctx.fillStyle = '#000000';
+    ctx.fillStyle = transition.bg;
     ctx.fillRect(0, Math.round(5 * TILE * uy), VIEW_W * u, Math.round(TILE * uy));
     for (let i = 0; i < transition.text.length; i++) {
       const card = transition.text.charCodeAt(i) - 32;
       const bytes = Array.from(gromData.subarray(card * 8, card * 8 + 8));
-      drawBitmap(ctx, bytes, 8, (2 + i) * TILE * u, Math.round(5 * TILE * uy), FG[2]);
+      drawBitmap(ctx, bytes, 8, (2 + i) * TILE * u, Math.round(5 * TILE * uy), transition.fg);
     }
   }
 
@@ -1113,7 +1150,7 @@ function render(ctx: CanvasRenderingContext2D) {
   }
 
   // --- Player (always at screen centre — the world scrolls around him) ---
-  if (transition) {
+  if (transition && transition.hidePrince) {
     // MOB 0 is hidden for the whole stairs message (captured).
   } else if (state.dead) {
     // Captured death script: 23-tick burst in colours 9-15 (one random
@@ -1141,7 +1178,7 @@ function render(ctx: CanvasRenderingContext2D) {
 
   // Sword — the player's own sword MOB. Captured: it cycles through the
   // palette every frame, always (a rainbow shimmer), independent of state.
-  if (!state.dead && !transition) {
+  if (!state.dead && !(transition && transition.hidePrince)) {
     drawSword(ctx, px, py, state.faceDx, state.faceDy, SWORD_CYCLE[frameCount % SWORD_CYCLE.length]);
   }
 
