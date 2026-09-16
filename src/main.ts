@@ -9,11 +9,11 @@ import {
   CARD_CHEST, CARD_MARKER, CARD_LANTERN, CARD_KEY, WORD_DOWN_STAIRS, WORD_TAKEN,
   MAX_IN_HAND,
 } from './world/objects';
-import { doorCards } from './world/doors';
+import { animatedCards, DOOR_PERIOD_TICKS } from './world/doors';
 import { quadrantCode, pushVector, PUSH_FRAMES } from './world/classifier';
 import {
   Enemy, Fireball, GameItem, ItemKind,
-  createEnemy, createItem, updateEnemy, moveEnemy, resolveContact,
+  createEnemy, updateEnemy, moveEnemy, resolveContact,
   injurePlayer, tickPlayerCombat, isGameOver,
   SERPENT_W, SERPENT_H,
   FIREBALL_FRAMES, SPAWN_EFFECT, ITEM_SPRITES,
@@ -68,8 +68,7 @@ let inHandValue = 0;             // value of treasures currently carried
 const STAIRS_FRAMES = 226;
 let transition: { timer: number; toLevel: number; text: string } | null = null;
 
-// Chomping-door clock (finding #9) — all doors on a level chomp in lockstep.
-let doorClock = 0;
+// Animated-card state (finding #9/#16) — all doors/flames on a level animate in lockstep.
 let doorPhaseKey = '';
 
 const PLAYER_SCALE = 4;
@@ -232,31 +231,21 @@ function findWalkableNear(li: number, x: number, y: number): { x: number; y: num
   return { x: wrap(x, world.pixelWidth), y: wrap(y, world.pixelHeight) };
 }
 
-const FLOOR_WORD = 0x1603;
-let serpentLair: { x: number; y: number } | null = null;
+// The Sinister Serpent (finding #16): GRAM cards 24-33 baked into level 3's
+// map at (67-72, 22-24) inside the ziggurat. Captured: it is INERT — walking
+// through it and holding the sword on it does nothing, and the classifier
+// ignores its cards. Its chamber's only opening, the row-23 corridor, holds
+// three animated flame tiles (card 0) between wall cards whose push codes
+// shove the Prince WEST while his top-left tile is column 63 and EAST once
+// it is column 64 — and contact with the flames' pixels at x=512 makes
+// column 64 unreachable. No key, spell or item was found in 1-player mode
+// that removes the flames; no Crown object exists in the ROM's tables. The
+// port therefore keeps the Serpent as the background it is and models no
+// win: the quest is the treasure score.
 
-// The Serpent is baked into level 3's map as background tiles (cards 24-33).
-// Strip them from the grid (so the dead Serpent leaves floor behind) and
-// remember where it was — the live entity is drawn at that exact spot.
-function extractSerpentLair(): void {
-  serpentLair = null;
-  const m = mazes[mazes.length - 1];
-  for (let r = 0; r < m.h; r++) {
-    for (let c = 0; c < m.w; c++) {
-      const w = m.grid[r][c];
-      const card = (w >> 3) & 0x3F;
-      if ((w & 0x800) && card >= 24 && card <= 33) {
-        if (card === 27) serpentLair = { x: c * TILE, y: (r - 1) * TILE };
-        m.grid[r][c] = FLOOR_WORD;
-      }
-    }
-  }
-}
-
-// Enemies are still scattered (spawn placement not captured yet); every
-// item, key, chest, lantern and stairway comes from the ROM's object tables
-// and is already baked into the captured tile grids at its real position.
-// The Serpent and the Crown of Kings wait on the last level.
+// Every item, key, chest, lantern and stairway comes from the ROM's object
+// tables and is already baked into the captured tile grids at its real
+// position; knights and sorcerers are spawned by spawnDirector.
 function populateWorld(rand: () => number) {
   enemiesByLevel = [];
   itemsByLevel = [];
@@ -280,14 +269,6 @@ function populateWorld(rand: () => number) {
     // Knights and sorcerers are not pre-placed: the ROM spawns them around
     // the Prince as the game runs (see spawnDirector).
     void m; void rand;
-
-    if (i === mazes.length - 1 && serpentLair) {
-      // The Serpent's lair at its REAL position from the level-3 map data
-      // (the ziggurat chamber); the Crown of Kings lies behind its tail.
-      enemies.push(createEnemy(serpentLair.x, serpentLair.y, 'serpent'));
-      const cpos = findWalkableNear(i, serpentLair.x + SERPENT_W + 16, serpentLair.y + 8);
-      items.push(createItem(cpos.x, cpos.y, 'crown'));
-    }
 
     enemiesByLevel.push(enemies);
     itemsByLevel.push(items);
@@ -437,13 +418,18 @@ function redrawLevel(level: number) {
   applyDoorPhase(level, true);
 }
 
+// Animated GRAM cards (flames = card 0, door jaws = cards 1/2) follow the
+// game-tick clock; repaint their tiles only when a bitmap actually changes.
 function applyDoorPhase(level: number, force = false) {
-  const { c1, c2 } = doorCards(doorClock);
-  const key = c1.join() + '|' + c2.join();
+  const { c0, c1, c2 } = animatedCards(tickCount);
+  const key = c0.join() + '|' + c1.join() + '|' + c2.join();
   if (!force && key === doorPhaseKey) return;
+  const prevKey = doorPhaseKey;
   doorPhaseKey = key;
-  levels[level].setCardBitmap(1, c1);
-  levels[level].setCardBitmap(2, c2);
+  const [p0, p1, p2] = prevKey.split('|');
+  if (force || p0 !== c0.join()) levels[level].setCardBitmap(0, c0);
+  if (force || p1 !== c1.join()) levels[level].setCardBitmap(1, c1);
+  if (force || p2 !== c2.join()) levels[level].setCardBitmap(2, c2);
 }
 
 // Player MOB as an 8×8 world-pixel mask (the 8×16 MOB rows are half-height).
@@ -516,7 +502,6 @@ function initGame() {
   state.x = entry0.x;
   state.y = entry0.y;
   transition = null;
-  doorClock = 0;
   doorPhaseKey = '';
   applyDoorPhase(0, true);
 
@@ -545,8 +530,7 @@ function update() {
     return;
   }
 
-  // Chomping doors: both GRAM jaw cards follow one frame clock (finding #9).
-  doorClock++;
+  // Animated GRAM cards (flames, door jaws) step with the game tick (#9/#16).
   applyDoorPhase(state.level);
 
   const world = lw();
@@ -1157,7 +1141,7 @@ function render(ctx: CanvasRenderingContext2D) {
     const alpha = Math.max(0, 1 - (frameCount / 600));
     ctx.fillStyle = `rgba(200,200,200,${alpha * 0.5})`;
     ctx.font = '10px monospace';
-    ctx.fillText('WASD move | walk INTO foes to strike | ENTER picks up / opens the stairs | slay the Serpent', 8, scaledH - 8);
+    ctx.fillText('WASD move | walk INTO foes to strike | ENTER picks up / opens the stairs | store treasures in the chest', 8, scaledH - 8);
   }
 
   const debugEl = document.getElementById('debug');
@@ -1194,7 +1178,6 @@ async function main() {
   gramData = assets.gram;
   gromData = assets.grom;
   mazes = assets.mazes;
-  extractSerpentLair();
 
   levels = mazes.map(m => new LevelWorld(m));
   for (const world of levels) world.build(gramData, assets.grom);
@@ -1230,7 +1213,8 @@ async function main() {
     marker: () => objectTables.levels[state.level].find(o => o.type === TYPE_MARKER) ?? null,
     upStairs: () => objectTables.levels[state.level].find(o => o.type === TYPE_UP_STAIRS) ?? null,
     tileWord: (col: number, row: number) => lw().maze.grid[row]?.[col],
-    doorClock: () => doorClock,
+    doorClock: () => tickCount % DOOR_PERIOD_TICKS,
+    doorPeriod: () => DOOR_PERIOD_TICKS,
     transition: () => transition,
     ticks: () => tickCount,
     facing: (dx: number, dy: number, alt = false) => facingFrame(dx, dy, alt),

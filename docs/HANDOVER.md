@@ -159,6 +159,46 @@ not flee. NOTE for future fidelity work: the manual says the Fortress has
 level 3 may be reading past the real level table; the 14-level descent is a
 designed mode, not ROM truth.
 
+**ROM finding #16 — LEVEL 3: THE SERPENT IS INERT, ITS FIRE IS THE GATE,
+NO CROWN, NO WIN IN 1-PLAYER MODE (2026-09-15/16, Intellijsd; descended
+via poked stairs tiles, walked to the ziggurat).**
+  * The ziggurat (cols 64-95, rows 16-31 of level 3) is a sealed chamber
+    whose ONLY opening is the row-23 corridor from the west: three flame
+    tiles (card 0, `$1E02`, red) at (64-66,23), then the Serpent's neck
+    (card 27) at (67,23), its body (24-33) at (67-72, 22-24), and three
+    treasures behind it — cards 17/15/16 (types 2/0/1) at (77,23), (79,23),
+    (81,23). Level 3's object table has no key, no marker and no Crown; no
+    "crown" card exists anywhere in the ROM tables.
+  * **The Serpent does nothing.** Its cards are not in the classifier, so
+    walking into/through it gives no code, no hit, no sound; the sword on it
+    for 100+ frames changes nothing; its GRAM never changes. It is scenery.
+  * **The flames are the gate, through wall geometry alone.** With the
+    sprite's top-left tile at column 63 the 2×2 block holds (63,24)=card 4
+    and (64,24)=card 3 → code `$A` (push west+north; or `2` when straddling
+    row 22); at column ≥64 the block holds (64/65,24)=card 3,3 → code `3`
+    then `1` → push EAST. Any flame pixel touched at x=512 fires the west
+    push first, so the Prince can never reach column 64 by walking (max x =
+    504); poked to x=520 he is dragged east through the neck into the body
+    unharmed and can walk the chamber. No 1-player mechanism was found that
+    removes the flames: keypad 0-9/C/E/L/T/R do nothing but the status
+    screen (0), there is no key, the lantern only cures.
+  * Title modes: 1 = "1 PLAYER", 2 = "2 PLAYER", 3 = "2 PLAYER/MAGIC" — the
+    Wizard (slot 2, light-blue, script `$5B5E`, the bitmap the port used to
+    call the "serpent sprite" `$5C9E`) exists only in modes 2/3 on the OTHER
+    controller; his spells were not found by single key presses either.
+    Whether the Wizard can quench the fire is the open question — outside a
+    1-player port's scope.
+  * Card 0 (the flames, also the 21 "torches" on level 1) animates: 4 ROM
+    frames `$62B0/$62B8/$62C0/$62C8`, countdown 4 stepped by 2 → new frame
+    every 2 animation steps. All animated-card countdowns (`$02F1-$02F4`)
+    step together every SECOND game tick (4/6/8-frame intervals), which
+    makes a door phase 11 steps = 22 ticks and a flame frame 4 ticks.
+  * Port: the Serpent stays in the map as background (no entity, no Crown,
+    no win screen — `gameWon` can no longer become true); `src/world/
+    doors.ts` now serves cards 0/1/2 from the tick clock (`animatedCards`)
+    and the flames collide/push exactly as measured (max x 504 from the
+    west, eastward drag inside). Game-select modes 2/3 are not ported.
+
 **ROM finding #15 — SORCERER IMMUNITY, SWORD PARRY, KNIGHT DEATH (2026-09-15,
 Intellijsd, collision-register capture).**
   * The Prince's sword MOB sat on the Red Sorcerer's body (`$0019` bit 2
