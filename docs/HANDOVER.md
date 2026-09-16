@@ -162,6 +162,22 @@ designed mode, not ROM truth.
 **Gamepad (2026-09-16, port feature, not a ROM finding):** the Gamepad API is polled every input snapshot (src/engine/input.ts): left stick or d-pad = disc (8-way, 0.4 dead zone), A/Start = ENTER, B = back up, X = read scroll (keypad C), Y = status (keypad 0); the keyboard wins for the disc while any direction key is held. Verified headless with a stubbed 
 avigator.getGamepads. Audio still needs one key press or click to unlock (browser autoplay policy; a pad press does not count).
 
+**ROM finding #20 — WHAT THE MESSAGE SCREENS LOOK LIKE (2026-09-16, $59A4/
+$59CF in the disassembly, confirmed from live BACKTAB/STIC state).** Both
+the stairs message and a scroll's text go through L_59CF: it X_FILL_ZEROs
+the ENTIRE BACKTAB (240 words), prints the text at $0264 + 2 (row 5), swaps
+the ISR for $59A4, sets G_0104 = $E1 (225 frames) and busy-waits. The
+message ISR reads $21 (→ **Color Stack mode**), zeroes HDLY/VDLY and all
+eight MOB X registers (every sprite off), counts G_0104 down and on 0
+writes $21 (FG/BG mode back) and restores the normal ISR. So the maze and
+every figure VANISH for the message: the screen is the colour stack's
+first entry (0 = black) — or, when the caller passes R3 = 0 (scrolls), the
+first BACKTAB word is set to $2000 (advance the stack) and the whole
+screen becomes stack[1] = colour 3, **tan**. Stairs = red text (fg 2) on
+black; scroll = black text (fg 0) on tan; text from column 2 of row 5.
+Corrects the #10 note that the old screen stayed under the stairs message
+(only row 5 had been inspected). Port: the transition renders exactly this.
+
 **ROM finding #19 — THE SCROLLS (2026-09-16, owner asked what the object
 next to the start says; Intellijsd + `$59FF` in the disassembly).**
   * The card-11 objects (types 13-16, four per level — the word's bits 14-15

@@ -845,10 +845,9 @@ function update() {
       const w = world.maze.grid[t.row][t.col];
       if (gramCard(w) !== 11) continue;
       const kind = (w >> 14) & 3;
-      // Black text on the floor colour: the ROM prints fg 0 in Color Stack
-      // mode; the stack colour it lands on could not be verified (Intellijsd
-      // renders that mode blank), so this is the readable choice, flagged.
-      transition = { timer: SCROLL_FRAMES, toLevel: state.level, text: SCROLL_TEXT[kind], fg: FG[0], bg: PALETTE16[11], hidePrince: false };
+      // Captured: the scroll screen is the colour stack's second entry (3 =
+      // tan) with the text in fg 0 — black on tan.
+      transition = { timer: SCROLL_FRAMES, toLevel: state.level, text: SCROLL_TEXT[kind], fg: FG[0], bg: PALETTE16[3], hidePrince: true };
       if (kind < 2) {
         const [cc, cr] = SCROLL_DEST[state.level][kind];
         state.x = wrap((cc + 10) * TILE, W);
@@ -1009,19 +1008,22 @@ function render(ctx: CanvasRenderingContext2D) {
     drawBitmap(ctx, ITEM_SPRITES[item.kind], 8, toScreenX(item.x), toScreenY(item.y), color);
   }
 
-  // --- Stairs transition (captured): row 5 of the frozen screen is cleared
-  //     to black and "Stairs to level N" printed in RED from column 2; the
-  //     Prince is hidden. Nothing else changes for 226 frames. ---
+  // --- Message screens (captured, findings #10/#19/#20): L_59CF clears the
+  //     WHOLE BACKTAB, every MOB is switched off and the STIC runs in Color
+  //     Stack mode for 225 frames — so the maze and everyone in it vanish.
+  //     Stairs: black screen, red text. Scroll: the first tile advances the
+  //     colour stack → a tan screen, black text. Text from column 2, row 5. ---
   if (transition) {
     const u = PLAYER_SCALE;
     const uy = PLAYER_SCALE * PLAYER_ASPECT_SCALE;
     ctx.fillStyle = transition.bg;
-    ctx.fillRect(0, Math.round(5 * TILE * uy), VIEW_W * u, Math.round(TILE * uy));
+    ctx.fillRect(0, 0, scaledW, scaledH);
     for (let i = 0; i < transition.text.length; i++) {
       const card = transition.text.charCodeAt(i) - 32;
       const bytes = Array.from(gromData.subarray(card * 8, card * 8 + 8));
       drawBitmap(ctx, bytes, 8, (2 + i) * TILE * u, Math.round(5 * TILE * uy), transition.fg);
     }
+    return;
   }
 
   // --- Enemies ---
@@ -1150,9 +1152,7 @@ function render(ctx: CanvasRenderingContext2D) {
   }
 
   // --- Player (always at screen centre — the world scrolls around him) ---
-  if (transition && transition.hidePrince) {
-    // MOB 0 is hidden for the whole stairs message (captured).
-  } else if (state.dead) {
+  if (state.dead) {
     // Captured death script: 23-tick burst in colours 9-15 (one random
     // colour per tick), then the twinkling remains in colours 0-7.
     const h = ((tickCount * 2654435761) >>> 0) % 16;
@@ -1178,7 +1178,7 @@ function render(ctx: CanvasRenderingContext2D) {
 
   // Sword — the player's own sword MOB. Captured: it cycles through the
   // palette every frame, always (a rainbow shimmer), independent of state.
-  if (!state.dead && !(transition && transition.hidePrince)) {
+  if (!state.dead) {
     drawSword(ctx, px, py, state.faceDx, state.faceDy, SWORD_CYCLE[frameCount % SWORD_CYCLE.length]);
   }
 
