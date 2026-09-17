@@ -155,6 +155,20 @@ function aimKnight(enemy: Enemy, player: PlayerState): void {
   enemy.swingClock = 0;               // captured: the sweep restarts at "main" on every re-aim
 }
 const HIT_GRACE_TICKS = 10;        // ~30 frames
+// Captured (finding #23): the Wizard's FREEZE bolt zeroes a knight's velocity
+// and loads its re-aim countdown ($0351, normally 90 frames) with 240 frames;
+// the sword sweep carries on and the knight re-aims when it runs out.
+export const FREEZE_TICKS = 80;
+export function freezeKnight(enemy: Enemy): void {
+  enemy.vx = 0;
+  enemy.vy = 0;
+  enemy.aimTimer = FREEZE_TICKS;
+}
+/** A knight killed by something other than the sword (the Wizard's FIREBALL). */
+export function slayEnemy(enemy: Enemy): void {
+  enemy.hp = 0;
+  enemy.dying = KNIGHT_DEATH_TICKS;
+}
 // Captured (finding #15): a slain knight runs the same $5B94 burst as the
 // Prince — dot 8 ticks, sparkle 8, big burst 2-3 — with a random colour 0-7
 // per tick, then despawns (19 ticks after the killing tick).
@@ -342,7 +356,7 @@ function swordHitsBody(
 // The knight's sword MOB (8×16, half-height rows) in its current pose against
 // an 8×8 body box — per-pixel on the sword side, which is what matters for a
 // 1-px-thick blade.
-function knightSwordHitsBox(enemy: Enemy, bx: number, by: number): boolean {
+export function knightSwordHitsBox(enemy: Enemy, bx: number, by: number): boolean {
   const pose = KNIGHT_POSES[knightPoseSector(enemy)];
   const bm = SWORD_BITMAPS[pose.sword];
   const ox = enemy.x + pose.sx;

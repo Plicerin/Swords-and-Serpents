@@ -25,7 +25,7 @@ The upstream page exposes no globals. `intellijsd.html` here adds
 | `read(addr)` | read a word (honours cart windows) |
 | `snapshot()` | copy of the whole 64K word space |
 | `runFrames(n)` | run exactly n frames (VBLANK IRQ + 14934 cycles each), synchronous |
-| `setPad(sector, keys)` | controller 1 — disc sector 0..15 (0=N,2=NE,4=E,6=SE,8=S,10=SW,12=W,14=NW) or `null`; keys from `'0'..'9','C','E','L','T','R'` |
+| `setPad(sector, keys, which = 0)` | disc sector 0..15 (0=N,2=NE,4=E,6=SE,8=S,10=SW,12=W,14=NW) or `null`; keys from `'0'..'9','C','E','L','T','R'`; `which` 0 = right controller (the Prince), 1 = left (the Wizard in games 2/3) |
 | `loadBytes(kind, u8)` | load `'exec' | 'grom' | 'cart'` from a Uint8Array |
 | `discMasks, controllerMasks, discNames` | the port-byte tables |
 

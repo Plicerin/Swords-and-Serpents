@@ -10,6 +10,11 @@ import {
   MAX_IN_HAND,
 } from './world/objects';
 import { animatedCards, DOOR_PERIOD_TICKS } from './world/doors';
+import {
+  WizardState, createWizard, wizardBrain, boltBitmap, WIZARD_FRAMES,
+  WIZARD_SPEED, WIZARD_BACK_SPEED, WIZARD_DIAG, BOLT_SPEED, BOLT_DIAG, FAST_FEET_FRAMES,
+  INVINCIBLE_FRAMES, INVINC_WIZ_FRAMES, SPELL_SCROLL_USES, SPELL_NAMES,
+} from './engine/wizard';
 import { quadrantCode, pushVector, PUSH_FRAMES } from './world/classifier';
 import { Sfx } from './audio/sfx';
 import { renderRms } from './audio/psg';
@@ -20,7 +25,7 @@ import {
   injurePlayer, tickPlayerCombat, isGameOver,
   SERPENT_W, SERPENT_H,
   FIREBALL_FRAMES, SPAWN_EFFECT, ITEM_SPRITES,
-  KNIGHT_POSES, SWORD_BITMAPS, knightPoseSector,
+  KNIGHT_POSES, SWORD_BITMAPS, knightPoseSector, knightSwordHitsBox, freezeKnight, slayEnemy,
   SORCERER_BODY, SORCERER_MATERIALISE, sorcererAppearPose, sorcererVanishPose,
   DEATH_BURST, deathBurstPose, FALLEN_POSES, fallenPose,
   playerSwordHitsBox, knightDeathPose,
@@ -33,6 +38,13 @@ let gameStarted = false;
 // chosen and ENTER pressed; ENTER alone does nothing, the disc does nothing.
 let atTitle = true;
 let titleSelection = 0;
+// Game 1 = the Prince alone; games 2 and 3 add Nilrem the Wizard on the left
+// controller (finding #23). cpuWizard is a port option: the CPU drives him.
+let gameMode = 1;
+let wiz: WizardState;
+let cpuWizard = false;
+let tickInput2: ReturnType<InputHandler['getInput2']> = { dx: 0, dy: 0, backUp: false, enter: false, readScroll: false, status: false, spell: null };
+let readScrollHeld2 = false;
 let gameWon = false;
 let playerSprites: number[][] = [];
 let frameCount = 0;
@@ -154,9 +166,11 @@ const PALETTE16 = PALETTE.map(([r, g, b]) => `rgb(${r},${g},${b})`);
 const FG = PALETTE16.slice(0, 8);
 // Captured colour sequences (fg index per frame) — see HANDOVER finding #7.
 // Player body while stunned (samples every ~2 frames over the 40-frame stun):
-const STUN_CYCLE = [5, 4, 2, 1, 4, 5, 0, 1, 0, 3, 7, 5, 0, 4, 2, 1, 3, 4, 6, 5, 2, 3, 4].map(i => FG[i]);
+const STUN_CYCLE_IDX = [5, 4, 2, 1, 4, 5, 0, 1, 0, 3, 7, 5, 0, 4, 2, 1, 3, 4, 6, 5, 2, 3, 4];
+const STUN_CYCLE = STUN_CYCLE_IDX.map(i => FG[i]);
 // Player sword, every frame, always:
-const SWORD_CYCLE = [6, 1, 2, 4, 6, 1, 0, 4, 3, 2, 3, 0, 2, 3, 6, 5, 0, 1, 7, 2, 7, 4, 1, 3].map(i => FG[i]);
+const SWORD_CYCLE_IDX = [6, 1, 2, 4, 6, 1, 0, 4, 3, 2, 3, 0, 2, 3, 6, 5, 0, 1, 7, 2, 7, 4, 1, 3];
+const SWORD_CYCLE = SWORD_CYCLE_IDX.map(i => FG[i]);
 
 function facingFrame(dx: number, dy: number, knightWalk = false): { frame: number; mirror: boolean; flip: boolean } {
   const ax = Math.abs(dx);
@@ -380,7 +394,8 @@ function spawnDirector() {
   const n = 5 - state.level;
   if (Math.floor(rng() * n) !== 0) return;
   const foes = enemiesByLevel[state.level];
-  if (foes.filter(e => e.alive && e.type !== 'serpent').length >= MAX_LIVE_FOES) return;
+  // Games 2/3: MOBs 2/3 are the Wizard's, leaving two foe slots (captured).
+  if (foes.filter(e => e.alive && e.type !== 'serpent').length >= (wiz.active ? 2 : MAX_LIVE_FOES)) return;
   const world = lw();
   if (Math.floor(rng() * n) === 0) {
     const a = Math.floor(rng() * 16) * Math.PI / 8;
@@ -511,6 +526,8 @@ function changeLevel(toLevel: number) {
   // Captured: "Stairs to level N" names the level being entered (1-based).
   transition = { timer: STAIRS_FRAMES, toLevel, text: `Stairs to level ${toLevel + 1}`, fg: FG[2], bg: '#000000', hidePrince: true };
   fireballs = [];
+  // Captured: the Wizard keeps his screen position on the new level; a bolt in flight is gone.
+  if (wiz) { wiz.bolt = null; wiz.activeSpell = 0; }
 }
 
 function initGame() {
@@ -537,6 +554,9 @@ function initGame() {
   state.level = 0;
   state.x = entry0.x;
   state.y = entry0.y;
+  const cpuBox = document.getElementById('cpuwiz') as HTMLInputElement | null;
+  cpuWizard = (cpuBox?.checked ?? false) || new URLSearchParams(location.search).get('cpuwiz') === '1';
+  wiz = createWizard(gameMode, state.x, state.y, cpuWizard);
   transition = null;
   doorPhaseKey = '';
   applyDoorPhase(0, true);
@@ -551,7 +571,7 @@ function update() {
   if (atTitle) {
     const inp = input.getInput();
     if (inp.select) titleSelection = inp.select;
-    if (inp.enter && titleSelection) { atTitle = false; initGame(); }
+    if (inp.enter && titleSelection) { atTitle = false; gameMode = titleSelection; initGame(); }
     return;
   }
   frameCount++;
@@ -587,6 +607,7 @@ function update() {
   if (doTick) {
     tickCount++;
     tickInput = input.getInput();   // the controller is only read once per tick
+    tickInput2 = wizardInput();     // the left controller (or the CPU brain)
   }
   const inputState = tickInput;
 
@@ -604,7 +625,7 @@ function update() {
   if (doTick) {
     moveVx = 0;
     moveVy = 0;
-    if (!state.dead && state.stunned === 0 && state.pushTimer === 0) {
+    if (!state.dead && state.stunned === 0 && state.pushTimer === 0 && wiz.invincible === 0) {
       let mvx = 0;
       let mvy = 0;
       if (inputState.backUp && (state.faceDx !== 0 || state.faceDy !== 0)) {
@@ -621,8 +642,11 @@ function update() {
         else if (inputState.dy > 0) state.facing = 'down';
       }
       if (mvx !== 0 && mvy !== 0) { mvx *= 0.7071; mvy *= 0.7071; }
-      moveVx = mvx * MOVE_SPEED;
-      moveVy = mvy * MOVE_SPEED;
+      // FAST FEET (finding #23): the Prince's speed word goes 50 → 126; measured
+      // 2 px per 2 frames against the normal 1 — twice as fast, as the manual says.
+      const speed = MOVE_SPEED * (wiz.fastFeet > 0 ? 2 : 1);
+      moveVx = mvx * speed;
+      moveVy = mvy * speed;
     }
   }
   if (state.pushTimer > 0) {
@@ -661,7 +685,7 @@ function update() {
       } else if (code !== 0) {
         if (code >= 0x40) {
           // Door contact: the same hit as a knight's sword, then the push.
-          if (state.stunned === 0) {
+          if (state.stunned === 0 && wiz.invincible === 0) {
             const wasGray = state.injured;
             injurePlayer(state);
             sfx.play(state.dead ? DEATH : HIT);
@@ -697,7 +721,14 @@ function update() {
 
     // Present the player at their nearest torus representation.
     const shim: PlayerState = { ...state, x: enemy.x + dx, y: enemy.y + dy };
-    const shot = updateEnemy(enemy, shim, walkFn);
+    // Captured (finding #23): a knight re-aims at whichever of the two
+    // players is nearer; sorcerers only ever see the Prince.
+    let target = shim;
+    if (enemy.type === 'phantom_knight' && wizardTargetable()) {
+      const wdx = wrapDelta(enemy.x, wiz.p.x, W), wdy = wrapDelta(enemy.y, wiz.p.y, H);
+      if (Math.hypot(wdx, wdy) < Math.hypot(dx, dy)) target = { ...wiz.p, x: enemy.x + wdx, y: enemy.y + wdy };
+    }
+    const shot = updateEnemy(enemy, target, walkFn);
     // The materialise whoosh plays on the first tick of every appearance (spawn or chained).
     if (enemy.type === 'sorcerer' && enemy.phase === 'appearing' && enemy.phaseTimer === 1) sfx.play(SORCERER_APPEAR);
     enemy.x = wrap(enemy.x, W);
@@ -706,6 +737,12 @@ function update() {
       shot.x = wrap(shot.x, W);
       shot.y = wrap(shot.y, H);
       fireballs.push(shot);
+    }
+
+    // Knight sword pixels on the Wizard's body: the same injury as the Prince's.
+    if (enemy.type === 'phantom_knight' && enemy.dying === 0 && wizardTargetable() && wiz.p.stunned === 0 && wiz.invincWiz === 0) {
+      const wdx = wrapDelta(enemy.x, wiz.p.x, W), wdy = wrapDelta(enemy.y, wiz.p.y, H);
+      if (knightSwordHitsBox(enemy, enemy.x + wdx, enemy.y + wdy)) injureWizard();
     }
 
     const event = resolveContact(shim, enemy);
@@ -719,7 +756,7 @@ function update() {
     } else if (event === 'player_strikes') {
       setInfo('You wound the Serpent!', 90);
     } else if (event === 'player_injured') {
-      if (state.stunned === 0 && !state.dead) {
+      if (state.stunned === 0 && !state.dead && wiz.invincible === 0) {
         const wasGray = state.injured;
         injurePlayer(state);
         sfx.play(state.dead ? DEATH : HIT);
@@ -744,9 +781,15 @@ function update() {
       fb.alive = false;
       continue;
     }
+    // The Wizard can be burned by a fireburst meant for the Prince (manual p.8, captured).
+    if (wizardTargetable() && tDist(state.level, fb.x, fb.y, wiz.p.x, wiz.p.y) < 5) {
+      fb.alive = false;
+      if (wiz.p.stunned === 0 && wiz.invincWiz === 0) injureWizard();
+      continue;
+    }
     if (!state.dead && tDist(state.level, fb.x, fb.y, state.x, state.y) < 5) {
       fb.alive = false;
-      if (state.stunned === 0) {
+      if (state.stunned === 0 && wiz.invincible === 0) {
         injurePlayer(state);
         sfx.play(DEATH);
         setInfo(state.dead ? 'Burned down...' : 'Scorched by a fireball!', 90);
@@ -754,6 +797,9 @@ function update() {
     }
   }
   fireballs = fireballs.filter(fb => fb.alive);
+
+  // --- Nilrem the Wizard (games 2/3, finding #23) ---
+  if (wiz.active) updateWizard(doTick);
 
   // --- Sound (finding #18) ---
   if (doTick) {
@@ -763,7 +809,7 @@ function update() {
   sfx.tick(fireballFlight);
 
   // Captured: the moment the Prince falls, every foe and fireball vanishes.
-  if (state.dead && enemiesByLevel[state.level].some(e => e.alive && e.type !== 'serpent')) clearFoes();
+  if ((state.dead || (wiz.active && wiz.p.dead)) && enemiesByLevel[state.level].some(e => e.alive && e.type !== 'serpent')) clearFoes();
 
   // --- Death effects ---
   for (const fx of deathFx) fx.t--;
@@ -799,16 +845,20 @@ function update() {
     }
   }
 
-  // --- ENTER on a ROM object (L_63F5): first card 12..22 in the 2×2 block ---
-  if (wantPickup) {
-    const sx = Math.floor(state.x);
-    const sy = Math.floor(state.y);
+  // --- ENTER on a ROM object (L_63F5): first card 12..22 in the 2×2 block.
+  //     The Wizard's ENTER does the same (captured: shared inventory). ---
+  const wizDiscReleased = tickInput2.dx === 0 && tickInput2.dy === 0;
+  const wizWantsPickup = wiz.active && wizardTargetable() && tickInput2.enter && wizDiscReleased && wiz.p.stunned === 0;
+  const enterActor = wantPickup ? state : wizWantsPickup ? wiz.p : null;
+  if (enterActor) {
+    const sx = Math.floor(enterActor.x);
+    const sy = Math.floor(enterActor.y);
     const block = tileBlock(sx, sy, world.maze.w, world.maze.h);
     for (const t of block) {
       const card = gramCard(world.maze.grid[t.row][t.col]);
       if (card < CARD_CHEST || card > CARD_KEY) continue;
       if (card === CARD_CHEST) {
-        storeTreasures();
+        storeTreasures(enterActor);
       } else if (card === CARD_MARKER) {
         // Locked stairway: with this level's key, the DOWN stairs appear in
         // the BACKTAB word after the marker — one column to the right.
@@ -824,6 +874,7 @@ function update() {
       } else {
         const type = pickupType(card);
         if (type !== TYPE_KEY && state.potions >= MAX_IN_HAND) break; // L_643C: refused
+        enterActor.stunned = PICKUP_LOCK_TICKS;
         world.setWord(t.col, t.row, WORD_TAKEN);
         objState.taken[type] = true;
         objState.present[type] = false;
@@ -831,7 +882,6 @@ function update() {
         for (const o of objectTables.levels[state.level]) {
           if (o.type === type) markStale(state.level, o.col, o.row);
         }
-        state.stunned = PICKUP_LOCK_TICKS;
         pickupFlash = 0;
         if (type === TYPE_KEY) {
           setInfo('Found the key!', 90);
@@ -846,11 +896,16 @@ function update() {
   }
 
   // Status screen (captured: keypad 0; shown ~227 frames)
-  if (inputState.status && statusTimer === 0 && !state.dead) statusTimer = STATUS_FRAMES;
+  if ((inputState.status || (wiz.active && tickInput2.status)) && statusTimer === 0 && !state.dead) statusTimer = STATUS_FRAMES;
 
-  // Read scroll (keypad C): the first card-11 tile in the 2x2 block
-  if (inputState.readScroll && !readScrollHeld && !state.dead) {
-    const sx = Math.floor(state.x), sy = Math.floor(state.y);
+  // Read scroll (keypad C): the first card-11 tile in the 2x2 block. Captured
+  // (finding #23): the Wizard reads too — a spell scroll then SETS that
+  // spell's uses to 10 (the Prince only gets the text); a transport scroll
+  // moves the camera, both keep their screen positions.
+  const wizReads = wiz.active && wizardTargetable() && tickInput2.readScroll && !readScrollHeld2;
+  const reader = (inputState.readScroll && !readScrollHeld && !state.dead) ? state : wizReads ? wiz.p : null;
+  if (reader) {
+    const sx = Math.floor(reader.x), sy = Math.floor(reader.y);
     for (const t of tileBlock(sx, sy, world.maze.w, world.maze.h)) {
       const w = world.maze.grid[t.row][t.col];
       if (gramCard(w) !== 11) continue;
@@ -860,21 +915,273 @@ function update() {
       transition = { timer: SCROLL_FRAMES, toLevel: state.level, text: SCROLL_TEXT[kind], fg: FG[0], bg: PALETTE16[3], hidePrince: true };
       if (kind < 2) {
         const [cc, cr] = SCROLL_DEST[state.level][kind];
-        state.x = wrap((cc + 10) * TILE, W);
-        state.y = wrap((cr + 6) * TILE, H);
-        moveVx = 0; moveVy = 0; state.pushTimer = 0;
+        movePair(wrap((cc + 10) * TILE, W), wrap((cr + 6) * TILE, H));
+      } else if (reader === wiz.p) {
+        wiz.spells[kind] = SPELL_SCROLL_USES;
+        setInfo(`Nilrem acquires ${SPELL_NAMES[kind]} (10 uses)`, 120);
       }
       break;
     }
   }
   readScrollHeld = inputState.readScroll;
+  readScrollHeld2 = tickInput2.readScroll;
 
 }
 
+// ===========================================================================
+// Nilrem the Wizard (games 2 and 3) — ROM finding #23. See src/engine/wizard.ts
+// for the captured facts; this is the per-frame/per-tick machinery.
+
+// Alive, on screen and in play: a knight can target him, a sword can hit him.
+function wizardTargetable(): boolean {
+  return wiz.active && !wiz.gone && !wiz.parked && !wiz.p.dead;
+}
+
+// The left controller, or the port's CPU brain standing in for it.
+function wizardInput(): ReturnType<InputHandler['getInput2']> {
+  const real = input.getInput2();
+  if (!wiz.cpu) return real;
+  const world = lw();
+  const foes = enemiesByLevel[state.level].map(e => ({ x: e.x, y: e.y, type: e.type, alive: e.alive, dying: e.dying, frozen: e.type === 'phantom_knight' && e.vx === 0 && e.vy === 0 ? 1 : 0 }));
+  const out = wizardBrain({
+    prince: state, princeMoving: state.moving, wizard: wiz, foes,
+    delta: (a, b, size) => wrapDelta(b, a, size), W: world.pixelWidth, H: world.pixelHeight,   // a - b, shortest way round
+    canWalkTo: (x, y) => world.canWalk(wrap(x, world.pixelWidth), wrap(y, world.pixelHeight)),
+  });
+  // a human on the second controller can still press ENTER / read / status
+  return { dx: out.dx, dy: out.dy, backUp: out.backUp, enter: real.enter, readScroll: real.readScroll, status: real.status, spell: out.spell ?? real.spell };
+}
+
+// The same injury script as the Prince's (light blue → blue → burst).
+function injureWizard() {
+  const wasBlue = wiz.p.injured;
+  injurePlayer(wiz.p);
+  sfx.play(wiz.p.dead ? DEATH : HIT);
+  setInfo(wiz.p.dead ? 'Nilrem has fallen...' : wasBlue ? 'Nilrem loses a life!' : 'Nilrem is injured!', 90);
+}
+
+// The Wizard MOB as an 8×8 world-pixel mask (like playerMask).
+function wizardMask(): number[] {
+  const f = facingFrame(wiz.p.faceDx, wiz.p.faceDy);
+  const bytes = WIZARD_FRAMES[f.frame] ?? [];
+  const mask: number[] = [];
+  for (let y = 0; y < 8; y++) {
+    const r0 = f.flip ? 15 - 2 * y : 2 * y;
+    const r1 = f.flip ? 14 - 2 * y : 2 * y + 1;
+    let b = (bytes[r0] ?? 0) | (bytes[r1] ?? 0);
+    if (f.mirror) { let m = 0; for (let i = 0; i < 8; i++) if (b & (1 << i)) m |= 0x80 >> i; b = m; }
+    mask.push(b);
+  }
+  return mask;
+}
+
+// MOB coordinates of a world point on the ROM's own TILE-stepped camera (the
+// Prince's MOB walks 81..95 / 49..63 within the tile the camera sits on; his
+// tile is always the screen's (10,6), i.e. cam = (floor((x-80)/8), floor((y-48)/8))).
+function mobCoords(x: number, y: number): { mx: number; my: number } {
+  const world = lw();
+  const camX = wrap(Math.floor((Math.floor(state.x) - 80) / TILE) * TILE, world.pixelWidth);
+  const camY = wrap(Math.floor((Math.floor(state.y) - 48) / TILE) * TILE, world.pixelHeight);
+  let dx = wrap(Math.floor(x) - camX, world.pixelWidth);
+  let dy = wrap(Math.floor(y) - camY, world.pixelHeight);
+  if (dx > world.pixelWidth - 64) dx -= world.pixelWidth;
+  if (dy > world.pixelHeight - 64) dy -= world.pixelHeight;
+  return { mx: dx + 8, my: dy + 8 };
+}
+
+// Both players move with the camera and keep their screen positions
+// (captured: transport scrolls, TO CHEST — the camera is what moves).
+function movePair(newPrinceX: number, newPrinceY: number) {
+  const world = lw();
+  const ddx = wrapDelta(state.x, newPrinceX, world.pixelWidth);   // new - old
+  const ddy = wrapDelta(state.y, newPrinceY, world.pixelHeight);
+  state.x = wrap(newPrinceX, world.pixelWidth);
+  state.y = wrap(newPrinceY, world.pixelHeight);
+  moveVx = 0; moveVy = 0; state.pushTimer = 0;
+  if (wiz.active && !wiz.parked) {
+    wiz.p.x = wrap(wiz.p.x + ddx, world.pixelWidth);
+    wiz.p.y = wrap(wiz.p.y + ddy, world.pixelHeight);
+  }
+  if (wiz.bolt) { wiz.bolt = null; wiz.activeSpell = 0; }
+}
+
+// Keypad 1-9 on the left controller (L_608B).
+function castSpell(n: number) {
+  if (n < 1 || n > 9 || wiz.activeSpell !== 0) return;
+  // TO KNIGHT is the one spell a parked Wizard may cast; every other needs him in play.
+  if (!(n === 9 && wiz.parked) && !wizardTargetable()) return;
+  if (n !== 1) {
+    if (wiz.spells[n] <= 0) return;
+    wiz.spells[n]--;
+  }
+  const world = lw();
+  if (n <= 6) {
+    wiz.activeSpell = n;
+    const fx = wiz.p.faceDx, fy = wiz.p.faceDy;
+    const diag = fx !== 0 && fy !== 0;
+    wiz.bolt = { x: wiz.p.x, y: wiz.p.y, dx: fx * (diag ? BOLT_DIAG : BOLT_SPEED), dy: fy * (diag ? BOLT_DIAG : BOLT_SPEED), kind: n, age: 0 };
+    setInfo(`Nilrem casts ${SPELL_NAMES[n]}!`, 60);
+  } else if (n === 7) {
+    // TO CHEST (L_6121): level 1, the start camera (2,26); both keep their screen positions.
+    const to = 0;
+    const changed = to !== state.level;
+    state.level = to;
+    if (changed) { redrawLevel(to); fireballs = []; }
+    movePair(entry0.x, entry0.y);
+    setInfo('Nilrem casts TO CHEST!', 90);
+  } else if (n === 8) {
+    wiz.invincWiz = INVINC_WIZ_FRAMES;
+    setInfo('Nilrem casts INVINC-WIZ!', 90);
+  } else {
+    // TO KNIGHT: the remembered tile becomes the Prince's own tile, so a
+    // parked Wizard re-materialises beside him (captured: nothing for a dead one).
+    if (wiz.parked) wiz.parked = { col: Math.floor(state.x / TILE) % world.maze.w, row: Math.floor(state.y / TILE) % world.maze.h, level: state.level };
+    setInfo('Nilrem casts TO KNIGHT!', 90);
+  }
+}
+
+function updateWizard(doTick: boolean) {
+  const world = lw();
+  const W = world.pixelWidth, H = world.pixelHeight;
+  if (wiz.fastFeet > 0) wiz.fastFeet--;
+  if (wiz.invincible > 0) wiz.invincible--;
+  if (wiz.invincWiz > 0) wiz.invincWiz--;
+
+  // --- parked off screen: come back when the tile scrolls into view ---
+  if (wiz.parked && !wiz.gone) {
+    if (doTick && wiz.parked.level === state.level) {   // G_0199 must match the level
+      const { mx, my } = mobCoords(wiz.parked.col * TILE, wiz.parked.row * TILE);
+      if (mx >= 8 && mx <= 160 && my >= 8 && my <= 96) {
+        wiz.p.x = wrap(wiz.parked.col * TILE, W);
+        wiz.p.y = wrap(wiz.parked.row * TILE, H);
+        wiz.parked = null;
+        wiz.vx = 0; wiz.vy = 0;
+      }
+    }
+    return;
+  }
+  if (wiz.gone) return;
+
+  const inp = tickInput2;
+  const discReleased = inp.dx === 0 && inp.dy === 0;
+  if (doTick) {
+    const wasDead = wiz.p.dead;
+    tickPlayerCombat(wiz.p, discReleased);
+    if (wasDead && !wiz.p.dead) setInfo('Nilrem rises again!', 90);
+    if (wiz.p.deathPhase === 'gone') { wiz.gone = true; setInfo('Nilrem is gone for good.', 150); return; }
+
+    // --- disc → velocity (L_5749/L_577A), once per tick; a wall-killed axis
+    //     stays dead until the disc code changes ---
+    const code = `${inp.dx},${inp.dy},${inp.backUp ? 1 : 0}`;
+    if (code !== wiz.lastDisc) { wiz.deadX = false; wiz.deadY = false; wiz.lastDisc = code; }
+    wiz.vx = 0; wiz.vy = 0;
+    if (!wiz.p.dead && wiz.p.stunned === 0 && wiz.invincWiz === 0) {
+      let mvx = 0, mvy = 0, speed = WIZARD_SPEED;
+      if (inp.backUp && (wiz.p.faceDx !== 0 || wiz.p.faceDy !== 0)) {
+        mvx = -wiz.p.faceDx; mvy = -wiz.p.faceDy; speed = WIZARD_BACK_SPEED;
+      } else if (inp.dx !== 0 || inp.dy !== 0) {
+        mvx = inp.dx; mvy = inp.dy;
+        wiz.p.faceDx = inp.dx; wiz.p.faceDy = inp.dy;
+      }
+      if (mvx !== 0 && mvy !== 0) { wiz.vx = mvx * WIZARD_DIAG * (speed / WIZARD_SPEED); wiz.vy = mvy * WIZARD_DIAG * (speed / WIZARD_SPEED); }
+      else { wiz.vx = mvx * speed; wiz.vy = mvy * speed; }
+      if (wiz.deadX) wiz.vx = 0;
+      if (wiz.deadY) wiz.vy = 0;
+    }
+    if (inp.spell !== null && discReleased) castSpell(inp.spell);
+  }
+
+  if (!wiz.p.dead) {
+    wiz.p.x = wrap(wiz.p.x + wiz.vx, W);
+    wiz.p.y = wrap(wiz.p.y + wiz.vy, H);
+    wiz.p.moving = wiz.vx !== 0 || wiz.vy !== 0;
+
+    // --- walls: snap the pushed axis back to the tile boundary and kill it ---
+    const sx = Math.floor(wiz.p.x), sy = Math.floor(wiz.p.y);
+    const block = tileBlock(sx, sy, world.maze.w, world.maze.h);
+    const mask = wizardMask();
+    if (block.some(t => spriteHitsTile(sx, sy, mask, t.col, t.row))) {
+      let code = 0;
+      block.forEach((t, q) => { code |= quadrantCode(q, gramCard(world.maze.grid[t.row][t.col])); });
+      if (code >= 0x40) {
+        // door jaws: the same hit as for the Prince (inferred from the shared classifier)
+        if (wiz.p.stunned === 0 && wiz.invincWiz === 0) injureWizard();
+        code ^= 0x40;
+      }
+      if (code !== 0 && code !== 0x10 && !(code > 0x10 && code < 0x40)) {
+        const push = pushVector(code);
+        if (push.vx > 0) { wiz.p.x = wrap(Math.ceil(wiz.p.x / TILE) * TILE, W); wiz.deadX = true; wiz.vx = 0; }
+        if (push.vx < 0) { wiz.p.x = wrap(Math.floor(wiz.p.x / TILE) * TILE, W); wiz.deadX = true; wiz.vx = 0; }
+        if (push.vy > 0) { wiz.p.y = wrap(Math.ceil(wiz.p.y / TILE) * TILE, H); wiz.deadY = true; wiz.vy = 0; }
+        if (push.vy < 0) { wiz.p.y = wrap(Math.floor(wiz.p.y / TILE) * TILE, H); wiz.deadY = true; wiz.vy = 0; }
+      }
+    }
+
+    // --- scrolled out of the MOB window: park him at that world tile ---
+    const { mx, my } = mobCoords(wiz.p.x, wiz.p.y);
+    if (mx < 8 || mx > 167 || my < 8 || my > 104) {
+      wiz.parked = { col: Math.floor(wiz.p.x / TILE) % world.maze.w, row: Math.floor(wiz.p.y / TILE) % world.maze.h, level: state.level };
+      wiz.vx = 0; wiz.vy = 0;
+      if (wiz.bolt) { wiz.bolt = null; wiz.activeSpell = 0; }
+      return;
+    }
+  }
+
+  // --- the spell bolt (MOB 3) ---
+  const b = wiz.bolt;
+  if (!b) return;
+  b.age++;
+  b.x = wrap(b.x + b.dx, W);
+  b.y = wrap(b.y + b.dy, H);
+  const endBolt = () => { wiz.bolt = null; wiz.activeSpell = 0; };
+  const { mx, my } = mobCoords(b.x, b.y);
+  if (mx < 8 || mx > 167 || my < 8 || my > 104) { endBolt(); return; }
+  const overlaps = (x: number, y: number) => Math.abs(wrapDelta(b.x, x, W)) < 8 && Math.abs(wrapDelta(b.y, y, H)) < 8;
+  // knights (a sorcerer ignores every bolt — captured)
+  for (const e of enemiesByLevel[state.level]) {
+    if (!e.alive || e.dying > 0 || e.type !== 'phantom_knight' || !overlaps(e.x, e.y)) continue;
+    if (b.kind === 1) freezeKnight(e);
+    else if (b.kind === 2) { slayEnemy(e); kills++; sfx.play(DEATH); setInfo('Phantom Knight destroyed!', 90); }
+    endBolt();
+    return;
+  }
+  // the Prince
+  if (!state.dead && overlaps(state.x, state.y)) {
+    if (b.kind === 2) {
+      if (state.stunned === 0 && wiz.invincible === 0) { const wasGray = state.injured; injurePlayer(state); sfx.play(state.dead ? DEATH : HIT); setInfo(state.dead ? 'Burned by your own Wizard...' : wasGray ? 'A life is lost!' : 'Scorched by Nilrem!', 90); }
+    } else if (b.kind === 3) { state.injured = false; setInfo('The Prince is healed!', 90); }
+    else if (b.kind === 4) { wiz.fastFeet = FAST_FEET_FRAMES; setInfo('Fast feet!', 90); }
+    else if (b.kind === 5) { wiz.invincible = INVINCIBLE_FRAMES; moveVx = 0; moveVy = 0; setInfo('The Prince is invincible (and rooted)!', 90); }
+    endBolt();
+    return;
+  }
+  // DESTROY WALLS: the first wall card the bolt's pixels touch is erased.
+  if (b.kind === 6) {
+    const bx = Math.floor(b.x), by = Math.floor(b.y);
+    const mask = boltMask(b);
+    for (const t of tileBlock(bx, by, world.maze.w, world.maze.h)) {
+      const card = gramCard(world.maze.grid[t.row][t.col]);
+      if (card < 3 || card > 5) continue;
+      if (!spriteHitsTile(bx, by, mask, t.col, t.row)) continue;
+      world.setWord(t.col, t.row, WORD_TAKEN);
+      markStale(state.level, t.col, t.row);
+      setInfo('The wall crumbles!', 90);
+      endBolt();
+      return;
+    }
+  }
+}
+
+function boltMask(b: NonNullable<WizardState['bolt']>): number[] {
+  const bytes = boltBitmap(b, FIREBALL_FRAMES, wiz.card54Lower);
+  const mask: number[] = [];
+  for (let y = 0; y < 8; y++) mask.push((bytes[2 * y] ?? 0) | (bytes[2 * y + 1] ?? 0));
+  return mask;
+}
 // Treasure chest (card 12, level 0 entry): ENTER stores what's in hand and
 // shows the status screen (captured; L_6472). Value 50/100/150/200 by the
 // level the treasure was found on; a Reincarnation per 300 points.
-function storeTreasures() {
+function storeTreasures(actor: PlayerState) {
   if (state.potions === 0) return;
   state.stored += state.potions;
   const before300 = Math.floor(state.storedValue / 300);
@@ -882,7 +1189,7 @@ function storeTreasures() {
   state.reincarnations += Math.floor(state.storedValue / 300) - before300;
   inHandValue = 0;
   state.potions = 0;
-  state.stunned = PICKUP_LOCK_TICKS;
+  actor.stunned = PICKUP_LOCK_TICKS;
   pickupFlash = 0;
   statusTimer = STATUS_FRAMES;
   setInfo('Treasures stored!', 90);
@@ -1156,6 +1463,11 @@ function render(ctx: CanvasRenderingContext2D) {
     drawText(ctx, 'Reincarnations', 2, 2, red);
     drawText(ctx, 'Knight:', 4, 3, red);
     drawText(ctx, String(state.reincarnations).padStart(2, ' '), 12, 3, red);
+    if (wiz.active) {
+      // Captured: games 2/3 add row 4, same columns, the Wizard's .
+      drawText(ctx, 'Wizard:', 4, 4, red);
+      drawText(ctx, String(wiz.p.reincarnations).padStart(2, ' '), 12, 4, red);
+    }
     drawText(ctx, 'Treasures', 2, 6, red);
     drawText(ctx, 'Inhand:', 4, 7, red);
     drawText(ctx, String(state.potions), 12, 7, red);
@@ -1213,7 +1525,7 @@ function render(ctx: CanvasRenderingContext2D) {
     // Captured: while stunned by a HIT (40 frames) the body colour cycles
     // through the palette every ~2 frames; steady colour is white, or GRAY
     // once injured. The 21-frame pickup lock does not flash.
-    const hitFlash = state.stunned > 0 && pickupFlash < 0;
+    const hitFlash = (state.stunned > 0 && pickupFlash < 0) || wiz.invincible > 0;
     const playerColor = hitFlash
       ? STUN_CYCLE[tickCount % STUN_CYCLE.length]
       : (state.injured ? '#BDACC8' : '#FFFCFF');
@@ -1228,6 +1540,34 @@ function render(ctx: CanvasRenderingContext2D) {
     drawSword(ctx, px, py, state.faceDx, state.faceDy, SWORD_CYCLE[frameCount % SWORD_CYCLE.length]);
   }
 
+  // --- Nilrem the Wizard (MOB 2) and his spell bolt (MOB 3), finding #23 ---
+  if (wiz.active && !wiz.gone && !wiz.parked) {
+    const wx = toScreenX(wiz.p.x);
+    const wy = toScreenY(wiz.p.y);
+    if (wiz.p.dead) {
+      const h = (((tickCount + 5) * 2654435761) >>> 0) % 16;
+      if (wiz.p.deathPhase === 'dying') drawBitmap(ctx, DEATH_BURST[deathBurstPose(wiz.p.deathTick)], 16, wx, wy, PALETTE16[9 + (h % 7)]);
+      else if (wiz.p.deathPhase === 'fallen') drawBitmap(ctx, FALLEN_POSES[fallenPose(wiz.p.deathTick)], 16, wx, wy, PALETTE16[h % 8]);
+    } else {
+      const f = facingFrame(wiz.p.faceDx, wiz.p.faceDy);
+      // Captured: light blue (13), BLUE (1) once injured; a hit cycles the
+      // palette for 40 ticks; INVINC-WIZ cycles through the pastels (8-15).
+      const flash = (wiz.p.stunned > 0 && pickupFlash < 0) || wiz.invincWiz > 0;
+      const color = flash
+        ? PALETTE16[8 + (STUN_CYCLE_IDX[tickCount % STUN_CYCLE_IDX.length])]
+        : (wiz.p.injured ? PALETTE16[1] : PALETTE16[13]);
+      drawBitmap(ctx, WIZARD_FRAMES[f.frame], 16, wx, wy, color, f.mirror, f.flip);
+    }
+  }
+  if (wiz.active && wiz.bolt) {
+    const b = wiz.bolt;
+    // Captured: the FIREBALL alternates fg 6/10 like the sorcerer's; the
+    // sparks take the Prince's sword colour XOR 13 (a pastel every frame).
+    const color = b.kind === 2
+      ? (Math.floor(b.age / 5) % 2 === 0 ? FG[6] : PALETTE16[10])
+      : PALETTE16[SWORD_CYCLE_IDX[frameCount % SWORD_CYCLE_IDX.length] ^ 13];
+    drawBitmap(ctx, boltBitmap(b, FIREBALL_FRAMES, wiz.card54Lower), 16, toScreenX(b.x), toScreenY(b.y), color);
+  }
   // --- HUD ---
   const health = state.dead ? 'DEAD' : state.injured ? 'GRAY' : 'WHITE';
 
@@ -1237,6 +1577,12 @@ function render(ctx: CanvasRenderingContext2D) {
   ctx.font = 'bold 11px monospace';
   ctx.fillText(`Level ${state.level + 1}/4  ❤${state.reincarnations}  HP:${health}`, 8, 14);
   ctx.fillText(`🔑${state.keys}  💰${state.potions}/${MAX_IN_HAND} (${state.stored} stored, ${state.storedValue}pts)  📜${state.scrolls}  ⚔${kills}`, 250, 14);
+  if (wiz.active) {
+    const wh = wiz.gone ? 'GONE' : wiz.parked ? 'OFF SCREEN' : wiz.p.dead ? 'DEAD' : wiz.p.injured ? 'BLUE' : 'OK';
+    const sp = [2, 3, 4, 5, 6, 7, 8, 9].filter(i => wiz.spells[i] > 0).map(i => `#${i}×${wiz.spells[i]}`).join(' ');
+    ctx.fillStyle = '#9FD8FF';
+    ctx.fillText(`Nilrem${wiz.cpu ? ' (CPU)' : ''} ❤${wiz.p.reincarnations} ${wh}  spells: FREEZE∞ ${sp}`, 8, scaledH - 22);
+  }
 
   if (infoTimer > 0) {
     ctx.fillStyle = '#FAEA50';
@@ -1354,6 +1700,13 @@ async function main() {
       }
       return best ? { x: best.x, y: best.y, type: best.type, dist: bd, sector: best.sector, pose: knightPoseSector(best), swing: best.swingClock, aim: best.aimTimer } : null;
     },
+    wizard: () => wiz ? ({ active: wiz.active, cpu: wiz.cpu, x: wiz.p.x, y: wiz.p.y, faceDx: wiz.p.faceDx, faceDy: wiz.p.faceDy, vx: wiz.vx, vy: wiz.vy,
+      lives: wiz.p.reincarnations, injured: wiz.p.injured, dead: wiz.p.dead, gone: wiz.gone, parked: wiz.parked, deadX: wiz.deadX, deadY: wiz.deadY,
+      spells: wiz.spells.slice(), active_spell: wiz.activeSpell, bolt: wiz.bolt ? { ...wiz.bolt } : null, fastFeet: wiz.fastFeet, invincible: wiz.invincible, invincWiz: wiz.invincWiz, mob: mobCoords(wiz.p.x, wiz.p.y) }) : null,
+    cast: (n: number) => castSpell(n),
+    setSpells: (arr: number[]) => { arr.forEach((v, i) => { wiz.spells[i] = v; }); },
+    setCpuWizard: (on: boolean) => { wiz.cpu = on; },
+    mode: () => gameMode,
     nearestItem: () => {
       let best: GameItem | null = null;
       let bd = Infinity;

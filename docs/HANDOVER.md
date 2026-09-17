@@ -162,6 +162,104 @@ designed mode, not ROM truth.
 **Gamepad (2026-09-16, port feature, not a ROM finding):** the Gamepad API is polled every input snapshot (src/engine/input.ts): left stick or d-pad = disc (8-way, 0.4 dead zone), A/Start = ENTER, B = back up, X = read scroll (keypad C), Y = status (keypad 0); the keyboard wins for the disc while any direction key is held. Verified headless with a stubbed 
 avigator.getGamepads. Audio still needs one key press or click to unlock (browser autoplay policy; a pad press does not count).
 
+**ROM finding #23 — GAMES 2 AND 3: NILREM THE WIZARD, HIS SPELLS, AND WHAT
+THE MANUAL GETS WRONG (2026-09-17, Intellijsd with the LEFT controller —
+`ijsd.setPad(sector, keys, 1)` — plus L_5749/L_577A/L_608B-L_6139/L_693D-
+L_69F9 in the disassembly).** Port: src/engine/wizard.ts, `updateWizard` /
+`castSpell` in src/main.ts, `getInput2` in src/engine/input.ts; the CPU
+brain (`wizardBrain`) and the "CPU plays the Wizard" checkbox are port
+additions.
+  * **Who is who.** Title 2 = "2 PLAYER" (Wizard starts with FREEZE only),
+    3 = "2 PLAYER/MAGIC" (`$018E-$0190` = 3: FIREBALL, HEAL, FAST FEET ×3).
+    MOB 2 = the Wizard's body (script `$5B5E`, fg 13 light blue, GRAM card
+    52), MOB 3 = his spell bolt (script `$5B66`, card 54). Foes therefore
+    get MOBs 4-7 only: **two foe slots**, not three. Lives: `$017C` Prince,
+    `$017D` Wizard (9 each). Spell uses: `$018E..$0195` = keys 2..9;
+    `$018D` = the spell in progress (G_018D). He spawns at MOB (88,68),
+    12 px under the Prince.
+  * **Body.** Five frames (E `6d3e7ff6f1d888a8a888d8f1f67f3e6d`, ENE
+    `02256e3f7cf49898a8aa8d7abf1e3400`, NE `050e163e1cf8508aadaacaffff9e0e18`,
+    NNE `507038703af572fbdeced6d747fd3000` — the same bitmap as the
+    Sorcerer's body — N `a54242f7f7e3667ee3e3ebebe7bd3c3c`) with the Prince's
+    flip scheme over 16 disc sectors; no walk cycle, no sword. Injured =
+    BLUE (fg 1); a hit = the 40-tick palette-cycling stun; his fall/revive
+    is the Prince's script (`$5B94` burst, `$017D--`, `$5B9A` fallen, up
+    again on disc release ~190 frames later); **at 0 lives the burst ends
+    with him removed for good** (`$033F` = 0, G_019A = 1) and the game goes
+    on for the Prince. Every foe is wiped when EITHER player falls.
+  * **Movement (L_5749).** Disc → EXEC velocity of magnitude 25 (halved to 12
+    for the trig) → `$012A/$013A` = 24 on a cardinal, (17,17) diagonal: 24/64
+    = 0.375 px/frame (measured 55 px / 150 frames); his "backs up" side
+    button uses 20 (Prince: 50 forward, 40 back). **Walls** (captured E/W/N/S
+    and diagonals): a background collision snaps the pushed axis back to
+    the tile boundary (x 100→104 walking W, 89→88 walking E, y 29→32
+    walking N, 81→80 walking S) and that axis stays dead until the disc
+    CODE changes (held W after a bump: parked; NE after a W bump: walks N).
+    Objects — chest, treasures, scrolls, the stairs — are not walls to him;
+    walking over a stairs tile does NOT change level (only the Prince's
+    classifier does). He picks up / stores with ENTER like the Prince into
+    the SHARED inventory (Inhand went 0→1). A transport scroll read by either
+    player just moves the camera: both keep their screen positions (the
+    Prince is not re-centred either). A spell scroll read by the Wizard SETS
+    that spell's uses to 10 (3→10, 4→10, 10→10); read by the Prince, text only.
+  * **Screen space.** He is a screen-relative MOB: the maze scrolls him.
+    When he leaves the MOB window (x < 8 / > 167, y < 8 / > 104 — captured
+    parking at x=0) L_693D parks him: G_0197/G_0198 = his world tile (cam +
+    floor((MOB-8)/8)), G_0199 = level, G_019A = 1, MOB off. Every tick
+    L_69A5 checks whether that tile is on the screen of the SAME level and
+    re-materialises him at `((col-cam)*8+8, (row-cam)*8+8)` (captured:
+    parked at (0,44) tile (13,33), back at (8,40)). New level via the
+    stairs: he keeps his screen position (world position in the port).
+  * **Foes.** A knight re-aims at whichever player is NEARER (K6 pendulumed
+    round the Wizard at x=64 while K4 pendulumed round the Prince at x=88;
+    with the Wizard moved 40 px away it followed him). A knight that arrives
+    exactly on a standing target when its re-aim comes due gets a zero
+    aim vector and stands still. The Sorcerer still appears 28 px from the
+    PRINCE and fires at the PRINCE only (manual: "cannot detect the
+    Wizard"); his fireburst hurts the Wizard if he is in the way. Knight
+    swords hurt him like the Prince.
+  * **Spells (L_608B, keypad on the LEFT controller, disc released).**
+    Refused while G_018D ≠ 0 (a bolt in flight) or the Wizard is not in his
+    normal script (TO KNIGHT excepted when he is parked). Key 1 needs no
+    use; 2-9 need `$018D+key` > 0 and decrement it. Keys 1-6 (L_60E9)
+    launch MOB 3 from the Wizard's own position with velocity 64 (1
+    px/frame; 45/64 per axis on diagonals) in his LAST DISC direction
+    (G_0196; east if he never moved), key 2 with the fireball script
+    `$5BA0` (the Sorcerer's three fireball bitmaps every 4 frames, fg 6/10
+    alternating), the others as a 3-frame "spark" on card 54 (rows 0-7 only
+    — the lower half keeps the last fireball frame's rows 8-15, a visible
+    ROM quirk) coloured with the Prince's sword colour XOR 13 (pastels).
+    The bolt flies THROUGH walls, wraps nothing: it dies when it leaves the
+    MOB window (x 5 / y 106 captured) or touches ANY body — Prince or
+    knight — with an effect only when the target fits: **1 FREEZE**: knight
+    velocity 0 and its re-aim countdown `$0351` (normally 90 frames)
+    loaded with 240 → frozen 242 frames, sword sweep continues, then it
+    re-aims; on the Prince: nothing. **2 FIREBALL**: knight → the `$5B94`
+    death burst; PRINCE → a knight-grade hit (stun, white→gray: friendly
+    fire is real). **3 HEAL**: Prince gray→white; **4 FAST FEET**: the
+    Prince's speed word `$017F` 50→126 for `$034E` = 349 frames (measured
+    2 px every 2 frames against the normal 1 — "twice as fast"; a knight
+    is unaffected); **5 INVINCIBLE**: `$0325` bit 13 set, `$034E` = 432
+    frames, the Prince cycles colours 0-7 per tick and cannot move; **6
+    DESTROY WALLS**: the first wall card the bolt touches is overwritten
+    with `$1600` in the BACKTAB only (it regenerates when it scrolls off and
+    back — captured) and the bolt dies; on the Prince: nothing. **The RED
+    SORCERER ignores every bolt** (FREEZE and FIREBALL both passed straight
+    through his red body) — the manual's "Destroys … Red Sorcerers" is
+    wrong, like its Serpent fight. Keys 7-9 are instant: **7 TO CHEST** =
+    L_55BF: level 1, camera (2,26), both keep their screen positions;
+    **8 INVINC-WIZ**: `$0327` bit 13, `$034F` = 600 frames, the Wizard
+    cycles the pastels and cannot move; **9 TO KNIGHT**: G_0197/8 = the
+    Prince's tile (cam+10, cam+6), so a parked Wizard reappears beside him;
+    a dead one stays dead (tested 600 frames). Only kinds 0-3 of scroll
+    exist, so in the real game FAST FEET ends after game 3's three uses
+    and spells 5-9 can never be cast at all.
+  * **Status screen** (either keypad 0): the 1-player layout plus row 4
+    `Wizard:` (cols 4-10) with `$017D` right-aligned to col 13. No spell
+    counts are shown anywhere.
+  * Inferred, not captured (flagged in code): door jaws bite the Wizard as
+    they bite the Prince (same classifier, quadrant codes ≥ $40); a frozen
+    knight's sword still hurts (its sweep visibly continues).
 **ROM finding #22 — KNIGHT POSES, ALL 16 DIRECTIONS, AND THE REAL SWORD
 SWEEP (2026-09-16, Intellijsd ghost run, 16,200 per-frame samples of the
 three knight MOB pairs while the Prince wandered in 8 directions).**
@@ -247,8 +345,9 @@ next to the start says; Intellijsd + `$59FF` in the disassembly).**
     (108,10) = kind 0. L3: (59,60)→(69,2) = kind 1; (34,12)→(44,18) = kind 0.
     L4: both (97,9)→(107,15) = the treasure at (107,15). Verified live on
     level 1 in both directions.
-  * Kinds 2 and 3 read **"2 Fireball"** and **"3 Heal"** — the MAGIC-mode
-    Wizard's spell scrolls (keypad 2/3 presumably); no effect for the Prince.
+  * Kinds 2 and 3 read **"2 Fireball"** and **"3 Heal"** — the Wizard's
+    spell scrolls (finding #23: read by HIM they set that spell to 10 uses);
+    no effect for the Prince.
   * UNVERIFIED: the on-screen colours during the message. The ROM's message
     ISR leaves the STIC in Color Stack mode (the EXEC path reads `$21`) with
     the text at fg 0; Intellijsd renders that mode as a blank frame and the

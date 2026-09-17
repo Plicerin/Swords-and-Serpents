@@ -1803,10 +1803,11 @@ $1038: FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF</pre>
       },
       // Controller 1: disc sector 0..15 (0=N,2=NE,4=E,6=SE,8=S,10=SW,12=W,14=NW) or null,
       // keys: any of '0'-'9','C','E','L','T','R'. Writes the real port byte the EXEC decodes.
-      setPad: (sector, keys = []) => {
+      // which = 0 (right controller, the Prince) or 1 (left controller, the Wizard).
+      setPad: (sector, keys = [], which = 0) => {
         let port = (sector === null || sector === undefined) ? 0xFF : discMasks[sector];
         for (const k of keys) port &= controllerMasks[k];
-        psg.setController(0, port);
+        psg.setController(which, port);
         return port;
       },
       loadBytes: async (kind, u8) => loadFile(kind, new File([u8], kind + '.bin')),
