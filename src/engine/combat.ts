@@ -63,7 +63,10 @@ export type CanWalkFn = (x: number, y: number) => boolean;
 //    units, e.g. (28,-11) for a 37×-15 offset). Nothing steers in between —
 //    a knight overshoots ~20 px past a standing Prince, then turns back on
 //    the next re-aim. The body faces the nearest of 16 directions of its
-//    velocity and SWEEPS its sword pose ±1 sixteenth (see KNIGHT_POSES).
+//    velocity and SWEEPS its sword pose ±1 sixteenth (see KNIGHT_POSES):
+//    main, −1, main, +1, main, −1 (−1 = clockwise on screen), 16 frames
+//    each, restarting from "main" at every re-aim (captured 2026-09-16,
+//    all 16 sectors including the south half, finding #22).
 //  * Hit detection is PIXEL collision between SWORD MOBs and BODY MOBs:
 //      knight-sword pixels ∩ player-body pixels  → the player is hit
 //      player-sword pixels ∩ knight-body pixels  → the knight dies
@@ -84,11 +87,12 @@ export type CanWalkFn = (x: number, y: number) => boolean;
 // the ROM's frame code applies every frame.
 const KNIGHT_SPEED_UNITS = 30;      // captured: |v| = 30 in 1/64 px/frame ≈ 0.469 px/frame
 const KNIGHT_REAIM_TICKS = 30;      // captured: re-aim every 30 ticks (90 frames at 3/tick)
-export const KNIGHT_POSE_TICKS = 5; // captured: each sword pose held ~15 frames ≈ 5 ticks
+export const KNIGHT_POSE_FRAMES = 16; // captured: each sword pose held 16 frames (5-7 ticks); the sweep restarts at every re-aim
 const STUN_TICKS = 40;              // captured: G_01A4 = 40, decremented once per tick (~117 frames)
 
 // 16-direction facing table (sector 0 = E, counter-clockwise with screen-y
-// up, i.e. sector 4 = N, 8 = W, 12 = S). Captured from the knight's GRAM
+// up, i.e. sector 4 = N, 8 = W, 12 = S). ALL 16 entries captured (the south
+// half re-verified 2026-09-16 against ~5,000 velocity samples). From the knight's GRAM
 // rewrite + MOB Y-register flip bits alongside its velocity: body frame
 // F0..F4 with flips exactly like the player's own scheme, and the sword MOB
 // offset/bitmap per direction:
@@ -129,10 +133,11 @@ export function velocitySector(vx: number, vy: number): number {
   return ((Math.round(a / (Math.PI / 8)) % 16) + 16) % 16;
 }
 
-/** Current sword-swing pose sector: main, +1, main, -1 (15 frames each). */
+/** Current sword-swing pose sector: main, −1, main, +1, main, −1 (16 frames each, from the re-aim). */
+const KNIGHT_SWING = [0, -1, 0, 1, 0, -1];
 export function knightPoseSector(enemy: Enemy): number {
-  const step = Math.floor(enemy.swingClock / KNIGHT_POSE_TICKS) % 4;
-  const off = [0, 1, 0, -1][step];
+  const step = Math.floor(enemy.swingClock / KNIGHT_POSE_FRAMES) % KNIGHT_SWING.length;
+  const off = KNIGHT_SWING[step];
   return ((enemy.sector + off) % 16 + 16) % 16;
 }
 
@@ -147,6 +152,7 @@ function aimKnight(enemy: Enemy, player: PlayerState): void {
   enemy.vy = uy / 64;
   enemy.sector = velocitySector(ux, uy);
   enemy.aimTimer = KNIGHT_REAIM_TICKS;
+  enemy.swingClock = 0;               // captured: the sweep restarts at "main" on every re-aim
 }
 const HIT_GRACE_TICKS = 10;        // ~30 frames
 // Captured (finding #15): a slain knight runs the same $5B94 burst as the
@@ -230,6 +236,7 @@ export function moveEnemy(enemy: Enemy): void {
   if (enemy.type === 'phantom_knight') {
     enemy.x += enemy.vx;
     enemy.y += enemy.vy;
+    enemy.swingClock++;               // frames since the last re-aim (sword sweep clock)
   }
 }
 
@@ -248,7 +255,6 @@ export function updateEnemy(enemy: Enemy, player: PlayerState, _canWalk: CanWalk
     // Captured: straight-line charge, re-aimed every 30 ticks, 30/64 px/frame.
     if (enemy.aimTimer <= 0) aimKnight(enemy, player);
     enemy.aimTimer--;
-    enemy.swingClock++;
     // The sword hit box follows the current swing pose.
     const pose = KNIGHT_POSES[knightPoseSector(enemy)];
     enemy.faceDx = Math.sign(pose.sx);

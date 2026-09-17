@@ -162,6 +162,33 @@ designed mode, not ROM truth.
 **Gamepad (2026-09-16, port feature, not a ROM finding):** the Gamepad API is polled every input snapshot (src/engine/input.ts): left stick or d-pad = disc (8-way, 0.4 dead zone), A/Start = ENTER, B = back up, X = read scroll (keypad C), Y = status (keypad 0); the keyboard wins for the disc while any direction key is held. Verified headless with a stubbed 
 avigator.getGamepads. Audio still needs one key press or click to unlock (browser autoplay policy; a pad press does not count).
 
+**ROM finding #22 — KNIGHT POSES, ALL 16 DIRECTIONS, AND THE REAL SWORD
+SWEEP (2026-09-16, Intellijsd ghost run, 16,200 per-frame samples of the
+three knight MOB pairs while the Prince wandered in 8 directions).**
+  * The per-MOB velocity lives at `$0128+n` / `$0138+n` for MOB **2** only
+    among the knights (`$012C/$013C` hold something else — sword offsets);
+    positions are `$0325+n` / `$032D+n`, scripts `$033D+n` (knight =
+    `$5B30`). Components are signed 8-bit in the low byte, magnitude 30, at
+    ARBITRARY angles (e.g. (21,21), (30,4), (-8,29), (5,-29)) — the aim is
+    not quantised to 16 directions; for knights **+vy moves DOWN** (the
+    player's G_010C has the opposite sign).
+  * Facing = nearest of 16 sectors of that velocity (95% of MOB-2 samples
+    within ±1 sector, the rest at re-aim edges). Dominant pose per sector,
+    body frame + flips / sword bitmap + flips @ offset from the body:
+    E F0 h(8,0) · ENE F1 d27(8,-2) · NE F2 d45(7,-7) · NNE F3 d63(3,-8) ·
+    N F4x vx(0,-8) · NNW F3x d63x(-3,-8) · NW F2x d45x(-7,-7) · WNW F1x
+    d27x(-8,-2) · W F0xy hxy(-8,0) · WSW F1xy d27xy(-8,2) · SW F2xy
+    d45xy(-7,7) · SSW F3xy d63xy(-3,8) · **S F4y vy(0,8) · SSE F3y d63y(3,8)
+    · SE F2y d45y(7,7) · ESE F1y d27y(8,2)** — the south half, previously
+    inferred in #11, is exactly the mirrored scheme. KNIGHT_POSES unchanged.
+  * **The sword sweep is NOT main,+1,main,−1 every 15 frames.** Per re-aim
+    cycle it is `main ×16 frames, −1 ×16, main ×16, +1 ×16, main ×16, −1`
+    (−1 = clockwise on screen) and the re-aim (every 30 ticks ≈ 90 frames)
+    restarts it at `main`, so the last −1 is cut to ~10 frames and the knight
+    spends ~50% main / ~30% −1 / ~13% +1. Pose lengths in ticks were 5-7,
+    i.e. a 16-FRAME timer sampled per tick. Port: `KNIGHT_SWING` /
+    `KNIGHT_POSE_FRAMES` in src/engine/combat.ts, `swingClock` counts frames
+    since the re-aim; verified through the bridge (`nearestEnemy().pose`).
 **ROM finding #21 — TITLE SCREEN AND STATUS SCREEN, TILE FOR TILE (2026-09-16,
 Intellijsd BACKTAB/GRAM/MOB dumps after a cold boot and after keypad 0).**
   * **Title** (FG/BG mode, every tile $1603 = olive bg, text = GROM ASCII
@@ -451,7 +478,7 @@ knight movement of #7.
     The sword MOB per direction (offset, 16-row bitmap, flips): E (8,0) $FF
     row; ENE (8,-2) `06 0c 30 60 c0` rows 5-9; NE (7,-7) the 45° blade; NNE
     (3,-8) `08×4 10×4 20×4` rows 4-15; N (0,-8) $10 column, x-flipped;
-    mirrored for the other quadrants (south half inferred from the shared
+    mirrored for the other quadrants (south half inferred from the shared — captured in full in #22, which also corrects the sweep pattern below
     scheme; 2 samples each). **The pose sweeps main, +1, main, −1 with each
     pose held ~15 frames** — the "sword swing".
   * **Red Sorcerer (level 1, ~374 frames after the start!):** slot 2 script

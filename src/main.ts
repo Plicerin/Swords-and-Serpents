@@ -1352,7 +1352,7 @@ async function main() {
         const d = tDist(state.level, e.x, e.y, state.x, state.y);
         if (d < bd) { bd = d; best = e; }
       }
-      return best ? { x: best.x, y: best.y, type: best.type, dist: bd } : null;
+      return best ? { x: best.x, y: best.y, type: best.type, dist: bd, sector: best.sector, pose: knightPoseSector(best), swing: best.swingClock, aim: best.aimTimer } : null;
     },
     nearestItem: () => {
       let best: GameItem | null = null;
