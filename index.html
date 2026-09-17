@@ -3,76 +3,315 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Swords and Serpents</title>
+  <title>Swords &amp; Serpents</title>
+  <meta name="description" content="A pixel-perfect browser port of Imagic's 1982 Intellivision classic Swords & Serpents, rebuilt frame by frame from the original ROM.">
+  <link rel="icon" href="/img/serpent.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bungee&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --bg: #07080a;
+      --bg-2: #0f1114;
+      --panel: #14171b;
+      --line: #262b31;
+      --ink: #e9e3d3;
+      --ink-2: #a9a394;
+      --ink-3: #6e6a60;
+      --olive: #546e00;
+      --olive-2: #6f8f0a;
+      --tan: #c9d464;
+      --gold: #faea50;
+      --blue: #002dff;
+      --sky: #5acbff;
+      --green: #00a756;
+      --yellow: #faea50;
+      --orange: #ff8c1a;
+      --red: #ff3d10;
+      --purple: #a560ff;
+      --maxw: 1080px;
+      --radius: 14px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
     body {
       margin: 0;
-      background: #111;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      flex-direction: column;
-      font-family: monospace;
-      color: #ccc;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'IBM Plex Sans', system-ui, sans-serif;
+      font-size: 16px;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
     }
-    canvas {
-      image-rendering: pixelated;
-      image-rendering: crisp-edges;
-      border: 2px solid #333;
-      margin: 10px;
+    a { color: var(--sky); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code, kbd, .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+    kbd {
+      display: inline-block; min-width: 1.6em; padding: 1px 7px; text-align: center;
+      border: 1px solid #3a4048; border-bottom-width: 3px; border-radius: 6px;
+      background: #1c2026; color: var(--ink); font-size: 0.85em; line-height: 1.5;
     }
-    h1 {
-      margin: 10px 0;
-      font-size: 18px;
-      color: #888;
+    .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 16px; }
+
+    /* --- top bar --- */
+    .top {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 14px 0; font-size: 13px; color: var(--ink-2);
     }
-    h2 {
-      margin: 10px 0;
-      font-size: 14px;
-      color: #666;
+    .top .brand { display: flex; align-items: center; gap: 10px; color: var(--ink); font-weight: 600; letter-spacing: .02em; }
+    .top .brand img { width: 32px; height: 16px; image-rendering: pixelated; }
+    .top nav { display: flex; gap: 18px; flex-wrap: wrap; }
+    .top nav a { color: var(--ink-2); }
+    .top nav a:hover { color: var(--ink); text-decoration: none; }
+
+    /* --- hero --- */
+    .hero { padding: 36px 0 28px; text-align: center; }
+    .stripes { display: grid; gap: 4px; margin: 0 auto 22px; max-width: 560px; }
+    .stripes span { display: block; height: 6px; border-radius: 3px; }
+    .hero h1 {
+      font-family: 'Bungee', 'Impact', sans-serif; font-weight: 400;
+      font-size: clamp(30px, 7vw, 66px); line-height: 1; margin: 0; letter-spacing: .01em;
+      color: #fff; text-shadow: 0 2px 0 #1b2b8f, 0 10px 40px rgba(0,45,255,.35);
     }
-    .room-label {
-      color: #888;
-      font-size: 12px;
-      margin-bottom: 4px;
+    .hero h1 .amp { color: var(--gold); text-shadow: 0 2px 0 #7a5a00; }
+    .hero .sub { margin: 16px auto 0; max-width: 620px; color: var(--ink-2); font-size: 17px; }
+    .hero .sub b { color: var(--ink); font-weight: 600; }
+    .cta { display: flex; justify-content: center; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px; padding: 11px 20px; border-radius: 999px;
+      font-weight: 600; font-size: 15px; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+      cursor: pointer; transition: transform .12s ease, background .12s ease, border-color .12s ease;
+      font-family: inherit;
     }
-    .room-container {
-      display: inline-block;
-      text-align: center;
-      margin: 10px;
+    .btn:hover { transform: translateY(-1px); border-color: #3a4048; text-decoration: none; }
+    .btn.primary { background: var(--olive); border-color: var(--olive-2); color: #fff; }
+    .btn.primary:hover { background: var(--olive-2); }
+    .btn img { height: 14px; image-rendering: pixelated; }
+    .top .brand img { padding: 2px; border-radius: 4px; background: var(--olive); }
+
+    /* --- the game --- */
+    .stage { margin: 8px auto 0; }
+    .bezel {
+      position: relative; margin: 0 auto; max-width: 720px; padding: 18px;
+      border-radius: 22px;
+      background: linear-gradient(180deg, #1c1f24, #0d0f12);
+      border: 1px solid #2b3037;
+      box-shadow: 0 30px 80px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.06);
     }
-    #rooms {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      max-width: 1400px;
+    .bezel::before {
+      content: ""; position: absolute; inset: 0; border-radius: 22px; pointer-events: none;
+      background: radial-gradient(120% 80% at 50% 0%, rgba(84,110,0,.18), transparent 60%);
     }
-    .controls {
-      color: #666;
-      font-size: 11px;
-      margin: 10px 0;
+    canvas#game {
+      display: block; width: 100%; height: auto; aspect-ratio: 4 / 3;
+      image-rendering: pixelated; image-rendering: crisp-edges;
+      background: #000; border-radius: 8px; border: 1px solid #000;
+      box-shadow: 0 0 0 2px #23272d, 0 0 40px rgba(0,0,0,.8) inset;
     }
+    .tray {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px;
+      max-width: 720px; margin: 14px auto 0; padding: 0 6px; font-size: 13px; color: var(--ink-2);
+    }
+    .tray .start { display: flex; align-items: center; gap: 8px; }
+    .tray .controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .tray label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; color: var(--ink-2); }
+    .tray input[type=checkbox] { accent-color: var(--olive-2); }
+    .tray button { font: 12px 'IBM Plex Mono', monospace; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; }
+    .tray button:hover { border-color: #3a4048; }
+    .note-mobile { display: none; margin: 10px auto 0; max-width: 720px; font-size: 13px; color: var(--ink-3); text-align: center; }
+    @media (pointer: coarse) { .note-mobile { display: block; } }
+
+    /* --- sections --- */
+    section { padding: 56px 0 8px; }
+    section h2 {
+      font-family: 'Bungee', sans-serif; font-weight: 400; font-size: 22px; letter-spacing: .04em;
+      margin: 0 0 6px; color: var(--tan);
+    }
+    section .lead { margin: 0 0 22px; color: var(--ink-2); max-width: 720px; }
+    .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+    .card {
+      background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px;
+    }
+    .card h3 { margin: 0 0 10px; font-size: 16px; display: flex; align-items: center; gap: 10px; }
+    .card h3 img { height: 26px; padding: 4px; border-radius: 6px; background: var(--olive); image-rendering: pixelated; }
+    .card p { margin: 0 0 8px; color: var(--ink-2); font-size: 14.5px; }
+    .card p:last-child { margin-bottom: 0; }
+    .keys { list-style: none; padding: 0; margin: 0; display: grid; gap: 7px; font-size: 14px; }
+    .keys li { display: flex; justify-content: space-between; gap: 8px 12px; align-items: baseline; flex-wrap: wrap; }
+    .keys li span:first-child { color: var(--ink-2); }
+    .keys li span:last-child { text-align: right; margin-left: auto; line-height: 1.9; }
+    .quest { border-top: 3px solid var(--line); }
+    .quest.one { border-top-color: var(--sky); }
+    .quest.two { border-top-color: var(--green); }
+    .quest.three { border-top-color: var(--purple); }
+    .quest .num { font-family: 'Bungee', sans-serif; font-size: 28px; color: var(--ink); line-height: 1; }
+    .facts { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-top: 18px; }
+    .fact { display: flex; gap: 14px; align-items: flex-start; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg-2); }
+    .fact img { flex: none; width: 48px; padding: 6px; border-radius: 8px; background: var(--olive); image-rendering: pixelated; margin-top: 2px; }
+    .fact img.wide { width: 76px; }
+    .fact b { display: block; margin-bottom: 2px; }
+    .fact span { color: var(--ink-2); font-size: 14px; }
+    .aside { margin-top: 22px; padding: 16px 20px; border-left: 3px solid var(--red); background: var(--bg-2); border-radius: 0 var(--radius) var(--radius) 0; color: var(--ink-2); font-size: 14.5px; }
+    .aside b { color: var(--ink); }
+    .rom { display: grid; gap: 16px; grid-template-columns: 1.2fr .8fr; align-items: start; }
+    @media (max-width: 760px) { .rom { grid-template-columns: 1fr; } }
+    .stat { display: flex; gap: 14px; align-items: baseline; padding: 10px 0; border-bottom: 1px dashed var(--line); }
+    .stat:last-child { border-bottom: 0; }
+    .stat .n { font-family: 'Bungee', sans-serif; font-size: 26px; color: var(--gold); min-width: 64px; }
+    .stat .t { color: var(--ink-2); font-size: 14px; }
+
+    footer { margin-top: 56px; padding: 26px 0 40px; border-top: 1px solid var(--line); color: var(--ink-3); font-size: 13px; }
+    footer .row { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    details.dev { margin-top: 18px; color: var(--ink-3); }
+    details.dev summary { cursor: pointer; font-size: 13px; }
+    #debug { font: 11px 'IBM Plex Mono', monospace; color: #9f9; background: #0b0d10; padding: 8px; border: 1px solid var(--line); border-radius: 8px; margin: 10px 0; white-space: pre-wrap; }
+    #rooms { display: flex; flex-wrap: wrap; justify-content: center; }
+    .room-container { display: inline-block; text-align: center; margin: 10px; }
+    .room-label { color: #888; font-size: 12px; margin-bottom: 4px; }
+    #rooms canvas { image-rendering: pixelated; border: 1px solid #333; margin: 4px; }
+    @media (prefers-reduced-motion: reduce) { .btn { transition: none; } html { scroll-behavior: auto; } }
   </style>
 </head>
 <body>
-  <h1>Swords and Serpents</h1>
-  <div class="controls">
-    <b>Move/Face:</b> Arrows or WASD &nbsp;·&nbsp;
-    <b>Back up:</b> B &nbsp;·&nbsp;
-    <b>Pick up/Open:</b> Space &nbsp;·&nbsp;
-    <b>Stairs/Lantern:</b> F &nbsp;·&nbsp;
-    <b>Read Scroll:</b> R &nbsp;·&nbsp;
-    <b>Status:</b> Tab &nbsp;·&nbsp;
-    <b>Select game:</b> 1/2/3, Enter
-    <br><small>(Combat: walk into an enemy to strike — no attack button, per the manual)</small>
-    <br><b>Wizard (games 2/3, left controller):</b> I/J/K/L move &nbsp;·&nbsp; U backs up &nbsp;·&nbsp; O pick up/open &nbsp;·&nbsp; P read scroll &nbsp;·&nbsp; Numpad 0 status &nbsp;·&nbsp; Numpad 1-9 (or F1-F9) cast spells &nbsp;·&nbsp; second gamepad: LB/RB/LT/RT = FREEZE/FIREBALL/HEAL/FAST FEET
-    <br><label><input type="checkbox" id="cpuwiz"> CPU plays the Wizard (port option — set before pressing ENTER on the title)</label>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand"><img src="/img/serpent.svg" alt=""> Swords &amp; Serpents <span style="color:var(--ink-3);font-weight:400">· browser port</span></div>
+      <nav>
+        <a href="#play">Play</a>
+        <a href="#how">How to play</a>
+        <a href="#quests">Quests</a>
+        <a href="#fortress">The fortress</a>
+        <a href="#rom">From the ROM</a>
+        <a href="https://github.com/Plicerin/Swords-and-Serpents" target="_blank" rel="noopener">GitHub</a>
+      </nav>
+    </div>
+
+    <header class="hero">
+      <div class="stripes" aria-hidden="true">
+        <span style="background:var(--blue)"></span>
+        <span style="background:var(--green)"></span>
+        <span style="background:var(--yellow)"></span>
+        <span style="background:var(--orange)"></span>
+        <span style="background:var(--red)"></span>
+        <span style="background:var(--purple)"></span>
+      </div>
+      <h1>SWORDS <span class="amp">&amp;</span> SERPENTS</h1>
+      <p class="sub">Imagic's 1982 Intellivision dungeon crawl, <b>rebuilt frame by frame from the original ROM</b>. Every wall push, sword sweep and sorcerer's fireball behaves exactly as the cartridge does — now in your browser.</p>
+      <div class="cta">
+        <a class="btn primary" href="#play"><img src="/img/prince.svg" alt=""> Play now</a>
+        <a class="btn" href="#how">Controls</a>
+      </div>
+    </header>
+
+    <main>
+      <div id="play" class="stage">
+        <div class="bezel">
+          <canvas id="game" width="640" height="480"></canvas>
+        </div>
+        <div class="tray">
+          <div class="start">Press <kbd>1</kbd> <kbd>2</kbd> or <kbd>3</kbd> then <kbd>Enter</kbd> to begin</div>
+          <div class="controls">
+            <label><input type="checkbox" id="cpuwiz"> CPU plays the Wizard</label>
+            <button id="fullscreen" type="button">Fullscreen</button>
+          </div>
+        </div>
+        <p class="note-mobile">This is a keyboard-and-gamepad game — plug in a controller or play on a desktop.</p>
+      </div>
+
+      <section id="how">
+        <h2>How to play</h2>
+        <p class="lead">Two hand controllers, two heroes. The Warrior Prince strikes by <b>walking into</b> his foes — there is no attack button. Nilrem the Wizard (games 2 and 3) casts from the left keypad.</p>
+        <div class="grid">
+          <div class="card">
+            <h3><img src="/img/prince.svg" alt=""> The Warrior Prince</h3>
+            <ul class="keys">
+              <li><span>Move &amp; face</span><span><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> or <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span></li>
+              <li><span>Back up</span><span><kbd>B</kbd></span></li>
+              <li><span>Pick up · store · open stairs</span><span><kbd>Enter</kbd> / <kbd>Space</kbd></span></li>
+              <li><span>Read scroll</span><span><kbd>C</kbd></span></li>
+              <li><span>Status screen</span><span><kbd>0</kbd> / <kbd>Tab</kbd></span></li>
+              <li><span>Gamepad</span><span>stick · A · B · X · Y</span></li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3><img src="/img/wizard.svg" alt=""> Nilrem the Wizard</h3>
+            <ul class="keys">
+              <li><span>Move &amp; face</span><span><kbd>I</kbd><kbd>J</kbd><kbd>K</kbd><kbd>L</kbd></span></li>
+              <li><span>Back up</span><span><kbd>U</kbd></span></li>
+              <li><span>Pick up · store</span><span><kbd>O</kbd></span></li>
+              <li><span>Read scroll · learn spell</span><span><kbd>P</kbd></span></li>
+              <li><span>Cast spell 1–9</span><span>numpad <kbd>1</kbd>…<kbd>9</kbd> or <kbd>F1</kbd>…<kbd>F9</kbd></span></li>
+              <li><span>Second gamepad</span><span>LB freeze · RB fireball · LT heal · RT fast feet</span></li>
+            </ul>
+            <p style="margin-top:12px">Release the disc, face the target, press the spell. Or tick <em>CPU plays the Wizard</em> above and let him follow you.</p>
+          </div>
+          <div class="card">
+            <h3><img src="/img/key.svg" alt=""> The quest</h3>
+            <p>Find the <b>key</b> on each of the four levels, then press Enter on the checkered marker to open the stairs down.</p>
+            <p>Carry up to six <b>treasures</b>; bring them back to the <b>chest</b> on level 1 to bank their value — every 300 points earns a reincarnation.</p>
+            <p>Mystical <b>scrolls</b> teleport you across the fortress. Read them carefully.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="quests">
+        <h2>Three quests</h2>
+        <p class="lead">Pick a game on the title screen. All three run on the same fortress; the difference is who walks beside you.</p>
+        <div class="grid">
+          <div class="card quest one"><div class="num">1</div><h3>1 Player</h3><p>The Warrior Prince battles alone, learning the floor plan of the fortress and as many of its secrets as he can.</p></div>
+          <div class="card quest two"><div class="num">2</div><h3>2 Player</h3><p>The Prince and Nilrem join forces. The Wizard begins with a single spell — <b>Freeze</b> — and learns more from the scrolls he finds.</p></div>
+          <div class="card quest three"><div class="num">3</div><h3>2 Player / Magic</h3><p>Nilrem sets out already versed in <b>Fireball</b>, <b>Heal</b> and <b>Fast Feet</b>, three uses each.</p></div>
+        </div>
+      </section>
+
+      <section id="fortress">
+        <h2>The fortress</h2>
+        <p class="lead">A dying king's last wish sends his son into the Sinister Serpent's fortress: reclaim the conquered kingdom, defy the Serpent, restore the family's pride. Four levels of endlessly scrolling maze stand in the way.</p>
+        <div class="facts">
+          <div class="fact"><img src="/img/knight.svg" alt="" class="wide"><div><b>Phantom Knights</b><span>Spirits that charge straight through walls, re-aiming every ninety frames. Faster than you. Strike first, or be struck.</span></div></div>
+          <div class="fact"><img src="/img/sorcerer.svg" alt=""><div><b>Red Sorcerers</b><span>Materialise in a puff of smoke beside the Prince, hurl one fireburst, and vanish. Your sword can parry the fire — but never the caster.</span></div></div>
+          <div class="fact"><img src="/img/scroll.svg" alt=""><div><b>Scrolls &amp; doors</b><span>Transport scrolls fling you across a level. Jawed doors bite anyone who lingers. Torches flicker on the ROM's own clock.</span></div></div>
+          <div class="fact"><img src="/img/serpent.svg" alt="" class="wide"><div><b>The Sinister Serpent</b><span>Waits in a ziggurat on level 4 behind a corridor of flame. The box promised a showdown; the cartridge had other ideas.</span></div></div>
+        </div>
+        <div class="aside"><b>Early-eighties honesty.</b> Playing the real ROM, the Serpent turns out to be inert scenery, Red Sorcerers shrug off every spell, and six of the Wizard's nine spells can never be learned. The port keeps every one of those quirks — because that is the game.</div>
+      </section>
+
+      <section id="rom">
+        <h2>Built from the ROM</h2>
+        <div class="rom">
+          <div>
+            <p class="lead" style="margin-bottom:12px">Nothing here is guessed. The original cartridge runs inside an instrumented emulator with real controller input; every mechanic was measured there — sprite bitmaps, sub-pixel speeds, collision rules, timers, palettes — and reproduced in TypeScript. When the manual and the ROM disagree, the ROM wins.</p>
+            <p class="lead">The findings are written up in the repository's <a href="https://github.com/Plicerin/Swords-and-Serpents/blob/main/docs/HANDOVER.md" target="_blank" rel="noopener">handover notes</a>, from the toroidal 128×64-tile levels to the exact sixteen-frame sweep of a knight's sword.</p>
+          </div>
+          <div class="card">
+            <div class="stat"><span class="n">23</span><span class="t">documented ROM findings</span></div>
+            <div class="stat"><span class="n">4</span><span class="t">levels, each a 128×64-tile torus that scrolls forever</span></div>
+            <div class="stat"><span class="n">16</span><span class="t">directions of knight pose, every one captured</span></div>
+            <div class="stat"><span class="n">9</span><span class="t">spells, three of them the manual lied about</span></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="row">
+        <div>Swords &amp; Serpents is © 1982 Imagic. This is an unofficial preservation project and is not affiliated with Imagic or Intellivision Entertainment.</div>
+        <div><a href="https://github.com/Plicerin/Swords-and-Serpents" target="_blank" rel="noopener">Source on GitHub</a></div>
+      </div>
+      <details class="dev">
+        <summary>Developer view</summary>
+        <div id="debug">debug: (loading)</div>
+        <div id="rooms"></div>
+      </details>
+    </footer>
   </div>
-  <canvas id="game"></canvas>
-  <div id="debug" style="font: 11px monospace; color: #9f9; background:#111; padding:6px; border:1px solid #333; max-width: 640px; margin: 6px 0; white-space: pre;">debug: (loading)</div>
-  <h2>All Rooms (Debug View)</h2>
-  <div id="rooms"></div>
+
+  <script>
+    document.getElementById('fullscreen').addEventListener('click', () => {
+      const c = document.getElementById('game');
+      if (document.fullscreenElement) document.exitFullscreen(); else c.requestFullscreen?.();
+    });
+  </script>
   <script type="module" src="/src/main.ts"></script>
 </body>
 </html>
