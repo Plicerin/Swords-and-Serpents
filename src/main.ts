@@ -199,17 +199,20 @@ function facingFrame(dx: number, dy: number, knightWalk = false): { frame: numbe
 
 interface MazeData { w: number; h: number; grid: number[][]; }
 
+// Site base path (GitHub Pages serves the game under /Swords-and-Serpents/).
+const BASE = import.meta.env.BASE_URL;
+
 async function loadAssets() {
   // The 4 real fortress levels (128×64 tiles each) captured from the ROM's
   // renderer — see docs/HANDOVER.md ROM finding #4.
   const levelUrls = Array.from({ length: 4 }, (_, i) =>
-    fetch(`/assets/world_level${i}.json`));
+    fetch(`${BASE}assets/world_level${i}.json`));
 
   const [gramRes, gromRes, spritesRes, objectsRes, ...mazeResps] = await Promise.all([
-    fetch('/assets/gram_tiles.json'),
-    fetch('/assets/grom.bin'),
-    fetch('/assets/player_sprites.json'),
-    fetch('/assets/objects.json'),
+    fetch(`${BASE}assets/gram_tiles.json`),
+    fetch(`${BASE}assets/grom.bin`),
+    fetch(`${BASE}assets/player_sprites.json`),
+    fetch(`${BASE}assets/objects.json`),
     ...levelUrls,
   ]);
 
