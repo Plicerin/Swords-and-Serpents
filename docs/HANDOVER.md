@@ -162,6 +162,14 @@ designed mode, not ROM truth.
 **Gamepad (2026-09-16, port feature, not a ROM finding):** the Gamepad API is polled every input snapshot (src/engine/input.ts): left stick or d-pad = disc (8-way, 0.4 dead zone), A/Start = ENTER, B = back up, X = read scroll (keypad C), Y = status (keypad 0); the keyboard wins for the disc while any direction key is held. Verified headless with a stubbed 
 avigator.getGamepads. Audio still needs one key press or click to unlock (browser autoplay policy; a pad press does not count).
 
+**Debug menu (2026-09-17, port tooling — src/debug/menu.ts):** backquote (`) or the
+"Debug menu" button opens a panel driving `window.__game.debug`: god mode
+(no injuries for either player), noclip (walls/doors ignored, stairs still
+work), no spawns, heal/lives, give key, fill hand, fast feet/invincible, jump
+to any level in place, go to any ROM object of the level or a tile, spawn a
+knight/sorcerer, kill all, CPU Wizard toggle, all spells, revive/recall.
+None of it touches ROM behaviour; the flags live in `dbg` in src/main.ts.
+
 **ROM finding #23 — GAMES 2 AND 3: NILREM THE WIZARD, HIS SPELLS, AND WHAT
 THE MANUAL GETS WRONG (2026-09-17, Intellijsd with the LEFT controller —
 `ijsd.setPad(sector, keys, 1)` — plus L_5749/L_577A/L_608B-L_6139/L_693D-

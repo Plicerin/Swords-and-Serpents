@@ -10,6 +10,7 @@ import {
   MAX_IN_HAND,
 } from './world/objects';
 import { animatedCards, DOOR_PERIOD_TICKS } from './world/doors';
+import { installDebugMenu } from './debug/menu';
 import {
   WizardState, createWizard, wizardBrain, boltBitmap, WIZARD_FRAMES,
   WIZARD_SPEED, WIZARD_BACK_SPEED, WIZARD_DIAG, BOLT_SPEED, BOLT_DIAG, FAST_FEET_FRAMES,
@@ -42,6 +43,8 @@ let titleSelection = 0;
 // controller (finding #23). cpuWizard is a port option: the CPU drives him.
 let gameMode = 1;
 let wiz: WizardState;
+// Debug menu flags (port tooling, src/debug/menu.ts) — never ROM behaviour.
+const dbg = { god: false, noclip: false, noSpawn: false };
 let cpuWizard = false;
 let tickInput2: ReturnType<InputHandler['getInput2']> = { dx: 0, dy: 0, backUp: false, enter: false, readScroll: false, status: false, spell: null };
 let readScrollHeld2 = false;
@@ -387,6 +390,7 @@ let spawnRampCounter = SPAWN_RAMP_FIRST;
 let rng: () => number = Math.random;
 
 function spawnDirector() {
+  if (dbg.noSpawn) return;
   if (--spawnTimer > 0) return;
   // reload (L_6A0A..6A0E), with the ramp
   if (spawnRamp > 0 && --spawnRampCounter === 0) { spawnRamp--; spawnRampCounter = SPAWN_RAMP_EVERY; }
@@ -682,10 +686,10 @@ function update() {
         if (state.level < levels.length - 1) { changeLevel(state.level + 1); return; }
       } else if (code > 0x10 && code < 0x40) {
         if (state.level > 0) { changeLevel(state.level - 1); return; }
-      } else if (code !== 0) {
+      } else if (code !== 0 && !dbg.noclip) {
         if (code >= 0x40) {
           // Door contact: the same hit as a knight's sword, then the push.
-          if (state.stunned === 0 && wiz.invincible === 0) {
+          if (state.stunned === 0 && !princeShielded()) {
             const wasGray = state.injured;
             injurePlayer(state);
             sfx.play(state.dead ? DEATH : HIT);
@@ -740,7 +744,7 @@ function update() {
     }
 
     // Knight sword pixels on the Wizard's body: the same injury as the Prince's.
-    if (enemy.type === 'phantom_knight' && enemy.dying === 0 && wizardTargetable() && wiz.p.stunned === 0 && wiz.invincWiz === 0) {
+    if (enemy.type === 'phantom_knight' && enemy.dying === 0 && wizardTargetable() && wiz.p.stunned === 0 && !wizardShielded()) {
       const wdx = wrapDelta(enemy.x, wiz.p.x, W), wdy = wrapDelta(enemy.y, wiz.p.y, H);
       if (knightSwordHitsBox(enemy, enemy.x + wdx, enemy.y + wdy)) injureWizard();
     }
@@ -756,7 +760,7 @@ function update() {
     } else if (event === 'player_strikes') {
       setInfo('You wound the Serpent!', 90);
     } else if (event === 'player_injured') {
-      if (state.stunned === 0 && !state.dead && wiz.invincible === 0) {
+      if (state.stunned === 0 && !state.dead && !princeShielded()) {
         const wasGray = state.injured;
         injurePlayer(state);
         sfx.play(state.dead ? DEATH : HIT);
@@ -784,12 +788,12 @@ function update() {
     // The Wizard can be burned by a fireburst meant for the Prince (manual p.8, captured).
     if (wizardTargetable() && tDist(state.level, fb.x, fb.y, wiz.p.x, wiz.p.y) < 5) {
       fb.alive = false;
-      if (wiz.p.stunned === 0 && wiz.invincWiz === 0) injureWizard();
+      if (wiz.p.stunned === 0 && !wizardShielded()) injureWizard();
       continue;
     }
     if (!state.dead && tDist(state.level, fb.x, fb.y, state.x, state.y) < 5) {
       fb.alive = false;
-      if (state.stunned === 0 && wiz.invincible === 0) {
+      if (state.stunned === 0 && !princeShielded()) {
         injurePlayer(state);
         sfx.play(DEATH);
         setInfo(state.dead ? 'Burned down...' : 'Scorched by a fireball!', 90);
@@ -931,6 +935,9 @@ function update() {
 // ===========================================================================
 // Nilrem the Wizard (games 2 and 3) — ROM finding #23. See src/engine/wizard.ts
 // for the captured facts; this is the per-frame/per-tick machinery.
+
+function princeShielded(): boolean { return wiz.invincible > 0 || dbg.god; }
+function wizardShielded(): boolean { return wiz.invincWiz > 0 || dbg.god; }
 
 // Alive, on screen and in play: a knight can target him, a sword can hit him.
 function wizardTargetable(): boolean {
@@ -1105,10 +1112,10 @@ function updateWizard(doTick: boolean) {
       block.forEach((t, q) => { code |= quadrantCode(q, gramCard(world.maze.grid[t.row][t.col])); });
       if (code >= 0x40) {
         // door jaws: the same hit as for the Prince (inferred from the shared classifier)
-        if (wiz.p.stunned === 0 && wiz.invincWiz === 0) injureWizard();
+        if (wiz.p.stunned === 0 && !wizardShielded() && !dbg.noclip) injureWizard();
         code ^= 0x40;
       }
-      if (code !== 0 && code !== 0x10 && !(code > 0x10 && code < 0x40)) {
+      if (code !== 0 && code !== 0x10 && !(code > 0x10 && code < 0x40) && !dbg.noclip) {
         const push = pushVector(code);
         if (push.vx > 0) { wiz.p.x = wrap(Math.ceil(wiz.p.x / TILE) * TILE, W); wiz.deadX = true; wiz.vx = 0; }
         if (push.vx < 0) { wiz.p.x = wrap(Math.floor(wiz.p.x / TILE) * TILE, W); wiz.deadX = true; wiz.vx = 0; }
@@ -1148,7 +1155,7 @@ function updateWizard(doTick: boolean) {
   // the Prince
   if (!state.dead && overlaps(state.x, state.y)) {
     if (b.kind === 2) {
-      if (state.stunned === 0 && wiz.invincible === 0) { const wasGray = state.injured; injurePlayer(state); sfx.play(state.dead ? DEATH : HIT); setInfo(state.dead ? 'Burned by your own Wizard...' : wasGray ? 'A life is lost!' : 'Scorched by Nilrem!', 90); }
+      if (state.stunned === 0 && !princeShielded()) { const wasGray = state.injured; injurePlayer(state); sfx.play(state.dead ? DEATH : HIT); setInfo(state.dead ? 'Burned by your own Wizard...' : wasGray ? 'A life is lost!' : 'Scorched by Nilrem!', 90); }
     } else if (b.kind === 3) { state.injured = false; setInfo('The Prince is healed!', 90); }
     else if (b.kind === 4) { wiz.fastFeet = FAST_FEET_FRAMES; setInfo('Fast feet!', 90); }
     else if (b.kind === 5) { wiz.invincible = INVINCIBLE_FRAMES; moveVx = 0; moveVy = 0; setInfo('The Prince is invincible (and rooted)!', 90); }
@@ -1648,6 +1655,10 @@ async function main() {
   requestAnimationFrame(t => gameLoop(ctx, t));
   console.log(`Quest started — ${enemiesByLevel.flat().length} foes across ${levels.length} levels.`);
 
+  // Debug menu (port tool): backquote toggles it; it drives the bridge's debug API.
+  type DebugApi = NonNullable<ReturnType<Parameters<typeof installDebugMenu>[0]>>;
+  installDebugMenu(() => atTitle ? undefined : ((window as unknown as { __game: { debug: DebugApi } }).__game.debug));
+
   // Debug/test bridge (headless verification — see docs/HANDOVER.md)
   (window as unknown as Record<string, unknown>).__game = {
     getState: () => ({ ...state, gameWon, kills,
@@ -1707,6 +1718,48 @@ async function main() {
     setSpells: (arr: number[]) => { arr.forEach((v, i) => { wiz.spells[i] = v; }); },
     setCpuWizard: (on: boolean) => { wiz.cpu = on; },
     mode: () => gameMode,
+    // --- Debug menu API (src/debug/menu.ts) ---
+    debug: {
+      flags: dbg,
+      set: (k: 'god' | 'noclip' | 'noSpawn', v: boolean) => { dbg[k] = v; },
+      // Jump to a level in place, nudged onto walkable ground (like the stairs, but safe).
+      goLevel: (l: number) => {
+        const to = Math.max(0, Math.min(levels.length - 1, l));
+        state.level = to; redrawLevel(to); fireballs = []; clearFoes();
+        const spot = findWalkableNear(to, state.x, state.y);
+        movePair(spot.x, spot.y);
+        if (wiz.parked) wiz.parked = null;
+        setInfo(`Debug: level ${to + 1}`, 60);
+      },
+      // Move both players so the Prince stands on a world tile.
+      goTile: (col: number, row: number) => { const w = lw(); const spot = findWalkableNear(state.level, wrap(col * TILE, w.pixelWidth), wrap(row * TILE, w.pixelHeight)); movePair(spot.x, spot.y); },
+      objects: () => objectTables.levels[state.level].map(o => ({ col: o.col, row: o.row, type: o.type })),
+      level: () => state.level,
+      levels: () => levels.length,
+      giveKey: () => { objStateByLevel[state.level].taken[TYPE_KEY] = true; },
+      fillHand: () => { state.potions = MAX_IN_HAND; inHandValue = MAX_IN_HAND * 50 * (state.level + 1); },
+      heal: () => { state.injured = false; state.stunned = 0; if (wiz) { wiz.p.injured = false; wiz.p.stunned = 0; } },
+      setLives: (n: number) => { state.reincarnations = n; if (wiz) wiz.p.reincarnations = n; },
+      killFoes: () => clearFoes(),
+      spawn: (type: 'phantom_knight' | 'sorcerer') => {
+        const w = lw();
+        const [dx, dy] = type === 'sorcerer' ? [-10, 26] : KNIGHT_SPOTS[Math.floor(rng() * 4)];
+        enemiesByLevel[state.level].push(createEnemy(wrap(state.x + dx, w.pixelWidth), wrap(state.y + dy, w.pixelHeight), type));
+      },
+      wizard: () => wiz,
+      allSpells: () => { for (let i = 2; i <= 9; i++) wiz.spells[i] = 10; },
+      reviveWizard: () => {
+        if (!wiz.active) return;
+        const w = lw();
+        wiz.gone = false; wiz.parked = null; wiz.p.dead = false; wiz.p.deathPhase = null; wiz.p.injured = false; wiz.p.stunned = 0;
+        wiz.p.x = wrap(state.x, w.pixelWidth); wiz.p.y = wrap(state.y + 12, w.pixelHeight);
+        if (wiz.p.reincarnations <= 0) wiz.p.reincarnations = 9;
+      },
+      setCpuWizard: (on: boolean) => { if (wiz) wiz.cpu = on; },
+      fastFeet: () => { wiz.fastFeet = FAST_FEET_FRAMES; },
+      invincible: () => { wiz.invincible = INVINCIBLE_FRAMES; },
+      state: () => state,
+    },
     nearestItem: () => {
       let best: GameItem | null = null;
       let bd = Infinity;
